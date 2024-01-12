@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/charmbracelet/bubbles/textarea"
@@ -17,6 +18,7 @@ type gitErrorMsg string
 type model struct {
 	textarea  textarea.Model
 	worktree  *git.Worktree
+	repo      *git.Repository
 	gitStatus string
 }
 
@@ -49,6 +51,7 @@ func (m *model) Init() tea.Cmd {
 			return gitErrorMsg(err.Error())
 		}
 		m.worktree = w
+		m.repo = r
 		return gitOutputMsg(gitStatus.String())
 	}
 }
@@ -79,6 +82,16 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.gitStatus = err.Error()
 					return m, nil
 				}
+				m.gitStatus = "Changes committed"
+				// Add this block to push changes after commit
+				err = m.repo.Push(&git.PushOptions{
+					Auth:     nil, // Replace with appropriate auth method
+					Progress: os.Stdout,
+				})
+				if err != nil {
+					return m, tea.Quit
+				}
+				m.gitStatus = "Changes pushed"
 			} else {
 				m.gitStatus = "Worktree is not initialized"
 				return m, nil
