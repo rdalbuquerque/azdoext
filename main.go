@@ -1,9 +1,15 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
 	"os"
+	"strings"
 	"time"
+
+	"net/http"
+	"net/url"
 
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textarea"
@@ -11,7 +17,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	git "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/object"
-	"github.com/go-git/go-git/v5/plumbing/transport/http"
+	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
 )
 
 type gitOutputMsg string
@@ -25,6 +31,48 @@ type model struct {
 	spinner   spinner.Model // Add this line
 	pushing   bool          // Add this line
 	pushed    bool
+	pipelines []string
+}
+
+func (m *model) fetchPipelines() tea.Msg {
+	remotes, err := m.repo.Remotes()
+	if err != nil {
+		return gitErrorMsg(err.Error())
+	}
+	remote := remotes[0].Config().URLs[0]
+
+	// Parse the remote URL
+	u, err := url.Parse(remote)
+	if err != nil {
+		return gitErrorMsg(err.Error())
+	}
+	parts := strings.Split(u.Path, "/")
+	organization := parts[1]
+	project := parts[2]
+
+	// Construct the Azure DevOps API URL
+	apiURL := fmt.Sprintf("https://dev.azure.com/%s/%s/_apis/pipelines?api-version=6.0-preview.1", organization, project)
+	client := &http.Client{}
+	req, err := http.NewRequest("GET", apiURL, nil)
+	if err != nil {
+		return gitErrorMsg(err.Error())
+	}
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("AZDO_PERSONAL_ACCESS_TOKEN"))
+	resp, err := client.Do(req)
+	if err != nil {
+		return gitErrorMsg(err.Error())
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return gitErrorMsg(err.Error())
+	}
+	var result map[string]interface{}
+	json.Unmarshal(body, &result)
+	for _, pipeline := range result["value"].([]interface{}) {
+		m.pipelines = append(m.pipelines, pipeline.(map[string]interface{})["name"].(string))
+	}
+	return gitOutputMsg("Pipelines fetched")
 }
 
 func initialModel() model {
@@ -113,6 +161,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg == "Pushed" {
 			m.pushed = true
 			m.pushing = false
+			return m, m.fetchPipelines
 		}
 		m.gitStatus = string(msg)
 	}
@@ -130,14 +179,15 @@ func (m *model) View() string {
 		m.gitStatus = lipgloss.JoinHorizontal(lipgloss.Left, m.spinner.View(), "Pushing...\n")
 	}
 	if m.pushed {
-		return lipgloss.JoinVertical(lipgloss.Top, m.gitStatus)
+		pipelines := strings.Join(m.pipelines, "\n")
+		return lipgloss.JoinVertical(lipgloss.Top, m.gitStatus, pipelines)
 	}
 	return lipgloss.JoinVertical(lipgloss.Top, m.gitStatus, m.textarea.View())
 }
 
 func (m *model) push() tea.Msg {
 	err := m.repo.Push(&git.PushOptions{
-		Auth:     &http.BasicAuth{Username: "", Password: os.Getenv("AZDO_PERSONAL_ACCESS_TOKEN")},
+		Auth:     &githttp.BasicAuth{Username: "", Password: os.Getenv("AZDO_PERSONAL_ACCESS_TOKEN")},
 		Progress: nil,
 	})
 	if err != nil {
