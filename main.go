@@ -93,7 +93,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.gitStatus = "Changes committed"
 
 				m.pushing = true
-				return m, tea.Batch(m.push, func() tea.Msg { return m.spinner.Tick() })
+				return m, tea.Batch(m.push, m.spinner.Tick)
 			} else {
 				m.gitStatus = "Worktree is not initialized"
 				return m, nil
