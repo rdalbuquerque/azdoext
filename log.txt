@@ -102,3 +102,29 @@ OnRwZ2x3bms0M3BzZmlwdW9xMmE1Mnd1dW9ha2lrY2ozZXNqeHJpYzJ4Y2lqaHAzeWs3YWE=
     }
   ]
 }
+Pushed
+/rdalbuquerque/explore-bubbletea/_git/explore-bubbletea
+https://dev.azure.com/rdalbuquerque/explore-bubbletea/_apis/pipelines?api-version=6.0-preview.1
+OnRwZ2x3bms0M3BzZmlwdW9xMmE1Mnd1dW9ha2lrY2ozZXNqeHJpYzJ4Y2lqaHAzeWs3YWE=
+200 OK
+{"count":1,"value":[{"_links":{"self":{"href":"https://dev.azure.com/rdalbuquerque/160c770b-e289-4b64-9b14-af7475a1b744/_apis/pipelines/12?revision=1"},"web":{"href":"https://dev.azure.com/rdalbuquerque/160c770b-e289-4b64-9b14-af7475a1b744/_build/definition?definitionId=12"}},"url":"https://dev.azure.com/rdalbuquerque/160c770b-e289-4b64-9b14-af7475a1b744/_apis/pipelines/12?revision=1","id":12,"revision":1,"name":"explore-bubbletea","folder":"\\"}]}
+{
+  "count": 1,
+  "value": [
+    {
+      "_links": {
+        "self": {
+          "href": "https://dev.azure.com/rdalbuquerque/160c770b-e289-4b64-9b14-af7475a1b744/_apis/pipelines/12?revision=1"
+        },
+        "web": {
+          "href": "https://dev.azure.com/rdalbuquerque/160c770b-e289-4b64-9b14-af7475a1b744/_build/definition?definitionId=12"
+        }
+      },
+      "folder": "\\",
+      "id": 12,
+      "name": "explore-bubbletea",
+      "revision": 1,
+      "url": "https://dev.azure.com/rdalbuquerque/160c770b-e289-4b64-9b14-af7475a1b744/_apis/pipelines/12?revision=1"
+    }
+  ]
+}
