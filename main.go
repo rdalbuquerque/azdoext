@@ -5,6 +5,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textarea"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -21,6 +22,8 @@ type model struct {
 	worktree  *git.Worktree
 	repo      *git.Repository
 	gitStatus string
+	spinner   spinner.Model // Add this line
+	pushing   bool          // Add this line
 }
 
 type progressWriter struct {
@@ -43,6 +46,8 @@ func initialModel() model {
 }
 
 func (m *model) Init() tea.Cmd {
+	m.spinner = spinner.New()       // Initialize the spinner
+	m.spinner.Spinner = spinner.Dot // Set the spinner style
 	return func() tea.Msg {
 		r, err := git.PlainOpen(".")
 		if err != nil {
@@ -96,16 +101,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 				m.gitStatus = "Changes committed"
 
-				// Create a progressWriter
-				pw := &progressWriter{progress: &m.gitStatus}
-				err = m.repo.Push(&git.PushOptions{
-					Auth:     &http.BasicAuth{Username: "", Password: os.Getenv("AZDO_PERSONAL_ACCESS_TOKEN")},
-					Progress: pw,
-				})
-				if err != nil {
-					return m, tea.Quit
-				}
-				m.gitStatus = "Changes pushed"
+				m.pushing = true
+				return m, tea.Batch(m.push, func() tea.Msg { return m.spinner.Tick() })
 			} else {
 				m.gitStatus = "Worktree is not initialized"
 				return m, nil
@@ -123,6 +120,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case gitOutputMsg:
 		m.gitStatus = string(msg)
 	}
+	if m.pushing {
+		m.spinner, _ = m.spinner.Update(msg)
+	}
 	m.textarea, cmd = m.textarea.Update(msg)
 	cmds = append(cmds, cmd)
 	return m, tea.Batch(cmds...)
@@ -130,6 +130,22 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *model) View() string {
 	return lipgloss.JoinVertical(lipgloss.Top, m.gitStatus, m.textarea.View())
+}
+
+func (m *model) push() tea.Msg {
+	go func() {
+		err := m.repo.Push(&git.PushOptions{
+			Auth:     &http.BasicAuth{Username: "", Password: os.Getenv("AZDO_PERSONAL_ACCESS_TOKEN")},
+			Progress: nil,
+		})
+		m.pushing = false
+		if err != nil {
+			m.gitStatus = err.Error()
+		} else {
+			m.gitStatus = "Changes pushed"
+		}
+	}()
+	return nil
 }
 
 func main() {
