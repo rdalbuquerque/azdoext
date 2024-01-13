@@ -22,12 +22,44 @@ import (
 	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
 )
 
+var (
+	titleStyle        = lipgloss.NewStyle().MarginLeft(2)
+	itemStyle         = lipgloss.NewStyle().PaddingLeft(4)
+	selectedItemStyle = lipgloss.NewStyle().PaddingLeft(2).Foreground(lipgloss.Color("170"))
+	paginationStyle   = list.DefaultStyles().PaginationStyle.PaddingLeft(4)
+	helpStyle         = list.DefaultStyles().HelpStyle.PaddingLeft(4).PaddingBottom(1)
+	quitTextStyle     = lipgloss.NewStyle().Margin(1, 0, 2, 4)
+)
+
 type gitOutputMsg string
 type gitErrorMsg string
 
 type item string
 
 func (i item) FilterValue() string { return "" }
+
+type itemDelegate struct{}
+
+func (d itemDelegate) Height() int                             { return 1 }
+func (d itemDelegate) Spacing() int                            { return 0 }
+func (d itemDelegate) Update(_ tea.Msg, _ *list.Model) tea.Cmd { return nil }
+func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
+	i, ok := listItem.(item)
+	if !ok {
+		return
+	}
+
+	str := fmt.Sprintf("%d. %s", index+1, i)
+
+	fn := itemStyle.Render
+	if index == m.Index() {
+		fn = func(s ...string) string {
+			return selectedItemStyle.Render("> " + strings.Join(s, " "))
+		}
+	}
+
+	fmt.Fprint(w, fn(str))
+}
 
 type model struct {
 	textarea  textarea.Model
@@ -84,12 +116,12 @@ func (m *model) fetchPipelines() tea.Msg {
 	json.Unmarshal(body, &result)
 	resultJson, _ := json.MarshalIndent(result, "", "  ")
 	log(string(resultJson))
-	items := []list.Item{
-		item("item 1"),
-		item("item 2"),
+	items := []list.Item{}
+	for _, pipeline := range result["value"].([]interface{}) {
+		pipeline := pipeline.(map[string]interface{})["name"].(string)
+		items = append(items, item(pipeline))
 	}
-	m.pipelines = list.New(items, list.NewDefaultDelegate(), 0, 0)
-	m.pipelines.Title = "Pipelines"
+	m.pipelines = list.New(items, itemDelegate{}, 0, 0)
 	return gitOutputMsg("Pipelines fetched")
 }
 
