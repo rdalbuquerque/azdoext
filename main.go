@@ -135,6 +135,7 @@ func (m *model) push() tea.Msg {
 		Auth:     &http.BasicAuth{Username: "", Password: os.Getenv("AZDO_PERSONAL_ACCESS_TOKEN")},
 		Progress: nil,
 	})
+	time.Sleep(10 * time.Second)
 	if err != nil {
 		return gitErrorMsg(err.Error())
 	} else {
