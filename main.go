@@ -84,10 +84,9 @@ func (m *model) fetchPipelines() tea.Msg {
 	json.Unmarshal(body, &result)
 	resultJson, _ := json.MarshalIndent(result, "", "  ")
 	log(string(resultJson))
-	items := []list.Item{}
-	for _, pipeline := range result["value"].([]interface{}) {
-		pipeline := pipeline.(map[string]interface{})["name"].(string)
-		items = append(items, item(pipeline))
+	items := []list.Item{
+		item("item 1"),
+		item("item 2"),
 	}
 	m.pipelines = list.New(items, list.NewDefaultDelegate(), 0, 0)
 	m.pipelines.Title = "Pipelines"
