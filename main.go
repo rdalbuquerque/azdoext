@@ -98,7 +98,8 @@ func (m *model) runPipeline(pipelineId float64) tea.Cmd {
 		client := &http.Client{}
 		req, err := http.NewRequest("POST", apiURL, nil)
 		if err != nil {
-			return gitErrorMsg(err.Error())
+			log(err.Error())
+			return tea.Quit
 		}
 		// transform the PAT into a base64 string
 		b64authstring := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", "", os.Getenv("AZDO_PERSONAL_ACCESS_TOKEN"))))
