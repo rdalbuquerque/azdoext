@@ -34,7 +34,9 @@ var (
 type gitOutputMsg string
 type gitErrorMsg string
 
-type item string
+type item struct {
+	name, id string
+}
 
 func (i item) FilterValue() string { return "" }
 
@@ -118,8 +120,9 @@ func (m *model) fetchPipelines() tea.Msg {
 	log(string(resultJson))
 	items := []list.Item{}
 	for _, pipeline := range result["value"].([]interface{}) {
-		pipeline := pipeline.(map[string]interface{})["name"].(string)
-		items = append(items, item(pipeline))
+		pipelineName := pipeline.(map[string]interface{})["name"].(string)
+		pipelineId := pipeline.(map[string]interface{})["id"].(string)
+		items = append(items, item{name: pipelineName, id: pipelineId})
 	}
 	m.pipelines = list.New(items, itemDelegate{}, 0, 10)
 	m.pipelines.Title = "Pipelines"
@@ -173,6 +176,17 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyEsc:
 			if m.textarea.Focused() {
 				m.textarea.Blur()
+			}
+		case tea.KeyEnter:
+			if m.pushed {
+				i, ok := m.pipelines.SelectedItem().(item)
+				if ok {
+					m.gitStatus = "Pipeline selected: " + string(i.name)
+					return m, nil
+				} else {
+					m.gitStatus = "No pipeline selected"
+					return m, nil
+				}
 			}
 		case tea.KeyCtrlC:
 			return m, tea.Quit
