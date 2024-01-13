@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	git "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/object"
+	"github.com/go-git/go-git/v5/plumbing/transport/http"
 )
 
 type gitOutputMsg string
@@ -85,8 +86,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.gitStatus = "Changes committed"
 				// Add this block to push changes after commit
 				err = m.repo.Push(&git.PushOptions{
-					Auth:     nil, // Replace with appropriate auth method
-					Progress: os.Stdout,
+					Auth:     &http.BasicAuth{Username: "", Password: os.Getenv("AZDO_PERSONAL_ACCESS_TOKEN")},
+					Progress: nil,
 				})
 				if err != nil {
 					return m, tea.Quit
