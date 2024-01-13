@@ -69,6 +69,8 @@ func (m *model) fetchPipelines() tea.Msg {
 	}
 	var result map[string]interface{}
 	json.Unmarshal(body, &result)
+	resultJson, _ := json.MarshalIndent(result, "", "  ")
+	log(string(resultJson))
 	for _, pipeline := range result["value"].([]interface{}) {
 		m.pipelines = append(m.pipelines, pipeline.(map[string]interface{})["name"].(string))
 	}
