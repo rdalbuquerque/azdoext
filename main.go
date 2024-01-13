@@ -29,6 +29,7 @@ var (
 	paginationStyle   = list.DefaultStyles().PaginationStyle.PaddingLeft(4)
 	helpStyle         = list.DefaultStyles().HelpStyle.PaddingLeft(4).PaddingBottom(1)
 	quitTextStyle     = lipgloss.NewStyle().Margin(1, 0, 2, 4)
+	docStyle          = lipgloss.NewStyle().Margin(1, 2)
 )
 
 type gitOutputMsg string
@@ -249,7 +250,7 @@ func (m *model) View() string {
 		m.gitStatus = lipgloss.JoinHorizontal(lipgloss.Left, m.spinner.View(), "Pushing...\n")
 	}
 	if m.pushed {
-		return lipgloss.JoinVertical(lipgloss.Top, m.gitStatus, m.pipelines.View())
+		return lipgloss.JoinVertical(lipgloss.Top, m.gitStatus, docStyle.Render(m.pipelines.View()))
 	}
 	return lipgloss.JoinVertical(lipgloss.Top, m.gitStatus, m.textarea.View())
 }
