@@ -162,7 +162,7 @@ func monitorPipeline(organization string, project string, pipelineId float64, ru
 		var result map[string]interface{}
 		json.Unmarshal(body, &result)
 		// check if pipeline is still running, if it's not, break
-		status := result["status"].(string)
+		status := result["state"].(string)
 		if status == "completed" {
 			break
 		}
