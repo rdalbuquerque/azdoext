@@ -191,8 +191,10 @@ func (m *model) push() tea.Msg {
 		Progress: nil,
 	})
 	if err != nil {
+		log(err.Error())
 		return gitErrorMsg(err.Error())
 	} else {
+		log("Pushed")
 		return gitOutputMsg("Pushed")
 	}
 }
@@ -201,5 +203,17 @@ func main() {
 	initialModel := initialModel()
 	if _, err := tea.NewProgram(&initialModel).Run(); err != nil {
 		fmt.Println("Error running program:", err)
+	}
+}
+
+// log func logs to a file
+func log(msg string) {
+	f, err := os.OpenFile("log.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		fmt.Println(err)
+	}
+	defer f.Close()
+	if _, err := f.WriteString(msg + "\n"); err != nil {
+		fmt.Println(err)
 	}
 }
