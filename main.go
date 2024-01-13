@@ -127,7 +127,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *model) View() string {
 	if m.pushing {
-		m.gitStatus = lipgloss.JoinHorizontal(lipgloss.Left, m.spinner.View(), "Pushing...")
+		m.gitStatus = lipgloss.JoinHorizontal(lipgloss.Left, m.spinner.View(), "Pushing...\n")
 	}
 	if m.pushed {
 		return lipgloss.JoinVertical(lipgloss.Top, m.gitStatus)
