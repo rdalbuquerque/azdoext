@@ -279,6 +279,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				i, ok := m.pipelines.SelectedItem().(item)
 				if ok {
 					m.gitStatus = "Pipeline selected: " + string(i.name)
+					m.pipelineRunning = true
 					return m, tea.Batch(m.runPipeline(i.id), m.spinner.Tick)
 				} else {
 					m.gitStatus = "No pipeline selected"
