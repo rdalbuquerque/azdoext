@@ -125,7 +125,7 @@ func (m *model) fetchPipelines() tea.Msg {
 		pipelineId := pipeline.(map[string]interface{})["id"].(float64)
 		items = append(items, item{name: pipelineName, id: pipelineId})
 	}
-	m.pipelines = list.New(items, itemDelegate{}, 0, 0)
+	m.pipelines = list.New(items, itemDelegate{}, 0, 10)
 	m.pipelines.Title = "Pipelines"
 	return gitOutputMsg("Pipelines fetched")
 }
@@ -172,9 +172,6 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 	var cmd tea.Cmd
 	switch msg := msg.(type) {
-	case tea.WindowSizeMsg:
-		h, v := docStyle.GetFrameSize()
-		m.pipelines.SetSize(msg.Width-h, msg.Height-v)
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyEsc:
