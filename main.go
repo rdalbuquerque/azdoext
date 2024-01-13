@@ -23,6 +23,15 @@ type model struct {
 	gitStatus string
 }
 
+type progressWriter struct {
+	progress *string
+}
+
+func (pw *progressWriter) Write(p []byte) (n int, err error) {
+	*pw.progress += string(p)
+	return len(p), nil
+}
+
 func initialModel() model {
 	ti := textarea.New()
 	ti.Placeholder = "Your commit message here"
@@ -71,6 +80,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyCtrlC:
 			return m, tea.Quit
 		case tea.KeyCtrlS:
+			m.textarea.Blur()
 			if m.worktree != nil {
 				_, err := m.worktree.Commit(m.textarea.Value(), &git.CommitOptions{
 					Author: &object.Signature{
@@ -83,11 +93,14 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.gitStatus = err.Error()
 					return m, nil
 				}
+
 				m.gitStatus = "Changes committed"
-				// Add this block to push changes after commit
+
+				// Create a progressWriter
+				pw := &progressWriter{progress: &m.gitStatus}
 				err = m.repo.Push(&git.PushOptions{
 					Auth:     &http.BasicAuth{Username: "", Password: os.Getenv("AZDO_PERSONAL_ACCESS_TOKEN")},
-					Progress: nil,
+					Progress: pw,
 				})
 				if err != nil {
 					return m, tea.Quit
