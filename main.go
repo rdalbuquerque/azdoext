@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textarea"
 	tea "github.com/charmbracelet/bubbletea"
@@ -24,6 +25,10 @@ import (
 type gitOutputMsg string
 type gitErrorMsg string
 
+type item string
+
+func (i item) FilterValue() string { return "" }
+
 type model struct {
 	textarea  textarea.Model
 	worktree  *git.Worktree
@@ -32,7 +37,7 @@ type model struct {
 	spinner   spinner.Model // Add this line
 	pushing   bool          // Add this line
 	pushed    bool
-	pipelines []string
+	pipelines list.Model
 }
 
 func (m *model) fetchPipelines() tea.Msg {
@@ -79,8 +84,10 @@ func (m *model) fetchPipelines() tea.Msg {
 	json.Unmarshal(body, &result)
 	resultJson, _ := json.MarshalIndent(result, "", "  ")
 	log(string(resultJson))
+	items := []list.Item{}
 	for _, pipeline := range result["value"].([]interface{}) {
-		m.pipelines = append(m.pipelines, pipeline.(map[string]interface{})["name"].(string))
+		pipeline := pipeline.(map[string]interface{})["name"].(string)
+		items = append(items, item(pipeline))
 	}
 	return gitOutputMsg("Pipelines fetched")
 }
@@ -189,8 +196,7 @@ func (m *model) View() string {
 		m.gitStatus = lipgloss.JoinHorizontal(lipgloss.Left, m.spinner.View(), "Pushing...\n")
 	}
 	if m.pushed {
-		pipelines := strings.Join(m.pipelines, "\n")
-		return lipgloss.JoinVertical(lipgloss.Top, m.gitStatus, pipelines)
+		return lipgloss.JoinVertical(lipgloss.Top, m.gitStatus, m.pipelines.View())
 	}
 	return lipgloss.JoinVertical(lipgloss.Top, m.gitStatus, m.textarea.View())
 }
