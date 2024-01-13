@@ -35,7 +35,8 @@ type gitOutputMsg string
 type gitErrorMsg string
 
 type item struct {
-	name, id string
+	name string
+	id   float64
 }
 
 func (i item) FilterValue() string { return "" }
@@ -121,7 +122,7 @@ func (m *model) fetchPipelines() tea.Msg {
 	items := []list.Item{}
 	for _, pipeline := range result["value"].([]interface{}) {
 		pipelineName := pipeline.(map[string]interface{})["name"].(string)
-		pipelineId := pipeline.(map[string]interface{})["id"].(string)
+		pipelineId := pipeline.(map[string]interface{})["id"].(float64)
 		items = append(items, item{name: pipelineName, id: pipelineId})
 	}
 	m.pipelines = list.New(items, itemDelegate{}, 0, 10)
