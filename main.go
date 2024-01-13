@@ -105,7 +105,7 @@ func (m *model) fetchPipelines() tea.Msg {
 		pipelineId := pipeline.(map[string]interface{})["id"].(float64)
 		items = append(items, item{name: pipelineName, id: pipelineId})
 	}
-	m.pipelines = list.New(items, list.DefaultDelegate{}, 0, 10)
+	m.pipelines = list.New(items, list.DefaultDelegate{}, 0, 100)
 	m.pipelines.Title = "Pipelines"
 	return gitOutputMsg("Pipelines fetched")
 }
