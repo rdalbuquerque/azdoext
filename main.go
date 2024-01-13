@@ -229,9 +229,9 @@ func (m *model) View() string {
 		m.gitStatus = lipgloss.JoinHorizontal(lipgloss.Left, m.spinner.View(), "Pushing...\n")
 	}
 	if m.pushed {
-		return lipgloss.JoinVertical(lipgloss.Top, m.gitStatus, docStyle.Render(m.pipelines.View()))
+		return docStyle.Render(m.pipelines.View())
 	}
-	return lipgloss.JoinVertical(lipgloss.Top, m.gitStatus, m.textarea.View())
+	return lipgloss.JoinVertical(lipgloss.Top, titleStyle.Render("Git Commit"), m.textarea.View(), m.gitStatus)
 }
 
 func (m *model) push() tea.Msg {
