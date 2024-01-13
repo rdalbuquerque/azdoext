@@ -39,7 +39,7 @@ func initialModel() model {
 func (m *model) Init() tea.Cmd {
 	m.spinner = spinner.New()       // Initialize the spinner
 	m.spinner.Spinner = spinner.Dot // Set the spinner style
-	m.spinner.Spinner.FPS = 100     // Set the spinner speed
+	m.spinner.Spinner.FPS = 1000    // Set the spinner speed
 	return func() tea.Msg {
 		r, err := git.PlainOpen(".")
 		if err != nil {
