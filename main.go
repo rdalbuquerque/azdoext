@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -59,7 +60,9 @@ func (m *model) fetchPipelines() tea.Msg {
 	if err != nil {
 		return gitErrorMsg(err.Error())
 	}
-	req.Header.Set("Authorization", "Bearer "+os.Getenv("AZDO_PERSONAL_ACCESS_TOKEN"))
+	// transform the PAT into a base64 string
+	b64authstring := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", "", os.Getenv("AZDO_PERSONAL_ACCESS_TOKEN"))))
+	req.Header.Set("Authorization", "Bearer "+b64authstring)
 	resp, err := client.Do(req)
 	if err != nil {
 		return gitErrorMsg(err.Error())
