@@ -116,6 +116,8 @@ func (m *model) runPipeline(pipelineId float64) tea.Cmd {
 		b64authstring := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", "", os.Getenv("AZDO_PERSONAL_ACCESS_TOKEN"))))
 		log(b64authstring)
 		req.Header.Set("Authorization", "Basic "+b64authstring)
+		// add Content-Type header
+		req.Header.Set("Content-Type", "application/json")
 		resp, err := client.Do(req)
 		if err != nil {
 			return gitErrorMsg(err.Error())
