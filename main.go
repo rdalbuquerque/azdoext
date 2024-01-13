@@ -46,12 +46,14 @@ func (m *model) fetchPipelines() tea.Msg {
 	if err != nil {
 		return gitErrorMsg(err.Error())
 	}
+	log(u.Path)
 	parts := strings.Split(u.Path, "/")
 	organization := parts[1]
 	project := parts[2]
 
 	// Construct the Azure DevOps API URL
 	apiURL := fmt.Sprintf("https://dev.azure.com/%s/%s/_apis/pipelines?api-version=6.0-preview.1", organization, project)
+	log(apiURL)
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", apiURL, nil)
 	if err != nil {
