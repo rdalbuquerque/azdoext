@@ -41,29 +41,8 @@ type item struct {
 }
 
 func (i item) FilterValue() string { return "" }
-
-type itemDelegate struct{}
-
-func (d itemDelegate) Height() int                             { return 1 }
-func (d itemDelegate) Spacing() int                            { return 0 }
-func (d itemDelegate) Update(_ tea.Msg, _ *list.Model) tea.Cmd { return nil }
-func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
-	i, ok := listItem.(item)
-	if !ok {
-		return
-	}
-
-	str := fmt.Sprintf("%d. %s", index+1, i)
-
-	fn := itemStyle.Render
-	if index == m.Index() {
-		fn = func(s ...string) string {
-			return selectedItemStyle.Render("> " + strings.Join(s, " "))
-		}
-	}
-
-	fmt.Fprint(w, fn(str))
-}
+func (i item) Title() string       { return i.name }
+func (i item) Description() string { return fmt.Sprintf("%f", i.id) }
 
 type model struct {
 	textarea  textarea.Model
@@ -126,7 +105,7 @@ func (m *model) fetchPipelines() tea.Msg {
 		pipelineId := pipeline.(map[string]interface{})["id"].(float64)
 		items = append(items, item{name: pipelineName, id: pipelineId})
 	}
-	m.pipelines = list.New(items, itemDelegate{}, 0, 10)
+	m.pipelines = list.New(items, list.DefaultDelegate{}, 0, 10)
 	m.pipelines.Title = "Pipelines"
 	return gitOutputMsg("Pipelines fetched")
 }
@@ -144,7 +123,7 @@ func initialModel() model {
 func (m *model) Init() tea.Cmd {
 	m.spinner = spinner.New()       // Initialize the spinner
 	m.spinner.Spinner = spinner.Dot // Set the spinner style
-	m.pipelines = list.New(nil, itemDelegate{}, 0, 0)
+	m.pipelines = list.New(nil, list.DefaultDelegate{}, 0, 0)
 	return func() tea.Msg {
 		r, err := git.PlainOpen(".")
 		if err != nil {
