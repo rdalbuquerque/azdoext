@@ -329,7 +329,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.gitStatus = string(msg)
 	}
-	if m.pushing {
+	if m.pushing || m.pipelineRunning {
 		m.spinner, cmd = m.spinner.Update(msg)
 		return m, cmd
 	}
