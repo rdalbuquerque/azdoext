@@ -116,6 +116,7 @@ func (m *model) runPipeline(pipelineId float64) tea.Cmd {
 			return gitErrorMsg(err.Error())
 		}
 		var result map[string]interface{}
+		json.Unmarshal(body, &result)
 		m.pipelineRunning = true
 		monitorPipeline(organization, project, pipelineId, result["id"].(float64), b64authstring)
 		m.pipelineRunning = false
@@ -125,7 +126,7 @@ func (m *model) runPipeline(pipelineId float64) tea.Cmd {
 
 func monitorPipeline(organization string, project string, pipelineId float64, runId float64, b64authstring string) {
 	client := &http.Client{}
-	apiUrl := fmt.Sprintf("https://dev.azure.com/%s/%s/_apis/pipelines/%f/runs/%f?api-version=6.0-preview.1", organization, project, pipelineId, runId)
+	apiUrl := fmt.Sprintf("https://dev.azure.com/%s/%s/_apis/pipelines/%d/runs/%d?api-version=6.0-preview.1", organization, project, int(pipelineId), int(runId))
 	log("Monitoring pipeline: " + apiUrl)
 	req, err := http.NewRequest("GET", apiUrl, nil)
 	if err != nil {
@@ -221,6 +222,8 @@ func initialModel() model {
 }
 
 func (m *model) Init() tea.Cmd {
+	// reset log file
+	_ = os.Remove("log.txt")
 	m.spinner = spinner.New()       // Initialize the spinner
 	m.spinner.Spinner = spinner.Dot // Set the spinner style
 	m.pipelines = list.New(nil, list.DefaultDelegate{}, 0, 0)
