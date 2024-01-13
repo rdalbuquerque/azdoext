@@ -40,7 +40,7 @@ type item struct {
 	id   float64
 }
 
-func (i item) FilterValue() string { return "" }
+func (i item) FilterValue() string { return i.name }
 func (i item) Title() string       { return i.name }
 func (i item) Description() string { return fmt.Sprintf("%f", i.id) }
 
