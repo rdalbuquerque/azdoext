@@ -24,7 +24,6 @@ import (
 
 var (
 	titleStyle        = lipgloss.NewStyle().MarginLeft(2)
-	docStyle          = lipgloss.NewStyle().Margin(1, 2)
 	itemStyle         = lipgloss.NewStyle().PaddingLeft(4)
 	selectedItemStyle = lipgloss.NewStyle().PaddingLeft(2).Foreground(lipgloss.Color("170"))
 )
@@ -249,7 +248,7 @@ func (m *model) View() string {
 		m.gitStatus = lipgloss.JoinHorizontal(lipgloss.Left, m.spinner.View(), "Pushing...\n")
 	}
 	if m.pushed {
-		return docStyle.Render(m.pipelines.View())
+		return m.pipelines.View()
 	}
 	return lipgloss.JoinVertical(lipgloss.Top, titleStyle.Render("Git Commit"), m.textarea.View(), m.gitStatus)
 }
