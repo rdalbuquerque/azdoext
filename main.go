@@ -69,6 +69,8 @@ func (m *model) fetchPipelines() tea.Msg {
 	}
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
+	log(resp.Status)
+	log(string(body))
 	if err != nil {
 		return gitErrorMsg(err.Error())
 	}

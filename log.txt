@@ -6,3 +6,7 @@ Pushed
 /rdalbuquerque/explore-bubbletea/_git/explore-bubbletea
 https://dev.azure.com/rdalbuquerque/explore-bubbletea/_apis/pipelines?api-version=6.0-preview.1
 null
+Pushed
+/rdalbuquerque/explore-bubbletea/_git/explore-bubbletea
+https://dev.azure.com/rdalbuquerque/explore-bubbletea/_apis/pipelines?api-version=6.0-preview.1
+null
