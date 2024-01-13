@@ -116,7 +116,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.gitStatus = string(msg)
 	}
 	if m.pushing {
-		m.spinner, _ = m.spinner.Update(msg)
+		m.spinner, cmd = m.spinner.Update(msg)
+		return m, cmd
 	}
 	m.textarea, cmd = m.textarea.Update(msg)
 	cmds = append(cmds, cmd)
