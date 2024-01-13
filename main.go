@@ -26,15 +26,6 @@ type model struct {
 	pushing   bool          // Add this line
 }
 
-type progressWriter struct {
-	progress *string
-}
-
-func (pw *progressWriter) Write(p []byte) (n int, err error) {
-	*pw.progress += string(p)
-	return len(p), nil
-}
-
 func initialModel() model {
 	ti := textarea.New()
 	ti.Placeholder = "Your commit message here"
@@ -118,6 +109,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.gitStatus = string(msg)
 		m.textarea.Blur()
 	case gitOutputMsg:
+		if msg == "Pushed" {
+			m.pushing = false
+		}
 		m.gitStatus = string(msg)
 	}
 	if m.pushing {
@@ -133,19 +127,15 @@ func (m *model) View() string {
 }
 
 func (m *model) push() tea.Msg {
-	go func() {
-		err := m.repo.Push(&git.PushOptions{
-			Auth:     &http.BasicAuth{Username: "", Password: os.Getenv("AZDO_PERSONAL_ACCESS_TOKEN")},
-			Progress: nil,
-		})
-		m.pushing = false
-		if err != nil {
-			m.gitStatus = err.Error()
-		} else {
-			m.gitStatus = "Changes pushed"
-		}
-	}()
-	return nil
+	err := m.repo.Push(&git.PushOptions{
+		Auth:     &http.BasicAuth{Username: "", Password: os.Getenv("AZDO_PERSONAL_ACCESS_TOKEN")},
+		Progress: nil,
+	})
+	if err != nil {
+		return gitErrorMsg(err.Error())
+	} else {
+		return gitOutputMsg("Pushed")
+	}
 }
 
 func main() {
