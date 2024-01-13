@@ -138,6 +138,7 @@ func initialModel() model {
 func (m *model) Init() tea.Cmd {
 	m.spinner = spinner.New()       // Initialize the spinner
 	m.spinner.Spinner = spinner.Dot // Set the spinner style
+	m.pipelines = list.New(nil, itemDelegate{}, 0, 0)
 	return func() tea.Msg {
 		r, err := git.PlainOpen(".")
 		if err != nil {
@@ -219,8 +220,11 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.spinner, cmd = m.spinner.Update(msg)
 		return m, cmd
 	}
-	m.textarea, cmd = m.textarea.Update(msg)
-	cmds = append(cmds, cmd)
+	textarea, txtcmd := m.textarea.Update(msg)
+	m.textarea = textarea
+	pipelines, listcmd := m.pipelines.Update(msg)
+	m.pipelines = pipelines
+	cmds = append(cmds, cmd, txtcmd, listcmd)
 	return m, tea.Batch(cmds...)
 }
 
