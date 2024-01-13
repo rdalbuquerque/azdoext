@@ -24,6 +24,7 @@ type model struct {
 	gitStatus string
 	spinner   spinner.Model // Add this line
 	pushing   bool          // Add this line
+	pushed    bool
 }
 
 func initialModel() model {
@@ -110,6 +111,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.textarea.Blur()
 	case gitOutputMsg:
 		if msg == "Pushed" {
+			m.pushed = true
 			m.pushing = false
 		}
 		m.gitStatus = string(msg)
@@ -126,6 +128,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *model) View() string {
 	if m.pushing {
 		m.gitStatus = lipgloss.JoinHorizontal(lipgloss.Left, m.spinner.View(), "Pushing...")
+	}
+	if m.pushed {
+		return lipgloss.JoinVertical(lipgloss.Top, m.gitStatus)
 	}
 	return lipgloss.JoinVertical(lipgloss.Top, m.gitStatus, m.textarea.View())
 }
