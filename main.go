@@ -112,12 +112,13 @@ func (m *model) runPipeline(pipelineId float64) tea.Cmd {
 		defer resp.Body.Close()
 		body, err := io.ReadAll(resp.Body)
 		log(resp.Status)
-		log(string(body))
 		if err != nil {
 			return gitErrorMsg(err.Error())
 		}
 		var result map[string]interface{}
 		json.Unmarshal(body, &result)
+		resultJson, _ := json.MarshalIndent(result, "", "  ")
+		log(string(resultJson))
 		m.pipelineRunning = true
 		monitorPipeline(organization, project, pipelineId, result["id"].(float64), b64authstring)
 		m.pipelineRunning = false
@@ -142,11 +143,11 @@ func monitorPipeline(organization string, project string, pipelineId float64, ru
 		defer resp.Body.Close()
 		body, err := io.ReadAll(resp.Body)
 		log(resp.Status)
-		log(string(body))
 		if err != nil {
 			log(err.Error())
 		}
 		var result map[string]interface{}
+		json.Unmarshal(body, &result)
 		// check if pipeline is still running, if it's not, break
 		status := result["status"].(string)
 		if status == "completed" {
@@ -199,8 +200,6 @@ func (m *model) fetchPipelines() tea.Msg {
 	}
 	var result map[string]interface{}
 	json.Unmarshal(body, &result)
-	resultJson, _ := json.MarshalIndent(result, "", "  ")
-	log(string(resultJson))
 	items := []list.Item{}
 	for _, pipeline := range result["value"].([]interface{}) {
 		pipelineName := pipeline.(map[string]interface{})["name"].(string)
