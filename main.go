@@ -64,14 +64,95 @@ func (i item) Title() string       { return i.name }
 func (i item) Description() string { return fmt.Sprintf("%f", i.id) }
 
 type model struct {
-	textarea  textarea.Model
-	worktree  *git.Worktree
-	repo      *git.Repository
-	gitStatus string
-	spinner   spinner.Model // Add this line
-	pushing   bool          // Add this line
-	pushed    bool
-	pipelines list.Model
+	textarea        textarea.Model
+	worktree        *git.Worktree
+	repo            *git.Repository
+	gitStatus       string
+	spinner         spinner.Model // Add this line
+	pushing         bool          // Add this line
+	pushed          bool
+	pipelines       list.Model
+	pipelineRunning bool
+}
+
+func (m *model) runPipeline(pipelineId float64) tea.Cmd {
+	return func() tea.Msg {
+		remotes, err := m.repo.Remotes()
+		if err != nil {
+			return gitErrorMsg(err.Error())
+		}
+		remote := remotes[0].Config().URLs[0]
+
+		// Parse the remote URL
+		u, err := url.Parse(remote)
+		if err != nil {
+			return gitErrorMsg(err.Error())
+		}
+		log(u.Path)
+		parts := strings.Split(u.Path, "/")
+		organization := parts[1]
+		project := parts[2]
+		// Construct the Azure DevOps API URL
+		apiURL := fmt.Sprintf("https://dev.azure.com/%s/%s/_apis/pipelines/%f/runs?api-version=6.0-preview.1", organization, project, pipelineId)
+		log(apiURL)
+		client := &http.Client{}
+		req, err := http.NewRequest("POST", apiURL, nil)
+		if err != nil {
+			return gitErrorMsg(err.Error())
+		}
+		// transform the PAT into a base64 string
+		b64authstring := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", "", os.Getenv("AZDO_PERSONAL_ACCESS_TOKEN"))))
+		log(b64authstring)
+		req.Header.Set("Authorization", "Basic "+b64authstring)
+		resp, err := client.Do(req)
+		if err != nil {
+			return gitErrorMsg(err.Error())
+		}
+		defer resp.Body.Close()
+		body, err := io.ReadAll(resp.Body)
+		log(resp.Status)
+		log(string(body))
+		if err != nil {
+			return gitErrorMsg(err.Error())
+		}
+		var result map[string]interface{}
+		m.pipelineRunning = true
+		monitorPipeline(organization, project, pipelineId, result["id"].(float64), b64authstring)
+		m.pipelineRunning = false
+		return gitOutputMsg("pipeline completed")
+	}
+}
+
+func monitorPipeline(organization string, project string, pipelineId float64, runId float64, b64authstring string) {
+	client := &http.Client{}
+	apiUrl := fmt.Sprintf("https://dev.azure.com/%s/%s/_apis/pipelines/%f/runs/%f?api-version=6.0-preview.1", organization, project, pipelineId, runId)
+	log("Monitoring pipeline: " + apiUrl)
+	req, err := http.NewRequest("GET", apiUrl, nil)
+	if err != nil {
+		log(err.Error())
+	}
+	req.Header.Set("Authorization", "Basic "+b64authstring)
+	for {
+		resp, err := client.Do(req)
+		if err != nil {
+			log(err.Error())
+		}
+		defer resp.Body.Close()
+		body, err := io.ReadAll(resp.Body)
+		log(resp.Status)
+		log(string(body))
+		if err != nil {
+			log(err.Error())
+		}
+		var result map[string]interface{}
+		// check if pipeline is still running, if it's not, break
+		status := result["status"].(string)
+		if status == "completed" {
+			break
+		}
+		log(status)
+		time.Sleep(1 * time.Second)
+	}
 }
 
 func (m *model) fetchPipelines() tea.Msg {
@@ -182,7 +263,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				i, ok := m.pipelines.SelectedItem().(item)
 				if ok {
 					m.gitStatus = "Pipeline selected: " + string(i.name)
-					return m, nil
+					return m, tea.Batch(m.runPipeline(i.id), m.spinner.Tick)
 				} else {
 					m.gitStatus = "No pipeline selected"
 					return m, nil
@@ -244,6 +325,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *model) View() string {
+	if m.pipelineRunning {
+		m.gitStatus = lipgloss.JoinHorizontal(lipgloss.Left, m.spinner.View(), "Pipeline running...\n")
+		return m.gitStatus
+	}
 	if m.pushing {
 		m.gitStatus = lipgloss.JoinHorizontal(lipgloss.Left, m.spinner.View(), "Pushing...\n")
 	}
