@@ -93,7 +93,7 @@ func (m *model) runPipeline(pipelineId float64) tea.Cmd {
 		organization := parts[1]
 		project := parts[2]
 		// Construct the Azure DevOps API URL
-		apiURL := fmt.Sprintf("https://dev.azure.com/%s/%s/_apis/pipelines/%f/runs?api-version=6.0-preview.1", organization, project, pipelineId)
+		apiURL := fmt.Sprintf("https://dev.azure.com/%s/%s/_apis/pipelines/%d/runs?api-version=6.0-preview.1", organization, project, int(pipelineId))
 		log(apiURL)
 		client := &http.Client{}
 		req, err := http.NewRequest("POST", apiURL, nil)
