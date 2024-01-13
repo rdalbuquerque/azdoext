@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -96,7 +97,17 @@ func (m *model) runPipeline(pipelineId float64) tea.Cmd {
 		apiURL := fmt.Sprintf("https://dev.azure.com/%s/%s/_apis/pipelines/%d/runs?api-version=7.1-preview.1", organization, project, int(pipelineId))
 		log(apiURL)
 		client := &http.Client{}
-		req, err := http.NewRequest("POST", apiURL, nil)
+		runParameters := map[string]interface{}{
+			"resources": map[string]interface{}{
+				"repositories": map[string]interface{}{
+					"self": map[string]interface{}{
+						"refName": "refs/heads/master",
+					},
+				},
+			},
+		}
+		runParametersJson, _ := json.Marshal(runParameters)
+		req, err := http.NewRequest("POST", apiURL, bytes.NewBuffer(runParametersJson))
 		if err != nil {
 			log(err.Error())
 			return tea.Quit
