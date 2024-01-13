@@ -90,6 +90,7 @@ func (m *model) fetchPipelines() tea.Msg {
 		items = append(items, item(pipeline))
 	}
 	m.pipelines = list.New(items, list.NewDefaultDelegate(), 0, 0)
+	m.pipelines.Title = "Pipelines"
 	return gitOutputMsg("Pipelines fetched")
 }
 
