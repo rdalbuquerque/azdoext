@@ -152,6 +152,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 	var cmd tea.Cmd
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		h, v := docStyle.GetFrameSize()
+		m.pipelines.SetSize(msg.Width-h, msg.Height-v)
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyEsc:
