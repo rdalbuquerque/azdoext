@@ -15,4 +15,51 @@ steps:
 - script: |
     echo Add other tasks to build, test, and deploy your project.
     echo See https://aka.ms/yaml
+    sleep 5
+    echo 'Run a one-line script'
+    sleep 5
+    echo 'Run a one-line script'
+    sleep 5
+    echo 'Run a one-line script'
+    sleep 5
+    echo 'Run a one-line script'
+    sleep 5
+    echo 'Run a one-line script'
+    sleep 5
+    echo 'Run a one-line script'
+    sleep 5
+    echo 'Run a one-line script'
+    sleep 5
+    echo 'Run a one-line script'
+    sleep 5
+    echo 'Run a one-line script'
+    sleep 5
+    echo 'Run a one-line script'
+    sleep 5
+    echo 'Run a one-line script'
+    sleep 5
+    echo 'Run a one-line script'
+    sleep 5
+    echo 'Run a one-line script'
+    sleep 5
+    echo 'Run a one-line script'
+    sleep 5
+    echo 'Run a one-line script'
+    sleep 5
+    echo 'Run a one-line script'
+    sleep 5
+    echo 'Run a one-line script'
+    sleep 5
+    echo 'Run a one-line script'
+    sleep 5
+    echo 'Run a one-line script'
+    sleep 5
+    echo 'Run a one-line script'
+    sleep 5
+    echo 'Run a one-line script'
+    sleep 5
+    echo 'Run a one-line script'
+    sleep 5
+    echo 'Run a one-line script'
+
   displayName: 'Run a multi-line script'
