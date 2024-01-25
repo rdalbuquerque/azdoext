@@ -28,18 +28,6 @@ steps:
     sleep 5
     echo 'Run a one-line script'
     sleep 5
-    echo 'Run a one-line script'
-    sleep 5
-    echo 'Run a one-line script'
-    sleep 5
-    echo 'Run a one-line script'
-    sleep 5
-    echo 'Run a one-line script'
-    sleep 5
-    echo 'Run a one-line script'
-    sleep 5
-    echo 'Run a one-line script'
-    sleep 5
-    echo 'Run a one-line script'
+    exit 1
 
   displayName: 'Run a multi-line script'
