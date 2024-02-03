@@ -15,7 +15,7 @@ steps:
   displayName: 'Run a one-line script'
 
 - script: "skipped"
-  condition: $(not_skip)
+  condition: eq(variables.not_skip, true)
 
 - script: |
     echo Add other tasks to build, test, and deploy your project.
