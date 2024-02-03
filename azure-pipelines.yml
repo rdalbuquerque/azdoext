@@ -4,6 +4,8 @@
 # https://aka.ms/yaml
 
 trigger: none
+variables:
+  not_skip: false
 
 pool:
   vmImage: ubuntu-latest
@@ -11,6 +13,9 @@ pool:
 steps:
 - script: echo Hello, world!
   displayName: 'Run a one-line script'
+
+- script: "skipped"
+  condition: $(not_skip)
 
 - script: |
     echo Add other tasks to build, test, and deploy your project.
