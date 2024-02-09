@@ -311,7 +311,8 @@ func processLog(text io.ReadCloser) string {
 
 func (m *Model) FetchPipelines() tea.Msg {
 
-	apiURL := fmt.Sprintf("%s/_apis/pipelines?%s", m.azdoClient.orgUrl, m.azdoClient.defaultApiVersion)
+	apiURL := fmt.Sprintf("%s/_apis/pipelines?api-version=6.0-preview.1", m.azdoClient.orgUrl)
+	log2file(fmt.Sprintf("apiURL to fetch pipelines: %s\n", apiURL))
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", apiURL, nil)
 	if err != nil {
@@ -327,6 +328,7 @@ func (m *Model) FetchPipelines() tea.Msg {
 	if err != nil {
 		panic(err)
 	}
+	log2file(fmt.Sprintf("body from pipeline fetch: %s\n", body))
 	var result map[string]interface{}
 	json.Unmarshal(body, &result)
 	pipelineList := []list.Item{}
