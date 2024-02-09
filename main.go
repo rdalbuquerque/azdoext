@@ -153,7 +153,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.azdo.FetchPipelines
 		}
 		m.gitStatus = string(msg)
-	case azdo.PipelinesFetchedMsg:
+	case azdo.PipelinesFetchedMsg, azdo.PipelineIdMsg, azdo.PipelineStateMsg:
 		m.azdo.Update(msg)
 		return m, nil
 	}
@@ -161,9 +161,15 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.spinner, cmd = m.spinner.Update(msg)
 		return m, cmd
 	}
+	if m.azdo != nil {
+		var plcmd tea.Cmd
+		pipelineList, plcmd := m.azdo.PipelineList.Update(msg)
+		m.azdo.PipelineList = pipelineList
+		cmds = append(cmds, plcmd)
+	}
 	textarea, txtcmd := m.textarea.Update(msg)
 	m.textarea = textarea
-	cmds = append(cmds, cmd, txtcmd)
+	cmds = append(cmds, txtcmd)
 	return m, tea.Batch(cmds...)
 }
 
@@ -172,6 +178,9 @@ func (m *model) View() string {
 		m.gitStatus = lipgloss.JoinHorizontal(lipgloss.Left, m.spinner.View(), "Pushing...\n")
 	}
 	if m.pushed {
+		if m.azdo.PipelineState.IsRunning {
+			return m.azdo.View()
+		}
 		return lipgloss.JoinVertical(lipgloss.Top, m.gitStatus, m.azdo.PipelineList.View())
 	}
 	return lipgloss.JoinVertical(lipgloss.Top, "Git Commit", m.textarea.View(), m.gitStatus)

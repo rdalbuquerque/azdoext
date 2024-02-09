@@ -24,12 +24,12 @@ type AzdoClient struct {
 	defaultApiVersion string
 }
 
-type pipelineStateMsg pipelineState
-
+type PipelineStateMsg pipelineState
 type PipelinesFetchedMsg []list.Item
+type PipelineIdMsg int
 
 type pipelineState struct {
-	isRunning bool
+	IsRunning bool
 	Stages    []StageState
 }
 
@@ -75,8 +75,6 @@ type LogInfo struct {
 	Url string `json:"url"`
 }
 
-type pipelineIdMsg int
-
 func NewAzdoClient(org, project, pat string) *AzdoClient {
 	authHeader := map[string][]string{
 		"Authorization": {"Basic " + base64.StdEncoding.EncodeToString([]byte(":"+pat))},
@@ -120,7 +118,7 @@ func (m *Model) IsPipelineRunning() (bool, int) {
 func (m *Model) RunOrFollowPipeline(id int, runNew bool) tea.Msg {
 	apiURL := fmt.Sprintf("%s/_apis/pipelines/%d/runs?%s", m.azdoClient.orgUrl, 12, "api-version=7.1-preview.1")
 	if isRunning, runId := m.IsPipelineRunning(); isRunning && !runNew {
-		return pipelineIdMsg(runId)
+		return PipelineIdMsg(runId)
 	}
 
 	runParameters := map[string]interface{}{
@@ -157,7 +155,7 @@ func (m *Model) RunOrFollowPipeline(id int, runNew bool) tea.Msg {
 		panic(err)
 	}
 	pipelineId := int(r["id"].(float64))
-	return pipelineIdMsg(pipelineId)
+	return PipelineIdMsg(pipelineId)
 
 }
 
@@ -200,7 +198,7 @@ func (c *AzdoClient) getPipelineState(runId int, wait time.Duration) tea.Cmd {
 			panic(err)
 		}
 		ps := c.fillPipelineStatus(records)
-		return pipelineStateMsg(ps)
+		return PipelineStateMsg(ps)
 	}
 }
 
@@ -225,7 +223,7 @@ func (c *AzdoClient) fillPipelineStatus(records []Record) pipelineState {
 		}
 	}
 	var ps pipelineState
-	ps.isRunning = slices.Contains(recordsState, "inProgress") || slices.Contains(recordsState, "pending")
+	ps.IsRunning = slices.Contains(recordsState, "inProgress") || slices.Contains(recordsState, "pending")
 	for _, record := range records {
 		if record.Type == "Stage" {
 			stageState := StageState{

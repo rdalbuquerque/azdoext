@@ -47,8 +47,8 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 
 func (m *Model) SetTaskList(ps pipelineState) {
 	itemsList := []list.Item{}
-	if m.pipelineState.Stages != nil {
-		for _, stage := range m.pipelineState.Stages {
+	if m.PipelineState.Stages != nil {
+		for _, stage := range m.PipelineState.Stages {
 			itemsList = append(itemsList, PipelineItem{Title: m.formatStatusView(stage.State, stage.Result, stage.Name, ""), Desc: stage.Log})
 			for _, job := range stage.Jobs {
 				itemsList = append(itemsList, PipelineItem{Title: m.formatStatusView(job.State, job.Result, job.Name, "  "), Desc: job.Log})

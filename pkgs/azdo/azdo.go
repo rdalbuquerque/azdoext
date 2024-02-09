@@ -44,14 +44,13 @@ var (
 type Model struct {
 	taskList        list.Model
 	pipelineId      int
-	pipelineState   pipelineState
+	PipelineState   pipelineState
 	pipelineSpinner spinner.Model
 	done            bool
 	logViewPort     *searchableviewport.Model
 	activeSection   ActiveSection
 	Client          *AzdoClient
 	PipelineList    list.Model
-	PipelineStatus  string
 	azdoClient      *AzdoClient
 }
 
@@ -91,11 +90,11 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 			log2file(fmt.Sprintf("activeSection: %d\n", m.activeSection))
 			return m, nil
 		}
-	case pipelineStateMsg:
+	case PipelineStateMsg:
 		ps := pipelineState(msg)
-		m.pipelineState = ps
-		if ps.isRunning {
-			m.pipelineState = pipelineState(msg)
+		m.PipelineState = ps
+		if ps.IsRunning {
+			m.PipelineState = pipelineState(msg)
 			m.SetTaskList(ps)
 			m.logViewPort.SetContent(m.taskList.SelectedItem().(PipelineItem).Desc.(string))
 			m.logViewPort.GotoBottom()
@@ -107,14 +106,14 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 		log2file(fmt.Sprintf("msg: %v\n", msg))
 		m.PipelineList.SetItems(msg)
 		return m, nil
-	case pipelineIdMsg:
-		m.pipelineState.isRunning = true
+	case PipelineIdMsg:
+		m.PipelineState.IsRunning = true
 		m.pipelineId = int(msg)
 		return m, m.azdoClient.getPipelineState(int(msg), 0)
 	case spinner.TickMsg:
 		var cmd tea.Cmd
 		m.pipelineSpinner, cmd = m.pipelineSpinner.Update(msg)
-		m.SetTaskList(m.pipelineState)
+		m.SetTaskList(m.PipelineState)
 		return m, cmd
 	}
 	var cmd tea.Cmd
