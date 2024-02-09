@@ -153,6 +153,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.azdo.FetchPipelines
 		}
 		m.gitStatus = string(msg)
+	case azdo.PipelinesFetchedMsg:
+		m.azdo.Update(msg)
+		return m, nil
 	}
 	if m.pushing {
 		m.spinner, cmd = m.spinner.Update(msg)

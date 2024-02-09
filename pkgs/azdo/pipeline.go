@@ -26,7 +26,7 @@ type AzdoClient struct {
 
 type pipelineStateMsg pipelineState
 
-type pipelinesFetchedMsg []list.Item
+type PipelinesFetchedMsg []list.Item
 
 type pipelineState struct {
 	isRunning bool
@@ -337,5 +337,5 @@ func (m *Model) FetchPipelines() tea.Msg {
 		pipelineId := int(pipeline.(map[string]interface{})["id"].(float64))
 		pipelineList = append(pipelineList, PipelineItem{Title: pipelineName, Desc: pipelineId})
 	}
-	return pipelinesFetchedMsg(pipelineList)
+	return PipelinesFetchedMsg(pipelineList)
 }

@@ -100,7 +100,7 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 			return m, m.azdoClient.getPipelineState(m.pipelineId, 1*time.Second)
 		}
 		return m, nil
-	case pipelinesFetchedMsg:
+	case PipelinesFetchedMsg:
 		log2file("pipelinesFetchedMsg\n")
 		log2file(fmt.Sprintf("msg: %v\n", msg))
 		m.PipelineList.SetItems(msg)
