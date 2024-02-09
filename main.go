@@ -163,11 +163,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.spinner, cmd = m.spinner.Update(msg)
 		return m, cmd
 	}
-	if m.azdo != nil {
-		var plcmd tea.Cmd
-		pipelineList, plcmd := m.azdo.PipelineList.Update(msg)
-		m.azdo.PipelineList = pipelineList
-		cmds = append(cmds, plcmd)
+	if m.azdo != nil && m.pushed {
+		azdo, cmd := m.azdo.Update(msg)
+		m.azdo = azdo
+		return m, cmd
 	}
 	textarea, txtcmd := m.textarea.Update(msg)
 	m.textarea = textarea

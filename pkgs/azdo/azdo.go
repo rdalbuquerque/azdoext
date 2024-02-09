@@ -16,7 +16,8 @@ import (
 type ActiveSection int
 
 const (
-	ListSection ActiveSection = iota
+	PreviousSection ActiveSection = iota
+	ListSection
 	ViewportSection
 )
 
@@ -108,6 +109,7 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 		return m, nil
 	case PipelineIdMsg:
 		m.PipelineState.IsRunning = true
+		m.activeSection = ListSection
 		m.pipelineId = int(msg)
 		return m, m.azdoClient.getPipelineState(int(msg), 0)
 	case spinner.TickMsg:
@@ -129,9 +131,13 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 		m.logViewPort.SetContent(selectedRecord.Desc.(string))
 	case ViewportSection:
 		m.logViewPort, cmd = m.logViewPort.Update(msg)
+		return m, cmd
+	default:
+		pipelineList, cmd := m.PipelineList.Update(msg)
+		m.PipelineList = pipelineList
+		return m, cmd
 	}
-
-	return m, cmd
+	return m, nil
 }
 
 func (m *Model) View() string {
