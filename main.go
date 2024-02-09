@@ -104,6 +104,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.pushed {
 				i, ok := m.azdo.PipelineList.SelectedItem().(azdo.PipelineItem)
 				if ok {
+					m.azdo.TaskList.Title = i.Title
 					m.gitStatus = "Pipeline selected: " + string(i.Title)
 					return m, tea.Batch(func() tea.Msg { return m.azdo.RunOrFollowPipeline(i.Desc.(int), false) }, m.spinner.Tick)
 				} else {
@@ -154,8 +155,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.gitStatus = string(msg)
 	case azdo.PipelinesFetchedMsg, azdo.PipelineIdMsg, azdo.PipelineStateMsg:
-		m.azdo.Update(msg)
-		return m, nil
+		azdo, cmd := m.azdo.Update(msg)
+		m.azdo = azdo
+		return m, cmd
 	}
 	if m.pushing {
 		m.spinner, cmd = m.spinner.Update(msg)

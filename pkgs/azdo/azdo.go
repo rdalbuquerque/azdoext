@@ -42,7 +42,7 @@ var (
 )
 
 type Model struct {
-	taskList        list.Model
+	TaskList        list.Model
 	pipelineId      int
 	PipelineState   pipelineState
 	pipelineSpinner spinner.Model
@@ -65,7 +65,7 @@ func New(org, project, pat string) *Model {
 	azdoclient := NewAzdoClient(org, project, pat)
 	pipelineList := list.New([]list.Item{}, itemDelegate{}, 30, height)
 	return &Model{
-		taskList:        tl,
+		TaskList:        tl,
 		pipelineSpinner: pspinner,
 		logViewPort:     vp,
 		azdoClient:      azdoclient,
@@ -96,7 +96,7 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 		if ps.IsRunning {
 			m.PipelineState = pipelineState(msg)
 			m.SetTaskList(ps)
-			m.logViewPort.SetContent(m.taskList.SelectedItem().(PipelineItem).Desc.(string))
+			m.logViewPort.SetContent(m.TaskList.SelectedItem().(PipelineItem).Desc.(string))
 			m.logViewPort.GotoBottom()
 			return m, m.azdoClient.getPipelineState(m.pipelineId, 1*time.Second)
 		}
@@ -121,8 +121,8 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 	case ListSection:
 		log2file("ListSection\n")
 		var selectedRecord PipelineItem
-		m.taskList, cmd = m.taskList.Update(msg)
-		selectedRecord, ok := m.taskList.SelectedItem().(PipelineItem)
+		m.TaskList, cmd = m.TaskList.Update(msg)
+		selectedRecord, ok := m.TaskList.SelectedItem().(PipelineItem)
 		if !ok {
 			return m, cmd
 		}
@@ -137,10 +137,10 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 func (m *Model) View() string {
 	var taskListView, logViewportView string
 	if m.activeSection == ListSection {
-		taskListView = activeStyle.Blink(true).Render(m.taskList.View())
+		taskListView = activeStyle.Blink(true).Render(m.TaskList.View())
 		logViewportView = inactiveStyle.Render(m.logViewPort.View())
 	} else {
-		taskListView = inactiveStyle.Render(m.taskList.View())
+		taskListView = inactiveStyle.Render(m.TaskList.View())
 		logViewportView = activeStyle.Render(m.logViewPort.View())
 	}
 

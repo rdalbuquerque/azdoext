@@ -58,5 +58,5 @@ func (m *Model) SetTaskList(ps pipelineState) {
 			}
 		}
 	}
-	m.taskList.SetItems(itemsList)
+	m.TaskList.SetItems(itemsList)
 }
