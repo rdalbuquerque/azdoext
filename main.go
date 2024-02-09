@@ -1,26 +1,21 @@
 package main
 
 import (
-	"bytes"
-	"encoding/base64"
-	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"strings"
 	"time"
 
-	"net/http"
 	"net/url"
 
-	"github.com/charmbracelet/bubbles/list"
+	"explore-bubbletea/pkgs/azdo"
+
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textarea"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	git "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/object"
-	"explore-bubbletea/pkgs/azdo"
 	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
 )
 
@@ -28,28 +23,39 @@ type gitOutputMsg string
 type gitErrorMsg string
 
 type model struct {
-	textarea        textarea.Model
-	worktree        *git.Worktree
-	repo            *git.Repository
-	gitStatus       string
-	spinner         spinner.Model // Add this line
-	pushing         bool          // Add this line
-	pushed          bool
-	pipelines       list.Model
-	pipelineRunning bool
-	azdoClient      *azdo.AzdoClient
+	textarea  textarea.Model
+	worktree  *git.Worktree
+	repo      *git.Repository
+	gitStatus string
+	spinner   spinner.Model // Add this line
+	pushing   bool          // Add this line
+	pushed    bool
+	azdo      *azdo.Model
 }
 
-func getUrlFromRemote
+func (m *model) setAzdoClientFromRemote() {
+	remotes, err := m.repo.Remotes()
+	if err != nil {
+		panic(err)
+	}
+	remote := remotes[0].Config().URLs[0]
+
+	u, err := url.Parse(remote)
+	if err != nil {
+		panic(err)
+	}
+	parts := strings.Split(u.Path, "/")
+	organization := parts[1]
+	project := parts[2]
+	m.azdo = azdo.New(organization, project, os.Getenv("AZDO_PERSONAL_ACCESS_TOKEN"))
+}
 
 func initialModel() model {
 	ti := textarea.New()
 	ti.Placeholder = "Your commit message here"
 	ti.Focus()
-	azdoClient := azdo.NewAzdoClient(os.Getenv("AZDO_ORG_URL"), os.Getenv("AZDO_PERSONAL_ACCESS_TOKEN"))
 	return model{
 		textarea:  ti,
-		azdoClient: azdoClient,
 		gitStatus: "preparing git",
 	}
 }
@@ -59,7 +65,6 @@ func (m *model) Init() tea.Cmd {
 	_ = os.Remove("log.txt")
 	m.spinner = spinner.New()       // Initialize the spinner
 	m.spinner.Spinner = spinner.Dot // Set the spinner style
-	m.pipelines = list.New(nil, list.DefaultDelegate{}, 0, 0)
 	return func() tea.Msg {
 		r, err := git.PlainOpen(".")
 		if err != nil {
@@ -79,6 +84,7 @@ func (m *model) Init() tea.Cmd {
 		}
 		m.worktree = w
 		m.repo = r
+		m.setAzdoClientFromRemote()
 		return gitOutputMsg(gitStatus.String())
 	}
 }
@@ -96,11 +102,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case tea.KeyEnter:
 			if m.pushed {
-				i, ok := m.pipelines.SelectedItem().(item)
+				i, ok := m.azdo.PipelineList.SelectedItem().(azdo.PipelineItem)
 				if ok {
-					m.gitStatus = "Pipeline selected: " + string(i.name)
-					m.pipelineRunning = true
-					return m, tea.Batch(m.runPipeline(i.id), m.spinner.Tick)
+					m.gitStatus = "Pipeline selected: " + string(i.Title)
+					return m, tea.Batch(func() tea.Msg { return m.azdo.RunOrFollowPipeline(i.Desc.(int), false) }, m.spinner.Tick)
 				} else {
 					m.gitStatus = "No pipeline selected"
 					return m, nil
@@ -145,34 +150,28 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg == "Pushed" {
 			m.pushed = true
 			m.pushing = false
-			return m, m.fetchPipelines
+			return m, m.azdo.FetchPipelines
 		}
 		m.gitStatus = string(msg)
 	}
-	if m.pushing || m.pipelineRunning {
+	if m.pushing {
 		m.spinner, cmd = m.spinner.Update(msg)
 		return m, cmd
 	}
 	textarea, txtcmd := m.textarea.Update(msg)
 	m.textarea = textarea
-	pipelines, listcmd := m.pipelines.Update(msg)
-	m.pipelines = pipelines
-	cmds = append(cmds, cmd, txtcmd, listcmd)
+	cmds = append(cmds, cmd, txtcmd)
 	return m, tea.Batch(cmds...)
 }
 
 func (m *model) View() string {
-	if m.pipelineRunning {
-		m.gitStatus = lipgloss.JoinHorizontal(lipgloss.Left, m.spinner.View(), "Pipeline running...\n")
-		return m.gitStatus
-	}
 	if m.pushing {
 		m.gitStatus = lipgloss.JoinHorizontal(lipgloss.Left, m.spinner.View(), "Pushing...\n")
 	}
 	if m.pushed {
-		return lipgloss.JoinVertical(lipgloss.Top, m.gitStatus, m.pipelines.View())
+		return lipgloss.JoinVertical(lipgloss.Top, m.gitStatus, m.azdo.PipelineList.View())
 	}
-	return lipgloss.JoinVertical(lipgloss.Top, titleStyle.Render("Git Commit"), m.textarea.View(), m.gitStatus)
+	return lipgloss.JoinVertical(lipgloss.Top, "Git Commit", m.textarea.View(), m.gitStatus)
 }
 
 func (m *model) push() tea.Msg {
@@ -181,10 +180,10 @@ func (m *model) push() tea.Msg {
 		Progress: nil,
 	})
 	if err != nil {
-		log(err.Error())
+		log2file(err.Error())
 		return gitErrorMsg(err.Error())
 	} else {
-		log("Pushed")
+		log2file("Pushed")
 		return gitOutputMsg("Pushed")
 	}
 }
@@ -197,8 +196,8 @@ func main() {
 }
 
 // log func logs to a file
-func log(msg string) {
-	f, err := os.OpenFile("log.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+func log2file(msg string) {
+	f, err := os.OpenFile("main-log.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		fmt.Println(err)
 	}

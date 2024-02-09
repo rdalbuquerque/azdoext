@@ -41,7 +41,7 @@ var (
 	}
 )
 
-type model struct {
+type Model struct {
 	taskList        list.Model
 	pipelineId      int
 	pipelineState   pipelineState
@@ -49,20 +49,22 @@ type model struct {
 	done            bool
 	logViewPort     *searchableviewport.Model
 	activeSection   ActiveSection
+	Client          *AzdoClient
+	PipelineList    list.Model
+	PipelineStatus  string
 	azdoClient      *AzdoClient
 }
 
-func newModel() *model {
+func New(org, project, pat string) *Model {
 	height := 15
 	vp := searchableviewport.New(80, height)
 	pspinner := spinner.New()
 	pspinner.Spinner = spinner.Dot
 	pspinner.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#00a9ff"))
 	tl := list.New([]list.Item{}, itemDelegate{}, 30, height)
-	tl.Title = "Pipeline"
 	tl.SetShowStatusBar(false)
-	azdoclient := NewAzdoClient("rdalbuquerque", "explore-bubbletea", os.Getenv("AZDO_PERSONAL_ACCESS_TOKEN"))
-	return &model{
+	azdoclient := NewAzdoClient(org, project, pat)
+	return &Model{
 		taskList:        tl,
 		pipelineSpinner: pspinner,
 		logViewPort:     vp,
@@ -70,11 +72,7 @@ func newModel() *model {
 	}
 }
 
-func (m *model) Init() tea.Cmd {
-	return tea.Batch(m.pipelineSpinner.Tick, func() tea.Msg { return m.azdoClient.runOrFollowPipeline(false) })
-}
-
-func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -97,10 +95,15 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if ps.isRunning {
 			m.pipelineState = pipelineState(msg)
 			m.SetTaskList(ps)
-			m.logViewPort.SetContent(m.taskList.SelectedItem().(item).desc)
+			m.logViewPort.SetContent(m.taskList.SelectedItem().(PipelineItem).Desc.(string))
 			m.logViewPort.GotoBottom()
 			return m, m.azdoClient.getPipelineState(m.pipelineId, 1*time.Second)
 		}
+		return m, nil
+	case pipelinesFetchedMsg:
+		log2file("pipelinesFetchedMsg\n")
+		log2file(fmt.Sprintf("msg: %v\n", msg))
+		m.PipelineList.SetItems(msg)
 		return m, nil
 	case pipelineIdMsg:
 		m.pipelineState.isRunning = true
@@ -116,13 +119,13 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch m.activeSection {
 	case ListSection:
 		log2file("ListSection\n")
-		var selectedRecord item
+		var selectedRecord PipelineItem
 		m.taskList, cmd = m.taskList.Update(msg)
-		selectedRecord, ok := m.taskList.SelectedItem().(item)
+		selectedRecord, ok := m.taskList.SelectedItem().(PipelineItem)
 		if !ok {
 			return m, cmd
 		}
-		m.logViewPort.SetContent(selectedRecord.desc)
+		m.logViewPort.SetContent(selectedRecord.Desc.(string))
 	case ViewportSection:
 		m.logViewPort, cmd = m.logViewPort.Update(msg)
 	}
@@ -130,7 +133,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m *model) View() string {
+func (m *Model) View() string {
 	var taskListView, logViewportView string
 	if m.activeSection == ListSection {
 		taskListView = activeStyle.Blink(true).Render(m.taskList.View())
@@ -148,7 +151,7 @@ func log2file(msg string) {
 	timestamp := time.Now().Format("2006-01-02 15:04:05")
 	logMsg := fmt.Sprintf("[%s] %s", timestamp, msg)
 
-	f, err := os.OpenFile("logs.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	f, err := os.OpenFile("azdo-logs.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		panic(err)
 	}
@@ -159,19 +162,12 @@ func log2file(msg string) {
 	}
 }
 
-func (m *model) formatStatusView(state, result, name, indent string) string {
+func (m *Model) formatStatusView(state, result, name, indent string) string {
 	if state == "inProgress" {
 		return fmt.Sprintf("%s%s %s", indent, m.pipelineSpinner.View(), name)
 	} else if state == "completed" {
 		return fmt.Sprintf("%s%s %s", indent, symbolMap[result], name)
 	} else {
 		return fmt.Sprintf("%s%s %s", indent, symbolMap[state], name)
-	}
-}
-
-func main() {
-	p := tea.NewProgram(newModel())
-	if _, err := p.Run(); err != nil {
-		panic(err)
 	}
 }
