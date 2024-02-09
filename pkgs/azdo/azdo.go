@@ -64,11 +64,13 @@ func New(org, project, pat string) *Model {
 	tl := list.New([]list.Item{}, itemDelegate{}, 30, height)
 	tl.SetShowStatusBar(false)
 	azdoclient := NewAzdoClient(org, project, pat)
+	pipelineList := list.New([]list.Item{}, itemDelegate{}, 30, height)
 	return &Model{
 		taskList:        tl,
 		pipelineSpinner: pspinner,
 		logViewPort:     vp,
 		azdoClient:      azdoclient,
+		PipelineList:    pipelineList,
 	}
 }
 
