@@ -78,7 +78,7 @@ func New(org, project, pat string) *Model {
 
 func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.Key:
 		switch msg.String() {
 		case "q", "ctrl+c":
 			m.done = true
@@ -91,6 +91,19 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 				m.activeSection = TaskListSection
 			}
 			log2file(fmt.Sprintf("activeSection: %d\n", m.activeSection))
+			return m, nil
+		case "enter":
+			if m.activeSection == PipelineListSection {
+				selectedRecord, ok := m.PipelineList.SelectedItem().(PipelineItem)
+				if !ok {
+					return m, nil
+				}
+				return m, func() tea.Msg { return m.RunOrFollowPipeline(selectedRecord.Desc.(int), false) }
+			}
+		case "esc":
+			if m.activeSection == ViewportSection || m.activeSection == TaskListSection {
+				m.activeSection = PipelineListSection
+			}
 			return m, nil
 		}
 	case PipelineStateMsg:

@@ -100,17 +100,6 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.textarea.Focused() {
 				m.textarea.Blur()
 			}
-		case tea.KeyEnter:
-			if m.pushed {
-				i, ok := m.azdo.PipelineList.SelectedItem().(azdo.PipelineItem)
-				if ok {
-					m.azdo.TaskList.Title = i.Title
-					return m, tea.Batch(func() tea.Msg { return m.azdo.RunOrFollowPipeline(i.Desc.(int), false) }, m.spinner.Tick)
-				} else {
-					m.gitStatus = "No pipeline selected"
-					return m, nil
-				}
-			}
 		case tea.KeyCtrlC:
 			return m, tea.Quit
 		case tea.KeyCtrlS:
