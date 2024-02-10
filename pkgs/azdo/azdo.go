@@ -107,6 +107,8 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 				m.activeSection = PipelineListSection
 			}
 			return m, nil
+		default:
+			log2file(fmt.Sprintf("msg string: %v\n", msg))
 		}
 	default:
 		log2file(fmt.Sprintf("msg: %v\n", msg))
