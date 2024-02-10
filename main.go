@@ -105,7 +105,6 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				i, ok := m.azdo.PipelineList.SelectedItem().(azdo.PipelineItem)
 				if ok {
 					m.azdo.TaskList.Title = i.Title
-					m.gitStatus = "Pipeline selected: " + string(i.Title)
 					return m, tea.Batch(func() tea.Msg { return m.azdo.RunOrFollowPipeline(i.Desc.(int), false) }, m.spinner.Tick)
 				} else {
 					m.gitStatus = "No pipeline selected"
@@ -179,10 +178,7 @@ func (m *model) View() string {
 		m.gitStatus = lipgloss.JoinHorizontal(lipgloss.Left, m.spinner.View(), "Pushing...\n")
 	}
 	if m.pushed {
-		if m.azdo.PipelineState.IsRunning {
-			return m.azdo.View()
-		}
-		return lipgloss.JoinVertical(lipgloss.Top, m.gitStatus, m.azdo.PipelineList.View())
+		return m.azdo.View()
 	}
 	return lipgloss.JoinVertical(lipgloss.Top, "Git Commit", m.textarea.View(), m.gitStatus)
 }

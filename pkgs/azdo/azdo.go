@@ -16,8 +16,8 @@ import (
 type ActiveSection int
 
 const (
-	PreviousSection ActiveSection = iota
-	ListSection
+	PipelineListSection ActiveSection = iota
+	TaskListSection
 	ViewportSection
 )
 
@@ -65,6 +65,8 @@ func New(org, project, pat string) *Model {
 	tl.SetShowStatusBar(false)
 	azdoclient := NewAzdoClient(org, project, pat)
 	pipelineList := list.New([]list.Item{}, itemDelegate{}, 30, height)
+	pipelineList.Title = "Pipelines"
+	pipelineList.SetShowStatusBar(false)
 	return &Model{
 		TaskList:        tl,
 		pipelineSpinner: pspinner,
@@ -83,10 +85,10 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 			return m, tea.Quit
 		case "tab":
 			log2file("tab\n")
-			if m.activeSection == ListSection {
+			if m.activeSection == TaskListSection {
 				m.activeSection = ViewportSection
 			} else {
-				m.activeSection = ListSection
+				m.activeSection = TaskListSection
 			}
 			log2file(fmt.Sprintf("activeSection: %d\n", m.activeSection))
 			return m, nil
@@ -106,10 +108,10 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 		log2file("pipelinesFetchedMsg\n")
 		log2file(fmt.Sprintf("msg: %v\n", msg))
 		m.PipelineList.SetItems(msg)
-		return m, nil
+		return m, m.pipelineSpinner.Tick
 	case PipelineIdMsg:
 		m.PipelineState.IsRunning = true
-		m.activeSection = ListSection
+		m.activeSection = TaskListSection
 		m.pipelineId = int(msg)
 		return m, m.azdoClient.getPipelineState(int(msg), 0)
 	case spinner.TickMsg:
@@ -120,7 +122,7 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 	}
 	var cmd tea.Cmd
 	switch m.activeSection {
-	case ListSection:
+	case TaskListSection:
 		log2file("ListSection\n")
 		var selectedRecord PipelineItem
 		m.TaskList, cmd = m.TaskList.Update(msg)
@@ -141,16 +143,21 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 }
 
 func (m *Model) View() string {
-	var taskListView, logViewportView string
-	if m.activeSection == ListSection {
-		taskListView = activeStyle.Blink(true).Render(m.TaskList.View())
+	var taskListView, logViewportView, pipelineListView string
+	switch m.activeSection {
+	case PipelineListSection:
+		pipelineListView = activeStyle.Render(m.PipelineList.View())
+		return pipelineListView
+	case TaskListSection:
+		taskListView = activeStyle.Render(m.TaskList.View())
 		logViewportView = inactiveStyle.Render(m.logViewPort.View())
-	} else {
+		return lipgloss.JoinHorizontal(lipgloss.Left, taskListView, "  ", logViewportView)
+	case ViewportSection:
 		taskListView = inactiveStyle.Render(m.TaskList.View())
 		logViewportView = activeStyle.Render(m.logViewPort.View())
+		return lipgloss.JoinHorizontal(lipgloss.Left, taskListView, "  ", logViewportView)
 	}
-
-	return lipgloss.JoinHorizontal(lipgloss.Left, taskListView, "  ", logViewportView)
+	return ""
 }
 
 // log2file logs to file logs.txt
