@@ -29,11 +29,11 @@ var (
 	InactiveStyle = lipgloss.NewStyle().
 			Border(lipgloss.NormalBorder(), true, false, true, false).
 			BorderForeground(lipgloss.Color("#6c6c6c"))
-
+	stopped   = lipgloss.NewStyle().SetString("◼").Foreground(lipgloss.Color("#ffbf00"))
 	pending   = lipgloss.NewStyle().SetString("•").Foreground(lipgloss.Color("#ffbf00"))
-	succeeded = lipgloss.NewStyle().SetString("✓").Foreground(lipgloss.Color("#00ff00"))
-	failed    = lipgloss.NewStyle().SetString("x").Foreground(lipgloss.Color("#ff0000"))
-	skipped   = lipgloss.NewStyle().SetString(">").Foreground(lipgloss.Color("#ffffff"))
+	succeeded = lipgloss.NewStyle().SetString("✅").Foreground(lipgloss.Color("#00ff00"))
+	failed    = lipgloss.NewStyle().SetString("❌").Foreground(lipgloss.Color("#ff0000"))
+	skipped   = lipgloss.NewStyle().SetString("⏩").Foreground(lipgloss.Color("#ffffff"))
 	symbolMap = map[string]interface{}{
 		"pending":   pending,
 		"succeeded": succeeded,
