@@ -93,6 +93,8 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 			log2file(fmt.Sprintf("activeSection: %d\n", m.activeSection))
 			return m, nil
 		case "enter":
+			log2file("enter\n")
+			log2file(fmt.Sprintf("activeSection: %d\n", m.activeSection))
 			if m.activeSection == PipelineListSection {
 				selectedRecord, ok := m.PipelineList.SelectedItem().(PipelineItem)
 				if !ok {

@@ -101,6 +101,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.textarea.Blur()
 			}
 		case tea.KeyEnter:
+			log2file("Enter key pressed")
 			azdo, cmd := m.azdo.Update(msg)
 			m.azdo = azdo
 			return m, cmd
