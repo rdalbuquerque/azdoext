@@ -78,12 +78,12 @@ func New(org, project, pat string) *Model {
 
 func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 	switch msg := msg.(type) {
-	case tea.Key:
-		switch msg.String() {
-		case "q", "ctrl+c":
+	case tea.KeyMsg:
+		switch msg.Type {
+		case tea.KeyCtrlC:
 			m.done = true
 			return m, tea.Quit
-		case "tab":
+		case tea.KeyTab:
 			log2file("tab\n")
 			if m.activeSection == TaskListSection {
 				m.activeSection = ViewportSection
@@ -92,7 +92,7 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 			}
 			log2file(fmt.Sprintf("activeSection: %d\n", m.activeSection))
 			return m, nil
-		case "enter":
+		case tea.KeyEnter:
 			log2file("enter\n")
 			log2file(fmt.Sprintf("activeSection: %d\n", m.activeSection))
 			if m.activeSection == PipelineListSection {
@@ -102,16 +102,12 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 				}
 				return m, func() tea.Msg { return m.RunOrFollowPipeline(selectedRecord.Desc.(int), false) }
 			}
-		case "esc":
+		case tea.KeyEsc:
 			if m.activeSection == ViewportSection || m.activeSection == TaskListSection {
 				m.activeSection = PipelineListSection
 			}
 			return m, nil
-		default:
-			log2file(fmt.Sprintf("msg string: %v\n", msg))
 		}
-	default:
-		log2file(fmt.Sprintf("msg: %v\n", msg))
 	case PipelineStateMsg:
 		ps := pipelineState(msg)
 		m.PipelineState = ps
