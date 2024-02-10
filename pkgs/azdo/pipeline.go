@@ -334,12 +334,13 @@ func (m *Model) FetchPipelines() tea.Msg {
 		pipelineName := pipeline.(map[string]interface{})["name"].(string)
 		pipelineId := int(pipeline.(map[string]interface{})["id"].(float64))
 		running, _ := m.IsPipelineRunning(pipelineId)
+		var symbol string
 		if running {
-			pipelineName = fmt.Sprintf("%s %s", m.pipelineSpinner.View(), pipelineName)
+			symbol = m.pipelineSpinner.View()
 		} else {
-			pipelineName = fmt.Sprintf("%s %s", stopped, pipelineName)
+			symbol = stopped.String()
 		}
-		pipelineList = append(pipelineList, PipelineItem{Title: pipelineName, Desc: pipelineId, Running: running})
+		pipelineList = append(pipelineList, PipelineItem{Title: pipelineName, Desc: pipelineId, Running: running, Symbol: symbol})
 	}
 	return PipelinesFetchedMsg(pipelineList)
 }

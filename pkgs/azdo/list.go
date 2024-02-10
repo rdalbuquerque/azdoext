@@ -19,6 +19,7 @@ type PipelineItem struct {
 	Title   string
 	Desc    any
 	Running bool
+	Symbol  string
 }
 
 func (i PipelineItem) FilterValue() string { return "" }
@@ -34,7 +35,12 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 		return
 	}
 
-	str := i.Title
+	var str string
+	if i.Symbol != "" {
+		str = fmt.Sprintf("%s %s", i.Symbol, i.Title)
+	} else {
+		str = i.Title
+	}
 
 	fn := itemStyle.Render
 	if index == m.Index() {
@@ -65,13 +71,7 @@ func (m *Model) SetTaskList(ps pipelineState) {
 func (m *Model) SetPipelineList() {
 	for i := range m.PipelineList.Items() {
 		if m.PipelineList.Items()[i].(PipelineItem).Running {
-			title := m.PipelineList.Items()[i].(PipelineItem).Title
-			log2file(fmt.Sprintf("title: %s\n", title))
-			splittedTitle := strings.Split(title, " ")
-			log2file(fmt.Sprintf("splittedTitle: %v\n", splittedTitle))
-			newTitle := fmt.Sprintf("%s %s", m.pipelineSpinner.View(), strings.Split(title, " ")[1])
-			log2file(fmt.Sprintf("newTitle: %s\n", newTitle))
-			m.PipelineList.Items()[i] = PipelineItem{Title: newTitle, Running: true, Desc: m.PipelineList.Items()[i].(PipelineItem).Desc}
+			m.PipelineList.Items()[i] = PipelineItem{Symbol: m.pipelineSpinner.View(), Title: m.PipelineList.Items()[i].(PipelineItem).Title, Running: true, Desc: m.PipelineList.Items()[i].(PipelineItem).Desc}
 		}
 	}
 }
