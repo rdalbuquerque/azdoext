@@ -66,7 +66,11 @@ func (m *Model) SetPipelineList() {
 	for i := range m.PipelineList.Items() {
 		if m.PipelineList.Items()[i].(PipelineItem).Running {
 			title := m.PipelineList.Items()[i].(PipelineItem).Title
+			log2file(fmt.Sprintf("title: %s\n", title))
+			splittedTitle := strings.Split(title, " ")
+			log2file(fmt.Sprintf("splittedTitle: %v\n", splittedTitle))
 			newTitle := fmt.Sprintf("%s %s", m.pipelineSpinner.View(), strings.Split(title, " ")[1])
+			log2file(fmt.Sprintf("newTitle: %s\n", newTitle))
 			m.PipelineList.Items()[i] = PipelineItem{Title: newTitle, Running: true, Desc: m.PipelineList.Items()[i].(PipelineItem).Desc}
 		}
 	}
