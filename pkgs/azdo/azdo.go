@@ -124,15 +124,17 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 				return m, func() tea.Msg { return m.RunOrFollowPipeline(selectedPipeline.Desc.(int), false) }
 			}
 		case tea.KeyBackspace:
-			log2file("backspace\n")
-			if m.RunOrFollowChoiceEnabled {
-				m.RunOrFollowChoiceEnabled = false
+			if m.activeSection != ViewportSection {
+				log2file("backspace\n")
+				if m.RunOrFollowChoiceEnabled {
+					m.RunOrFollowChoiceEnabled = false
+					return m, nil
+				}
+				if m.activeSection == TaskListSection && !m.TaskList.SettingFilter() {
+					m.activeSection = PipelineListSection
+				}
 				return m, nil
 			}
-			if m.activeSection == TaskListSection && !m.TaskList.SettingFilter() {
-				m.activeSection = PipelineListSection
-			}
-			return m, nil
 		default:
 			log2file(fmt.Sprintf("default: %v\n", msg))
 		}
