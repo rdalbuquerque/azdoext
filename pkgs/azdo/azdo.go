@@ -29,11 +29,11 @@ var (
 	InactiveStyle = lipgloss.NewStyle().
 			Border(lipgloss.NormalBorder(), true, false, true, false).
 			BorderForeground(lipgloss.Color("#6c6c6c"))
-	stopped   = lipgloss.NewStyle().SetString("◼").Foreground(lipgloss.Color("#ffbf00"))
-	pending   = lipgloss.NewStyle().SetString("•").Foreground(lipgloss.Color("#ffbf00"))
-	succeeded = lipgloss.NewStyle().SetString("✅").Foreground(lipgloss.Color("#00ff00"))
-	failed    = lipgloss.NewStyle().SetString("❌").Foreground(lipgloss.Color("#ff0000"))
-	skipped   = lipgloss.NewStyle().SetString("⏩").Foreground(lipgloss.Color("#ffffff"))
+	stopped   = lipgloss.NewStyle().SetString("■").Foreground(lipgloss.Color("#808080"))
+	pending   = lipgloss.NewStyle().SetString("⊛").Foreground(lipgloss.Color("#ffbf00"))
+	succeeded = lipgloss.NewStyle().SetString("✔").Foreground(lipgloss.Color("#00ff00"))
+	failed    = lipgloss.NewStyle().SetString("✖").Foreground(lipgloss.Color("#ff0000"))
+	skipped   = lipgloss.NewStyle().SetString("➤").Foreground(lipgloss.Color("#ffffff"))
 	symbolMap = map[string]interface{}{
 		"pending":   pending,
 		"succeeded": succeeded,
@@ -43,37 +43,49 @@ var (
 )
 
 type Model struct {
-	TaskList        list.Model
-	pipelineId      int
-	PipelineState   pipelineState
-	pipelineSpinner spinner.Model
-	done            bool
-	logViewPort     *searchableviewport.Model
-	activeSection   ActiveSection
-	Client          *AzdoClient
-	PipelineList    list.Model
-	azdoClient      *AzdoClient
+	TaskList                 list.Model
+	pipelineId               int
+	PipelineState            pipelineState
+	pipelineSpinner          spinner.Model
+	done                     bool
+	logViewPort              *searchableviewport.Model
+	activeSection            ActiveSection
+	Client                   *AzdoClient
+	PipelineList             list.Model
+	azdoClient               *AzdoClient
+	RunOrFollowList          list.Model
+	RunOrFollowChoiceEnabled bool
 }
 
 func New(org, project, pat string) *Model {
-	height := 15
-	vp := searchableviewport.New(80, height)
+	vp := searchableviewport.New(0, 0)
 	pspinner := spinner.New()
 	pspinner.Spinner = spinner.Dot
 	pspinner.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#00a9ff"))
-	tl := list.New([]list.Item{}, itemDelegate{}, 30, height)
+	tl := list.New([]list.Item{}, itemDelegate{}, 30, 0)
 	tl.SetShowStatusBar(false)
 	azdoclient := NewAzdoClient(org, project, pat)
-	pipelineList := list.New([]list.Item{}, itemDelegate{}, 30, height)
+	pipelineList := list.New([]list.Item{}, itemDelegate{}, 30, 0)
 	pipelineList.Title = "Pipelines"
 	pipelineList.SetShowStatusBar(false)
+	runOrFollowList := list.New([]list.Item{PipelineItem{Title: "Run"}, PipelineItem{Title: "Follow"}}, itemDelegate{}, 30, 0)
+	runOrFollowList.Title = "Pipeline is running, run new or follow?"
 	return &Model{
 		TaskList:        tl,
 		pipelineSpinner: pspinner,
 		logViewPort:     vp,
 		azdoClient:      azdoclient,
 		PipelineList:    pipelineList,
+		RunOrFollowList: runOrFollowList,
 	}
+}
+
+func (m *Model) SetHeights(height int) *Model {
+	m.TaskList.SetHeight(height)
+	m.logViewPort.SetDimensions(80, height)
+	m.PipelineList.SetHeight(height)
+	m.RunOrFollowList.SetHeight(height)
+	return m
 }
 
 func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
@@ -90,20 +102,31 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 			} else {
 				m.activeSection = TaskListSection
 			}
-			log2file(fmt.Sprintf("activeSection: %d\n", m.activeSection))
 			return m, nil
 		case tea.KeyEnter:
-			log2file("enter\n")
-			log2file(fmt.Sprintf("activeSection: %d\n", m.activeSection))
+			if m.RunOrFollowChoiceEnabled {
+				runOrFollow := m.RunOrFollowList.SelectedItem().(PipelineItem).Title
+				selectedPipelineId := m.PipelineList.SelectedItem().(PipelineItem).Desc.(int)
+				if runOrFollow == "Run" {
+					return m, func() tea.Msg { return m.RunOrFollowPipeline(selectedPipelineId, true) }
+				} else {
+					return m, func() tea.Msg { return m.RunOrFollowPipeline(selectedPipelineId, false) }
+				}
+			}
 			if m.activeSection == PipelineListSection {
-				selectedPipeline, ok := m.PipelineList.SelectedItem().(PipelineItem)
-				if !ok {
+				selectedPipeline := m.PipelineList.SelectedItem().(PipelineItem)
+				if selectedPipeline.Running {
+					m.RunOrFollowChoiceEnabled = true
 					return m, nil
 				}
 				m.TaskList.Title = selectedPipeline.Title
 				return m, func() tea.Msg { return m.RunOrFollowPipeline(selectedPipeline.Desc.(int), false) }
 			}
 		case tea.KeyBackspace:
+			if m.RunOrFollowChoiceEnabled {
+				m.RunOrFollowChoiceEnabled = false
+				return m, nil
+			}
 			if m.activeSection == TaskListSection && !m.TaskList.SettingFilter() {
 				m.activeSection = PipelineListSection
 			}
@@ -117,7 +140,7 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 			m.SetTaskList(ps)
 			m.logViewPort.SetContent(m.TaskList.SelectedItem().(PipelineItem).Desc.(string))
 			m.logViewPort.GotoBottom()
-			return m, m.azdoClient.getPipelineState(m.pipelineId, 1*time.Second)
+			return m, tea.Batch(m.FetchPipelines, m.azdoClient.getPipelineState(m.pipelineId, 1*time.Second))
 		}
 		return m, nil
 	case PipelinesFetchedMsg:
@@ -162,6 +185,11 @@ func (m *Model) View() string {
 	var taskListView, logViewportView, pipelineListView string
 	switch m.activeSection {
 	case PipelineListSection:
+		if m.RunOrFollowChoiceEnabled {
+			runOrFollowView := ActiveStyle.Render(m.RunOrFollowList.View())
+			pipelineListView = InactiveStyle.Render(m.PipelineList.View())
+			return lipgloss.JoinHorizontal(lipgloss.Left, pipelineListView, "  ", runOrFollowView)
+		}
 		pipelineListView = ActiveStyle.Render(m.PipelineList.View())
 		return pipelineListView
 	case TaskListSection:

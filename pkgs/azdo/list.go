@@ -16,8 +16,9 @@ var (
 )
 
 type PipelineItem struct {
-	Title string
-	Desc  any
+	Title   string
+	Desc    any
+	Running bool
 }
 
 func (i PipelineItem) FilterValue() string { return "" }

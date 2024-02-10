@@ -87,8 +87,8 @@ func NewAzdoClient(org, project, pat string) *AzdoClient {
 	}
 }
 
-func (m *Model) IsPipelineRunning() (bool, int) {
-	apiURL := fmt.Sprintf("%s/_apis/build/builds?definitions=%d&statusFilter=notStarted,inProgress&queryOrder=queueTimeDescending&$top=1&%s", m.azdoClient.orgUrl, 12, m.azdoClient.defaultApiVersion)
+func (m *Model) IsPipelineRunning(pipelineId int) (bool, int) {
+	apiURL := fmt.Sprintf("%s/_apis/build/builds?definitions=%d&statusFilter=notStarted,inProgress&queryOrder=queueTimeDescending&$top=1&%s", m.azdoClient.orgUrl, pipelineId, m.azdoClient.defaultApiVersion)
 	req, err := http.NewRequest("GET", apiURL, nil)
 	req.Header = m.azdoClient.authHeader
 	if err != nil {
@@ -116,8 +116,8 @@ func (m *Model) IsPipelineRunning() (bool, int) {
 }
 
 func (m *Model) RunOrFollowPipeline(id int, runNew bool) tea.Msg {
-	apiURL := fmt.Sprintf("%s/_apis/pipelines/%d/runs?%s", m.azdoClient.orgUrl, 12, "api-version=7.1-preview.1")
-	if isRunning, runId := m.IsPipelineRunning(); isRunning && !runNew {
+	apiURL := fmt.Sprintf("%s/_apis/pipelines/%d/runs?%s", m.azdoClient.orgUrl, id, "api-version=7.1-preview.1")
+	if isRunning, runId := m.IsPipelineRunning(id); isRunning && !runNew {
 		return PipelineIdMsg(runId)
 	}
 
@@ -333,7 +333,13 @@ func (m *Model) FetchPipelines() tea.Msg {
 	for _, pipeline := range result["value"].([]interface{}) {
 		pipelineName := pipeline.(map[string]interface{})["name"].(string)
 		pipelineId := int(pipeline.(map[string]interface{})["id"].(float64))
-		pipelineList = append(pipelineList, PipelineItem{Title: pipelineName, Desc: pipelineId})
+		running, _ := m.IsPipelineRunning(pipelineId)
+		if running {
+			pipelineName = fmt.Sprintf("%s %s", m.pipelineSpinner.View(), pipelineName)
+		} else {
+			pipelineName = fmt.Sprintf("%s %s", stopped, pipelineName)
+		}
+		pipelineList = append(pipelineList, PipelineItem{Title: pipelineName, Desc: pipelineId, Running: running})
 	}
 	return PipelinesFetchedMsg(pipelineList)
 }

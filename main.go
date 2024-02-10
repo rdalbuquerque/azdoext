@@ -69,26 +69,26 @@ func (m *model) Init() tea.Cmd {
 	_ = os.Remove("log.txt")
 	m.spinner = spinner.New()       // Initialize the spinner
 	m.spinner.Spinner = spinner.Dot // Set the spinner style
+	r, err := git.PlainOpen(".")
+	if err != nil {
+		panic(err)
+	}
+	w, err := r.Worktree()
+	if err != nil {
+		panic(err)
+	}
+	err = w.AddGlob(".")
+	if err != nil {
+		panic(err)
+	}
+	gitStatus, err := w.Status()
+	if err != nil {
+		panic(err)
+	}
+	m.worktree = w
+	m.repo = r
+	m.setAzdoClientFromRemote()
 	return func() tea.Msg {
-		r, err := git.PlainOpen(".")
-		if err != nil {
-			return gitErrorMsg(err.Error())
-		}
-		w, err := r.Worktree()
-		if err != nil {
-			return gitErrorMsg(err.Error())
-		}
-		err = w.AddGlob(".")
-		if err != nil {
-			return gitErrorMsg(err.Error())
-		}
-		gitStatus, err := w.Status()
-		if err != nil {
-			return gitErrorMsg(err.Error())
-		}
-		m.worktree = w
-		m.repo = r
-		m.setAzdoClientFromRemote()
 		return gitOutputMsg(gitStatus.String())
 	}
 }
@@ -98,6 +98,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 	var cmd tea.Cmd
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.azdo.SetHeights(msg.Height - 2)
+		defaultStyle.Height(msg.Height - 2)
+		return m, nil
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyEsc:
@@ -173,7 +177,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *model) View() string {
 	if m.pushing {
-		m.gitStatus = defaultStyle.Render(lipgloss.JoinHorizontal(lipgloss.Left, m.spinner.View(), "Pushing...\n"))
+		m.gitStatus = lipgloss.JoinHorizontal(lipgloss.Left, m.spinner.View(), "Pushing...\n")
 	}
 	if m.pushed {
 		return m.azdo.View()
