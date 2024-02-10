@@ -69,7 +69,7 @@ func New(org, project, pat string) *Model {
 	pipelineList.Title = "Pipelines"
 	pipelineList.SetShowStatusBar(false)
 	runOrFollowList := list.New([]list.Item{PipelineItem{Title: "Run"}, PipelineItem{Title: "Follow"}}, itemDelegate{}, 30, 0)
-	runOrFollowList.Title = "Pipeline is running, run new or follow?"
+	runOrFollowList.Title = "Run new or follow?"
 	return &Model{
 		TaskList:        tl,
 		pipelineSpinner: pspinner,
@@ -157,6 +157,7 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 		var cmd tea.Cmd
 		m.pipelineSpinner, cmd = m.pipelineSpinner.Update(msg)
 		m.SetTaskList(m.PipelineState)
+		m.SetPipelineList()
 		return m, cmd
 	}
 	var cmd tea.Cmd
@@ -174,9 +175,14 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 		m.logViewPort, cmd = m.logViewPort.Update(msg)
 		return m, cmd
 	default:
-		pipelineList, cmd := m.PipelineList.Update(msg)
-		m.PipelineList = pipelineList
-		return m, cmd
+		if m.RunOrFollowChoiceEnabled {
+			m.RunOrFollowList, cmd = m.RunOrFollowList.Update(msg)
+			return m, cmd
+		} else {
+			pipelineList, cmd := m.PipelineList.Update(msg)
+			m.PipelineList = pipelineList
+			return m, cmd
+		}
 	}
 	return m, nil
 }
