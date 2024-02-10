@@ -66,8 +66,7 @@ func (m *Model) SetPipelineList() {
 	for i := range m.PipelineList.Items() {
 		if m.PipelineList.Items()[i].(PipelineItem).Running {
 			title := m.PipelineList.Items()[i].(PipelineItem).Title
-			pipelineName := title[:strings.LastIndex(title, " ")]
-			newTitle := fmt.Sprintf("%s %s", m.pipelineSpinner.View(), pipelineName)
+			newTitle := fmt.Sprintf("%s %s", m.pipelineSpinner.View(), strings.Split(title, " ")[1])
 			m.PipelineList.Items()[i] = PipelineItem{Title: newTitle, Running: true, Desc: m.PipelineList.Items()[i].(PipelineItem).Desc}
 		}
 	}
