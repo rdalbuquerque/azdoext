@@ -3,7 +3,6 @@ package azdo
 import (
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
 	"explore-bubbletea/pkgs/searchableviewport"
@@ -120,7 +119,7 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 					m.RunOrFollowChoiceEnabled = true
 					return m, nil
 				}
-				m.TaskList.Title = strings.Split(selectedPipeline.Title, " ")[1]
+				m.TaskList.Title = selectedPipeline.Title
 				return m, func() tea.Msg { return m.RunOrFollowPipeline(selectedPipeline.Desc.(int), false) }
 			}
 		case tea.KeyBackspace:
