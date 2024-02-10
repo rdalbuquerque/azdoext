@@ -181,7 +181,6 @@ func (c *AzdoClient) getPipelineState(runId int, wait time.Duration) tea.Cmd {
 		if err != nil {
 			panic(err)
 		}
-		log2file(string(body))
 		var r map[string]interface{}
 		err = json.Unmarshal(body, &r)
 		if err != nil {
