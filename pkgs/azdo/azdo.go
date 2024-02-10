@@ -108,6 +108,8 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 			}
 			return m, nil
 		}
+	default:
+		log2file(fmt.Sprintf("msg: %v\n", msg))
 	case PipelineStateMsg:
 		ps := pipelineState(msg)
 		m.PipelineState = ps
