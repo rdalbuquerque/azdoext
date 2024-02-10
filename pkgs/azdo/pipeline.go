@@ -307,40 +307,42 @@ func processLog(text io.ReadCloser) string {
 	return processedText
 }
 
-func (m *Model) FetchPipelines() tea.Msg {
-
-	apiURL := fmt.Sprintf("%s/_apis/pipelines?api-version=6.0-preview.1", m.azdoClient.orgUrl)
-	log2file(fmt.Sprintf("apiURL to fetch pipelines: %s\n", apiURL))
-	client := &http.Client{}
-	req, err := http.NewRequest("GET", apiURL, nil)
-	if err != nil {
-		panic(err)
-	}
-	req.Header = m.azdoClient.authHeader
-	resp, err := client.Do(req)
-	if err != nil {
-		panic(err)
-	}
-	defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		panic(err)
-	}
-	log2file(fmt.Sprintf("body from pipeline fetch: %s\n", body))
-	var result map[string]interface{}
-	json.Unmarshal(body, &result)
-	pipelineList := []list.Item{}
-	for _, pipeline := range result["value"].([]interface{}) {
-		pipelineName := pipeline.(map[string]interface{})["name"].(string)
-		pipelineId := int(pipeline.(map[string]interface{})["id"].(float64))
-		running, _ := m.IsPipelineRunning(pipelineId)
-		var symbol string
-		if running {
-			symbol = m.pipelineSpinner.View()
-		} else {
-			symbol = stopped.String()
+func (m *Model) FetchPipelines(wait time.Duration) tea.Cmd {
+	return func() tea.Msg {
+		time.Sleep(wait)
+		apiURL := fmt.Sprintf("%s/_apis/pipelines?api-version=6.0-preview.1", m.azdoClient.orgUrl)
+		log2file(fmt.Sprintf("apiURL to fetch pipelines: %s\n", apiURL))
+		client := &http.Client{}
+		req, err := http.NewRequest("GET", apiURL, nil)
+		if err != nil {
+			panic(err)
 		}
-		pipelineList = append(pipelineList, PipelineItem{Title: pipelineName, Desc: pipelineId, Running: running, Symbol: symbol})
+		req.Header = m.azdoClient.authHeader
+		resp, err := client.Do(req)
+		if err != nil {
+			panic(err)
+		}
+		defer resp.Body.Close()
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			panic(err)
+		}
+		log2file(fmt.Sprintf("body from pipeline fetch: %s\n", body))
+		var result map[string]interface{}
+		json.Unmarshal(body, &result)
+		pipelineList := []list.Item{}
+		for _, pipeline := range result["value"].([]interface{}) {
+			pipelineName := pipeline.(map[string]interface{})["name"].(string)
+			pipelineId := int(pipeline.(map[string]interface{})["id"].(float64))
+			running, _ := m.IsPipelineRunning(pipelineId)
+			var symbol string
+			if running {
+				symbol = m.pipelineSpinner.View()
+			} else {
+				symbol = stopped.String()
+			}
+			pipelineList = append(pipelineList, PipelineItem{Title: pipelineName, Desc: pipelineId, Running: running, Symbol: symbol})
+		}
+		return PipelinesFetchedMsg(pipelineList)
 	}
-	return PipelinesFetchedMsg(pipelineList)
 }

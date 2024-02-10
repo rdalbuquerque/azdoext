@@ -140,14 +140,14 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 			m.SetTaskList(ps)
 			m.logViewPort.SetContent(m.TaskList.SelectedItem().(PipelineItem).Desc.(string))
 			m.logViewPort.GotoBottom()
-			return m, tea.Batch(m.FetchPipelines, m.azdoClient.getPipelineState(m.pipelineId, 1*time.Second))
+			return m, m.azdoClient.getPipelineState(m.pipelineId, 1*time.Second)
 		}
 		return m, nil
 	case PipelinesFetchedMsg:
 		log2file("pipelinesFetchedMsg\n")
 		log2file(fmt.Sprintf("msg: %v\n", msg))
 		m.PipelineList.SetItems(msg)
-		return m, m.pipelineSpinner.Tick
+		return m, tea.Batch(m.FetchPipelines(5*time.Second), m.pipelineSpinner.Tick)
 	case PipelineIdMsg:
 		m.PipelineState.IsRunning = true
 		m.activeSection = TaskListSection
