@@ -123,6 +123,7 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 				return m, func() tea.Msg { return m.RunOrFollowPipeline(selectedPipeline.Desc.(int), false) }
 			}
 		case tea.KeyBackspace:
+			log2file("backspace\n")
 			if m.RunOrFollowChoiceEnabled {
 				m.RunOrFollowChoiceEnabled = false
 				return m, nil
@@ -131,6 +132,8 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 				m.activeSection = PipelineListSection
 			}
 			return m, nil
+		default:
+			log2file(fmt.Sprintf("default: %v\n", msg))
 		}
 	case PipelineStateMsg:
 		ps := pipelineState(msg)
@@ -144,8 +147,6 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 		}
 		return m, nil
 	case PipelinesFetchedMsg:
-		log2file("pipelinesFetchedMsg\n")
-		log2file(fmt.Sprintf("msg: %v\n", msg))
 		m.PipelineList.SetItems(msg)
 		return m, tea.Batch(m.FetchPipelines(5*time.Second), m.pipelineSpinner.Tick)
 	case PipelineIdMsg:
