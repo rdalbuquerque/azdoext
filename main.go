@@ -22,6 +22,10 @@ import (
 type gitOutputMsg string
 type gitErrorMsg string
 
+var (
+	defaultStyle = azdo.ActiveStyle.Copy()
+)
+
 type model struct {
 	textarea  textarea.Model
 	worktree  *git.Worktree
@@ -169,12 +173,12 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *model) View() string {
 	if m.pushing {
-		m.gitStatus = lipgloss.JoinHorizontal(lipgloss.Left, m.spinner.View(), "Pushing...\n")
+		m.gitStatus = defaultStyle.Render(lipgloss.JoinHorizontal(lipgloss.Left, m.spinner.View(), "Pushing...\n"))
 	}
 	if m.pushed {
 		return m.azdo.View()
 	}
-	return lipgloss.JoinVertical(lipgloss.Top, "Git Commit", m.textarea.View(), m.gitStatus)
+	return defaultStyle.Render(lipgloss.JoinVertical(lipgloss.Top, "Git Commit", m.textarea.View(), m.gitStatus))
 }
 
 func (m *model) push() tea.Msg {

@@ -22,11 +22,11 @@ const (
 )
 
 var (
-	activeStyle = lipgloss.NewStyle().
+	ActiveStyle = lipgloss.NewStyle().
 			Border(lipgloss.NormalBorder(), true, false, true, false).
 			BorderForeground(lipgloss.Color("#00ff00"))
 
-	inactiveStyle = lipgloss.NewStyle().
+	InactiveStyle = lipgloss.NewStyle().
 			Border(lipgloss.NormalBorder(), true, false, true, false).
 			BorderForeground(lipgloss.Color("#6c6c6c"))
 
@@ -96,11 +96,12 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 			log2file("enter\n")
 			log2file(fmt.Sprintf("activeSection: %d\n", m.activeSection))
 			if m.activeSection == PipelineListSection {
-				selectedRecord, ok := m.PipelineList.SelectedItem().(PipelineItem)
+				selectedPipeline, ok := m.PipelineList.SelectedItem().(PipelineItem)
 				if !ok {
 					return m, nil
 				}
-				return m, func() tea.Msg { return m.RunOrFollowPipeline(selectedRecord.Desc.(int), false) }
+				m.TaskList.Title = selectedPipeline.Title
+				return m, func() tea.Msg { return m.RunOrFollowPipeline(selectedPipeline.Desc.(int), false) }
 			}
 		case tea.KeyBackspace:
 			if m.activeSection == TaskListSection && !m.TaskList.SettingFilter() {
@@ -161,15 +162,15 @@ func (m *Model) View() string {
 	var taskListView, logViewportView, pipelineListView string
 	switch m.activeSection {
 	case PipelineListSection:
-		pipelineListView = activeStyle.Render(m.PipelineList.View())
+		pipelineListView = ActiveStyle.Render(m.PipelineList.View())
 		return pipelineListView
 	case TaskListSection:
-		taskListView = activeStyle.Render(m.TaskList.View())
-		logViewportView = inactiveStyle.Render(m.logViewPort.View())
+		taskListView = ActiveStyle.Render(m.TaskList.View())
+		logViewportView = InactiveStyle.Render(m.logViewPort.View())
 		return lipgloss.JoinHorizontal(lipgloss.Left, taskListView, "  ", logViewportView)
 	case ViewportSection:
-		taskListView = inactiveStyle.Render(m.TaskList.View())
-		logViewportView = activeStyle.Render(m.logViewPort.View())
+		taskListView = InactiveStyle.Render(m.TaskList.View())
+		logViewportView = ActiveStyle.Render(m.logViewPort.View())
 		return lipgloss.JoinHorizontal(lipgloss.Left, taskListView, "  ", logViewportView)
 	}
 	return ""
