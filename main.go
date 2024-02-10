@@ -100,6 +100,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.textarea.Focused() {
 				m.textarea.Blur()
 			}
+		case tea.KeyEnter:
+			azdo, cmd := m.azdo.Update(msg)
+			m.azdo = azdo
+			return m, cmd
 		case tea.KeyCtrlC:
 			return m, tea.Quit
 		case tea.KeyCtrlS:
