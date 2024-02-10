@@ -102,8 +102,8 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 				}
 				return m, func() tea.Msg { return m.RunOrFollowPipeline(selectedRecord.Desc.(int), false) }
 			}
-		case tea.KeyEsc:
-			if m.activeSection == ViewportSection || m.activeSection == TaskListSection {
+		case tea.KeyBackspace:
+			if m.activeSection == TaskListSection && !m.TaskList.SettingFilter() {
 				m.activeSection = PipelineListSection
 			}
 			return m, nil
