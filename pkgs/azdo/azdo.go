@@ -105,6 +105,7 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 			return m, nil
 		case tea.KeyEnter:
 			if m.RunOrFollowChoiceEnabled {
+				m.RunOrFollowChoiceEnabled = false
 				runOrFollow := m.RunOrFollowList.SelectedItem().(PipelineItem).Title
 				selectedPipelineId := m.PipelineList.SelectedItem().(PipelineItem).Desc.(int)
 				if runOrFollow == "Run" {
