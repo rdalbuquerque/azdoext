@@ -87,7 +87,7 @@ func NewAzdoClient(org, project, pat string) *AzdoClient {
 	}
 }
 
-func (m *Model) getPipelineStatus(pipelineId int) (string, string, int) {
+func (m *Model) getPipelineStatus(pipelineId int) (map[string]interface{}, int) {
 	apiURL := fmt.Sprintf("%s/_apis/build/builds?definitions=%d&queryOrder=queueTimeDescending&$top=1&%s", m.azdoClient.orgUrl, pipelineId, m.azdoClient.defaultApiVersion)
 	req, err := http.NewRequest("GET", apiURL, nil)
 	req.Header = m.azdoClient.authHeader
@@ -110,19 +110,23 @@ func (m *Model) getPipelineStatus(pipelineId int) (string, string, int) {
 	}
 	runCount := int(r["count"].(float64))
 	if runCount == 0 {
-		return "noRuns", "", 0
+		return map[string]interface{}{"status": "noRuns", "result": ""}, 0
 	}
 	run := r["value"].([]interface{})[0].(map[string]interface{})
 	runResult, ok := run["result"].(string)
 	if !ok {
 		runResult = ""
 	}
-	return run["status"].(string), runResult, int(run["id"].(float64))
+	statusResultMap := map[string]interface{}{
+		"status": run["status"].(string),
+		"result": runResult,
+	}
+	return statusResultMap, int(run["id"].(float64))
 }
 
 func (m *Model) RunOrFollowPipeline(id int, runNew bool) tea.Msg {
 	apiURL := fmt.Sprintf("%s/_apis/pipelines/%d/runs?%s", m.azdoClient.orgUrl, id, "api-version=7.1-preview.1")
-	if status, _, runId := m.getPipelineStatus(id); status != "completed" && !runNew {
+	if statusResultMap, runId := m.getPipelineStatus(id); statusResultMap["status"] != "completed" && !runNew {
 		return PipelineIdMsg(runId)
 	}
 
@@ -337,9 +341,9 @@ func (m *Model) FetchPipelines(wait time.Duration) tea.Cmd {
 			pipelineObj := pipeline.(map[string]interface{})
 			pipelineName := pipelineObj["name"].(string)
 			pipelineId := int(pipelineObj["id"].(float64))
-			status, _, _ := m.getPipelineStatus(pipelineId)
-			symbol := m.getSymbol(pipelineObj)
-			pipelineList = append(pipelineList, PipelineItem{Title: pipelineName, Desc: pipelineId, Status: status, Symbol: symbol})
+			statusResultMap, _ := m.getPipelineStatus(pipelineId)
+			symbol := m.getSymbol(statusResultMap)
+			pipelineList = append(pipelineList, PipelineItem{Title: pipelineName, Desc: pipelineId, Status: statusResultMap["status"].(string), Symbol: symbol})
 		}
 		return PipelinesFetchedMsg(pipelineList)
 	}
