@@ -16,10 +16,10 @@ var (
 )
 
 type PipelineItem struct {
-	Title   string
-	Desc    any
-	Running bool
-	Symbol  string
+	Title  string
+	Desc   any
+	Status string
+	Symbol string
 }
 
 func (i PipelineItem) FilterValue() string { return "" }
@@ -56,11 +56,16 @@ func (m *Model) SetTaskList(ps pipelineState) {
 	itemsList := []list.Item{}
 	if m.PipelineState.Stages != nil {
 		for _, stage := range m.PipelineState.Stages {
-			itemsList = append(itemsList, PipelineItem{Title: m.formatStatusView(stage.State, stage.Result, stage.Name, ""), Desc: stage.Log})
+			statusResultMap := map[string]interface{}{"status": stage.State, "result": stage.Result}
+			itemsList = append(itemsList, PipelineItem{Title: m.formatStatusView(statusResultMap, stage.Name, ""), Desc: stage.Log})
 			for _, job := range stage.Jobs {
-				itemsList = append(itemsList, PipelineItem{Title: m.formatStatusView(job.State, job.Result, job.Name, "  "), Desc: job.Log})
+				statusResultMap["status"] = job.State
+				statusResultMap["result"] = job.Result
+				itemsList = append(itemsList, PipelineItem{Title: m.formatStatusView(statusResultMap, job.Name, "  "), Desc: job.Log})
 				for _, task := range job.Tasks {
-					itemsList = append(itemsList, PipelineItem{Title: m.formatStatusView(task.State, task.Result, task.Name, "    "), Desc: task.Log})
+					statusResultMap["status"] = task.State
+					statusResultMap["result"] = task.Result
+					itemsList = append(itemsList, PipelineItem{Title: m.formatStatusView(statusResultMap, task.Name, "    "), Desc: task.Log})
 				}
 			}
 		}
@@ -70,8 +75,8 @@ func (m *Model) SetTaskList(ps pipelineState) {
 
 func (m *Model) SetPipelineList() {
 	for i := range m.PipelineList.Items() {
-		if m.PipelineList.Items()[i].(PipelineItem).Running {
-			m.PipelineList.Items()[i] = PipelineItem{Symbol: m.pipelineSpinner.View(), Title: m.PipelineList.Items()[i].(PipelineItem).Title, Running: true, Desc: m.PipelineList.Items()[i].(PipelineItem).Desc}
+		if m.PipelineList.Items()[i].(PipelineItem).Status != "completed" {
+			m.PipelineList.Items()[i] = PipelineItem{Symbol: m.pipelineSpinner.View(), Title: m.PipelineList.Items()[i].(PipelineItem).Title, Status: m.PipelineList.Items()[i].(PipelineItem).Status, Desc: m.PipelineList.Items()[i].(PipelineItem).Desc}
 		}
 	}
 }

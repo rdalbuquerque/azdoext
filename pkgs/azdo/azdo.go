@@ -29,16 +29,21 @@ var (
 	InactiveStyle = lipgloss.NewStyle().
 			Border(lipgloss.NormalBorder(), true, false, true, false).
 			BorderForeground(lipgloss.Color("#6c6c6c"))
-	stopped   = lipgloss.NewStyle().SetString("■").Foreground(lipgloss.Color("#808080"))
-	pending   = lipgloss.NewStyle().SetString("⊛").Foreground(lipgloss.Color("#ffbf00"))
-	succeeded = lipgloss.NewStyle().SetString("✔").Foreground(lipgloss.Color("#00ff00"))
-	failed    = lipgloss.NewStyle().SetString("✖").Foreground(lipgloss.Color("#ff0000"))
-	skipped   = lipgloss.NewStyle().SetString("➤").Foreground(lipgloss.Color("#ffffff"))
-	symbolMap = map[string]interface{}{
-		"pending":   pending,
-		"succeeded": succeeded,
-		"failed":    failed,
-		"skipped":   skipped,
+	noRuns             = lipgloss.NewStyle().SetString("■").Foreground(lipgloss.Color("#808080"))
+	pending            = lipgloss.NewStyle().SetString("⊛").Foreground(lipgloss.Color("#ffbf00"))
+	succeeded          = lipgloss.NewStyle().SetString("✔").Foreground(lipgloss.Color("#00ff00"))
+	failed             = lipgloss.NewStyle().SetString("✖").Foreground(lipgloss.Color("#ff0000"))
+	skipped            = lipgloss.NewStyle().SetString("➤").Foreground(lipgloss.Color("#ffffff"))
+	partiallySucceeded = lipgloss.NewStyle().SetString("⚠").Foreground(lipgloss.Color("#ffbf00"))
+	canceled           = lipgloss.NewStyle().SetString("⊝").Foreground(lipgloss.Color("#ffbf00"))
+	symbolMap          = map[string]lipgloss.Style{
+		"pending":            pending,
+		"succeeded":          succeeded,
+		"failed":             failed,
+		"skipped":            skipped,
+		"noRuns":             noRuns,
+		"partiallySucceeded": partiallySucceeded,
+		"canceled":           canceled,
 	}
 )
 
@@ -116,7 +121,7 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 			}
 			if m.activeSection == PipelineListSection {
 				selectedPipeline := m.PipelineList.SelectedItem().(PipelineItem)
-				if selectedPipeline.Running {
+				if selectedPipeline.Status != "completed" {
 					m.RunOrFollowChoiceEnabled = true
 					return m, nil
 				}
@@ -230,12 +235,22 @@ func log2file(msg string) {
 	}
 }
 
-func (m *Model) formatStatusView(state, result, name, indent string) string {
-	if state == "inProgress" {
-		return fmt.Sprintf("%s%s %s", indent, m.pipelineSpinner.View(), name)
-	} else if state == "completed" {
-		return fmt.Sprintf("%s%s %s", indent, symbolMap[result], name)
+func (m *Model) formatStatusView(obj map[string]interface{}, name, indent string) string {
+	symbol := m.getSymbol(obj)
+	return fmt.Sprintf("%s%s %s", indent, symbol, name)
+}
+
+func (m *Model) getSymbol(obj map[string]interface{}) string {
+	status := obj["status"].(string)
+	result, ok := obj["result"].(string)
+	if !ok {
+		result = ""
+	}
+	if status == "inProgress" {
+		return m.pipelineSpinner.View()
+	} else if status == "completed" {
+		return symbolMap[result].String()
 	} else {
-		return fmt.Sprintf("%s%s %s", indent, symbolMap[state], name)
+		return symbolMap[status].String()
 	}
 }

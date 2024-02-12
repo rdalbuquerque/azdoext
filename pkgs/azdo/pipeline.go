@@ -87,8 +87,8 @@ func NewAzdoClient(org, project, pat string) *AzdoClient {
 	}
 }
 
-func (m *Model) IsPipelineRunning(pipelineId int) (bool, int) {
-	apiURL := fmt.Sprintf("%s/_apis/build/builds?definitions=%d&statusFilter=notStarted,inProgress&queryOrder=queueTimeDescending&$top=1&%s", m.azdoClient.orgUrl, pipelineId, m.azdoClient.defaultApiVersion)
+func (m *Model) getPipelineStatus(pipelineId int) (string, string, int) {
+	apiURL := fmt.Sprintf("%s/_apis/build/builds?definitions=%d&queryOrder=queueTimeDescending&$top=1&%s", m.azdoClient.orgUrl, pipelineId, m.azdoClient.defaultApiVersion)
 	req, err := http.NewRequest("GET", apiURL, nil)
 	req.Header = m.azdoClient.authHeader
 	if err != nil {
@@ -110,14 +110,19 @@ func (m *Model) IsPipelineRunning(pipelineId int) (bool, int) {
 	}
 	runCount := int(r["count"].(float64))
 	if runCount == 0 {
-		return false, 0
+		return "noRuns", "", 0
 	}
-	return true, int(r["value"].([]interface{})[0].(map[string]interface{})["id"].(float64))
+	run := r["value"].([]interface{})[0].(map[string]interface{})
+	runResult, ok := run["result"].(string)
+	if !ok {
+		runResult = ""
+	}
+	return run["status"].(string), runResult, int(run["id"].(float64))
 }
 
 func (m *Model) RunOrFollowPipeline(id int, runNew bool) tea.Msg {
 	apiURL := fmt.Sprintf("%s/_apis/pipelines/%d/runs?%s", m.azdoClient.orgUrl, id, "api-version=7.1-preview.1")
-	if isRunning, runId := m.IsPipelineRunning(id); isRunning && !runNew {
+	if status, _, runId := m.getPipelineStatus(id); status != "completed" && !runNew {
 		return PipelineIdMsg(runId)
 	}
 
@@ -329,16 +334,12 @@ func (m *Model) FetchPipelines(wait time.Duration) tea.Cmd {
 		json.Unmarshal(body, &result)
 		pipelineList := []list.Item{}
 		for _, pipeline := range result["value"].([]interface{}) {
-			pipelineName := pipeline.(map[string]interface{})["name"].(string)
-			pipelineId := int(pipeline.(map[string]interface{})["id"].(float64))
-			running, _ := m.IsPipelineRunning(pipelineId)
-			var symbol string
-			if running {
-				symbol = m.pipelineSpinner.View()
-			} else {
-				symbol = stopped.String()
-			}
-			pipelineList = append(pipelineList, PipelineItem{Title: pipelineName, Desc: pipelineId, Running: running, Symbol: symbol})
+			pipelineObj := pipeline.(map[string]interface{})
+			pipelineName := pipelineObj["name"].(string)
+			pipelineId := int(pipelineObj["id"].(float64))
+			status, _, _ := m.getPipelineStatus(pipelineId)
+			symbol := m.getSymbol(pipelineObj)
+			pipelineList = append(pipelineList, PipelineItem{Title: pipelineName, Desc: pipelineId, Status: status, Symbol: symbol})
 		}
 		return PipelinesFetchedMsg(pipelineList)
 	}
