@@ -156,7 +156,7 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 		return m, nil
 	case PipelinesFetchedMsg:
 		m.PipelineList.SetItems(msg)
-		return m, tea.Batch(m.FetchPipelines(5*time.Second), m.pipelineSpinner.Tick)
+		return m, tea.Batch(m.FetchPipelines(1*time.Second), m.pipelineSpinner.Tick)
 	case PipelineIdMsg:
 		m.PipelineState.IsRunning = true
 		m.activeSection = TaskListSection
@@ -241,6 +241,7 @@ func (m *Model) formatStatusView(obj map[string]interface{}, name, indent string
 }
 
 func (m *Model) getSymbol(obj map[string]interface{}) string {
+	log2file(fmt.Sprintf("obj: %v\n", obj))
 	status, ok := obj["status"].(string)
 	if !ok {
 		status = ""
