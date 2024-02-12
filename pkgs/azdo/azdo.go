@@ -241,7 +241,10 @@ func (m *Model) formatStatusView(obj map[string]interface{}, name, indent string
 }
 
 func (m *Model) getSymbol(obj map[string]interface{}) string {
-	status := obj["status"].(string)
+	status, ok := obj["status"].(string)
+	if !ok {
+		status = ""
+	}
 	result, ok := obj["result"].(string)
 	if !ok {
 		result = ""
