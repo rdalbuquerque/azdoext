@@ -23,7 +23,31 @@ func (m *model) addToStage() {
 	if _, err := m.worktree.Add(item.name); err != nil {
 		panic(err)
 	}
-	setStagedFileList(m.worktree)
+	status, err := m.worktree.Status()
+	if err != nil {
+		panic(err)
+	}
+	fileItems := []list.Item{}
+	for file, _ := range status {
+		// Check if the file is staged
+		fileStatus, ok := status[file]
+		var staged bool
+		if !ok {
+			log2file(fmt.Sprintf("file: %s, status: %s\n", file, "not ok status"))
+		} else {
+			// File is tracked; check if it's staged for commit
+			if fileStatus.Staging == git.Added || fileStatus.Staging == git.Modified || fileStatus.Staging == git.Deleted {
+				log2file(fmt.Sprintf("file: %s, status: %v\n", file, fileStatus.Staging))
+				staged = true
+			} else {
+				log2file(fmt.Sprintf("file: %s, status: %v\n", file, fileStatus.Staging))
+				staged = false
+			}
+		}
+		log2file(fmt.Sprintf("file: %s, status: %v\n", file, fileStatus))
+		fileItems = append(fileItems, stagedFileItem{name: file, staged: staged})
+	}
+	m.stagedFileList.SetItems(fileItems)
 }
 
 func setStagedFileList(worktree *git.Worktree) list.Model {
@@ -33,7 +57,7 @@ func setStagedFileList(worktree *git.Worktree) list.Model {
 	}
 	fileItems := []list.Item{}
 	for file, _ := range status {
-		fileItems = append(fileItems, stagedFileItem{name: file, staged: false})
+		fileItems = append(fileItems, stagedFileItem{name: file, staged: status[file].Staging == git.Added})
 	}
 	stagedFileList := list.New(fileItems, gitItemDelegate{}, 20, 0)
 	stagedFileList.Title = "Status"
@@ -42,7 +66,8 @@ func setStagedFileList(worktree *git.Worktree) list.Model {
 
 var (
 	itemStyle         = lipgloss.NewStyle().PaddingLeft(4)
-	selectedItemStyle = lipgloss.NewStyle().PaddingLeft(2).Foreground(lipgloss.Color("170"))
+	selectedItemStyle = lipgloss.NewStyle().PaddingLeft(2)
+	stagedFileStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("#00ff00"))
 )
 
 type stagedFileItem struct {
@@ -64,7 +89,9 @@ func (d gitItemDelegate) Render(w io.Writer, m list.Model, index int, listItem l
 	}
 
 	str := i.name
-
+	if i.staged {
+		str = stagedFileStyle.Render(str)
+	}
 	fn := itemStyle.Render
 	if index == m.Index() {
 		fn = func(s ...string) string {

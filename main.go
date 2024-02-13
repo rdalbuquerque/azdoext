@@ -155,7 +155,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.activeSection == worktreeSection {
 				m.addToStage()
 			}
-			return m, nil
+			fileList, cmd := m.stagedFileList.Update(msg)
+			m.stagedFileList = fileList
+			return m, cmd
 		case tea.KeyCtrlS:
 			m.textarea.Blur()
 			if m.worktree != nil {
