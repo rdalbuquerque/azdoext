@@ -75,6 +75,8 @@ func (m *Model) SetTaskList(ps pipelineState) {
 
 func (m *Model) SetPipelineList() {
 	for i := range m.PipelineList.Items() {
-		m.PipelineList.Items()[i] = PipelineItem{Symbol: m.PipelineList.Items()[i].(PipelineItem).Symbol, Title: m.PipelineList.Items()[i].(PipelineItem).Title, Status: m.PipelineList.Items()[i].(PipelineItem).Status, Desc: m.PipelineList.Items()[i].(PipelineItem).Desc}
+		statusResultMap := map[string]interface{}{"status": m.PipelineList.Items()[i].(PipelineItem).Status, "result": m.PipelineList.Items()[i].(PipelineItem).Status}
+		symbol := m.getSymbol(statusResultMap)
+		m.PipelineList.Items()[i] = PipelineItem{Symbol: symbol, Title: m.PipelineList.Items()[i].(PipelineItem).Title, Status: m.PipelineList.Items()[i].(PipelineItem).Status, Desc: m.PipelineList.Items()[i].(PipelineItem).Desc}
 	}
 }
