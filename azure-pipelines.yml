@@ -14,7 +14,7 @@ steps:
 - script: echo Hello, world!
   displayName: 'Run a one-line script'
 
-- script: "skipped"
+- script: echo s"skipped"
   condition: eq(variables.not_skip, true)
 
 - script: |
