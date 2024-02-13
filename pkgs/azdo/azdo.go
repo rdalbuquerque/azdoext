@@ -241,7 +241,7 @@ func (m *Model) formatStatusView(obj map[string]interface{}, name, indent string
 }
 
 func (m *Model) getSymbol(obj map[string]interface{}) string {
-	log2file(fmt.Sprintf("obj: %v\n", obj))
+	log2file(fmt.Sprintf("getting symbol for %v\n", obj))
 	status, ok := obj["status"].(string)
 	if !ok {
 		status = ""

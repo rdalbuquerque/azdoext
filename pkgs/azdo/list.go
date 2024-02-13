@@ -75,8 +75,6 @@ func (m *Model) SetTaskList(ps pipelineState) {
 
 func (m *Model) SetPipelineList() {
 	for i := range m.PipelineList.Items() {
-		if m.PipelineList.Items()[i].(PipelineItem).Status != "completed" {
-			m.PipelineList.Items()[i] = PipelineItem{Symbol: m.pipelineSpinner.View(), Title: m.PipelineList.Items()[i].(PipelineItem).Title, Status: m.PipelineList.Items()[i].(PipelineItem).Status, Desc: m.PipelineList.Items()[i].(PipelineItem).Desc}
-		}
+		m.PipelineList.Items()[i] = PipelineItem{Symbol: m.PipelineList.Items()[i].(PipelineItem).Symbol, Title: m.PipelineList.Items()[i].(PipelineItem).Title, Status: m.PipelineList.Items()[i].(PipelineItem).Status, Desc: m.PipelineList.Items()[i].(PipelineItem).Desc}
 	}
 }

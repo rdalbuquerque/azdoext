@@ -110,6 +110,7 @@ func (m *Model) getPipelineStatus(pipelineId int) (map[string]interface{}, int) 
 	}
 	runCount := int(r["count"].(float64))
 	if runCount == 0 {
+		log2file("No runs found\n")
 		return map[string]interface{}{"status": "noRuns", "result": ""}, 0
 	}
 	run := r["value"].([]interface{})[0].(map[string]interface{})
