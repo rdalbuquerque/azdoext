@@ -67,11 +67,12 @@ type Model struct {
 	project                  string
 	repository               string
 	repositoryId             string
+	branch                   string
 	RunOrFollowList          list.Model
 	RunOrFollowChoiceEnabled bool
 }
 
-func New(org, project, repository, pat string) *Model {
+func New(org, project, repository, branch, pat string) *Model {
 	vp := searchableviewport.New(0, 0)
 	pspinner := spinner.New()
 	pspinner.Spinner = spinner.Dot
@@ -96,6 +97,7 @@ func New(org, project, repository, pat string) *Model {
 		project:         project,
 		repository:      repository,
 		repositoryId:    repositoryId,
+		branch:          branch,
 	}
 }
 

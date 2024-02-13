@@ -37,7 +37,7 @@ type model struct {
 	azdo      *azdo.Model
 }
 
-func (m *model) setAzdoClientFromRemote() {
+func (m *model) setAzdoClientFromRemote(branch string) {
 	remotes, err := m.repo.Remotes()
 	if err != nil {
 		panic(err)
@@ -52,7 +52,7 @@ func (m *model) setAzdoClientFromRemote() {
 	organization := parts[1]
 	project := parts[2]
 	repository := parts[4]
-	m.azdo = azdo.New(organization, project, repository, os.Getenv("AZDO_PERSONAL_ACCESS_TOKEN"))
+	m.azdo = azdo.New(organization, project, repository, branch, os.Getenv("AZDO_PERSONAL_ACCESS_TOKEN"))
 }
 
 func initialModel() model {
@@ -88,7 +88,14 @@ func (m *model) Init() tea.Cmd {
 	}
 	m.worktree = w
 	m.repo = r
-	m.setAzdoClientFromRemote()
+
+	ref, err := r.Head()
+	if err != nil {
+		panic(err)
+	}
+	branch := ref.Name()
+	m.setAzdoClientFromRemote(branch.String())
+
 	return func() tea.Msg {
 		return gitOutputMsg(gitStatus.String())
 	}
