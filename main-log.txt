@@ -65,3 +65,36 @@ file: main-log.txt, status: 32
 
 file: main-log.txt, status: &{32 77 }
 
+file: azdo-logs.txt, status: 77
+
+file: azdo-logs.txt, status: &{77 32 }
+
+file: main-log.txt, status: 77
+
+file: main-log.txt, status: &{77 32 }
+
+Pushed
+file: azdo-logs.txt, status: 77
+
+file: azdo-logs.txt, status: &{77 32 }
+
+file: azure-pipelines.yml, status: 32
+
+file: azure-pipelines.yml, status: &{32 77 }
+
+file: main-log.txt, status: 32
+
+file: main-log.txt, status: &{32 77 }
+
+file: azure-pipelines.yml, status: 77
+
+file: azure-pipelines.yml, status: &{77 32 }
+
+file: main-log.txt, status: 32
+
+file: main-log.txt, status: &{32 77 }
+
+file: azdo-logs.txt, status: 77
+
+file: azdo-logs.txt, status: &{77 32 }
+
