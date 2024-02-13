@@ -44,6 +44,7 @@ var (
 		"noRuns":             noRuns,
 		"partiallySucceeded": partiallySucceeded,
 		"canceled":           canceled,
+		"notStarted":         pending,
 	}
 )
 
@@ -235,25 +236,15 @@ func log2file(msg string) {
 	}
 }
 
-func (m *Model) formatStatusView(obj map[string]interface{}, name, indent string) string {
-	symbol := m.getSymbol(obj)
+func (m *Model) formatStatusView(status, name, indent string) string {
+	symbol := m.getSymbol(status)
 	return fmt.Sprintf("%s%s %s", indent, symbol, name)
 }
 
-func (m *Model) getSymbol(obj map[string]interface{}) string {
-	log2file(fmt.Sprintf("getting symbol for %v\n", obj))
-	status, ok := obj["status"].(string)
-	if !ok {
-		status = ""
-	}
-	result, ok := obj["result"].(string)
-	if !ok {
-		result = ""
-	}
+func (m *Model) getSymbol(status string) string {
+	log2file(fmt.Sprintf("getting symbol for %v\n", status))
 	if status == "inProgress" {
 		return m.pipelineSpinner.View()
-	} else if status == "completed" {
-		return symbolMap[result].String()
 	} else {
 		return symbolMap[status].String()
 	}

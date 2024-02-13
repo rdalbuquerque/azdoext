@@ -18,6 +18,10 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
+var pipelineResults = []string{"succeeded", "failed", "partiallySucceeded", "canceled"}
+var taskResults = []string{"abandoned", "canceled", "failed", "skipped", "succeeded", "succeededWithIssues"}
+var taskStates = []string{"completed", "inProgress", "pending"}
+
 type AzdoClient struct {
 	authHeader        map[string][]string
 	orgUrl            string
@@ -35,17 +39,15 @@ type pipelineState struct {
 
 type TaskState struct {
 	Name   string
-	State  string
-	Result string
+	Status string
 	Log    string
 	Id     string
 }
 
 type JobState struct {
 	Name   string
-	State  string
+	Status string
 	Id     string
-	Result string
 	Log    string
 	Tasks  []TaskState
 }
@@ -53,8 +55,7 @@ type JobState struct {
 type StageState struct {
 	Name   string
 	Id     string
-	State  string
-	Result string
+	Status string
 	Log    string
 	Jobs   []JobState
 }
@@ -87,7 +88,7 @@ func NewAzdoClient(org, project, pat string) *AzdoClient {
 	}
 }
 
-func (m *Model) getPipelineStatus(pipelineId int) (map[string]interface{}, int) {
+func (m *Model) getPipelineStatus(pipelineId int) (string, int) {
 	apiURL := fmt.Sprintf("%s/_apis/build/builds?definitions=%d&queryOrder=queueTimeDescending&$top=1&%s", m.azdoClient.orgUrl, pipelineId, m.azdoClient.defaultApiVersion)
 	req, err := http.NewRequest("GET", apiURL, nil)
 	req.Header = m.azdoClient.authHeader
@@ -111,23 +112,19 @@ func (m *Model) getPipelineStatus(pipelineId int) (map[string]interface{}, int) 
 	runCount := int(r["count"].(float64))
 	if runCount == 0 {
 		log2file("No runs found\n")
-		return map[string]interface{}{"status": "noRuns", "result": ""}, 0
+		return "noRuns", 0
 	}
 	run := r["value"].([]interface{})[0].(map[string]interface{})
-	runResult, ok := run["result"].(string)
-	if !ok {
-		runResult = ""
+	runStatus := run["status"].(string)
+	if runStatus == "completed" {
+		return run["result"].(string), int(run["id"].(float64))
 	}
-	statusResultMap := map[string]interface{}{
-		"status": run["status"].(string),
-		"result": runResult,
-	}
-	return statusResultMap, int(run["id"].(float64))
+	return run["status"].(string), int(run["id"].(float64))
 }
 
 func (m *Model) RunOrFollowPipeline(id int, runNew bool) tea.Msg {
 	apiURL := fmt.Sprintf("%s/_apis/pipelines/%d/runs?%s", m.azdoClient.orgUrl, id, "api-version=7.1-preview.1")
-	if statusResultMap, runId := m.getPipelineStatus(id); statusResultMap["status"] != "completed" && !runNew {
+	if status, runId := m.getPipelineStatus(id); !slices.Contains(pipelineResults, status) && !runNew {
 		return PipelineIdMsg(runId)
 	}
 
@@ -235,26 +232,26 @@ func (c *AzdoClient) fillPipelineStatus(records []Record) pipelineState {
 	ps.IsRunning = slices.Contains(recordsState, "inProgress") || slices.Contains(recordsState, "pending")
 	for _, record := range records {
 		if record.Type == "Stage" {
+			status := getRecordStatus(record)
 			stageState := StageState{
 				Name:   record.Name,
 				Id:     record.ID,
-				State:  record.State,
-				Result: record.Result,
+				Status: status,
 			}
 			for _, child := range record.Children {
 				if child.Type == "Phase" && len(child.Children) > 0 {
+					status := getRecordStatus(*child.Children[0])
 					jobState := JobState{
 						Name:   child.Children[0].Name,
-						State:  child.Children[0].State,
+						Status: status,
 						Id:     child.Children[0].ID,
-						Result: child.Children[0].Result,
 					}
 					for _, task := range child.Children[0].Children {
+						status := getRecordStatus(*task)
 						taskState := TaskState{
 							Name:   task.Name,
-							State:  task.State,
+							Status: status,
 							Id:     task.ID,
-							Result: task.Result,
 							Log:    c.getTaskLog(task),
 						}
 						jobState.Tasks = append(jobState.Tasks, taskState)
@@ -342,10 +339,17 @@ func (m *Model) FetchPipelines(wait time.Duration) tea.Cmd {
 			pipelineObj := pipeline.(map[string]interface{})
 			pipelineName := pipelineObj["name"].(string)
 			pipelineId := int(pipelineObj["id"].(float64))
-			statusResultMap, _ := m.getPipelineStatus(pipelineId)
-			symbol := m.getSymbol(statusResultMap)
-			pipelineList = append(pipelineList, PipelineItem{Title: pipelineName, Desc: pipelineId, Status: statusResultMap["status"].(string), Symbol: symbol})
+			status, _ := m.getPipelineStatus(pipelineId)
+			symbol := m.getSymbol(status)
+			pipelineList = append(pipelineList, PipelineItem{Title: pipelineName, Desc: pipelineId, Status: status, Symbol: symbol})
 		}
 		return PipelinesFetchedMsg(pipelineList)
 	}
+}
+
+func getRecordStatus(record Record) string {
+	if record.Result != "" {
+		return record.Result
+	}
+	return record.State
 }

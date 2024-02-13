@@ -56,16 +56,11 @@ func (m *Model) SetTaskList(ps pipelineState) {
 	itemsList := []list.Item{}
 	if m.PipelineState.Stages != nil {
 		for _, stage := range m.PipelineState.Stages {
-			statusResultMap := map[string]interface{}{"status": stage.State, "result": stage.Result}
-			itemsList = append(itemsList, PipelineItem{Title: m.formatStatusView(statusResultMap, stage.Name, ""), Desc: stage.Log})
+			itemsList = append(itemsList, PipelineItem{Title: m.formatStatusView(stage.Status, stage.Name, ""), Desc: stage.Log})
 			for _, job := range stage.Jobs {
-				statusResultMap["status"] = job.State
-				statusResultMap["result"] = job.Result
-				itemsList = append(itemsList, PipelineItem{Title: m.formatStatusView(statusResultMap, job.Name, "  "), Desc: job.Log})
+				itemsList = append(itemsList, PipelineItem{Title: m.formatStatusView(job.Status, job.Name, "  "), Desc: job.Log})
 				for _, task := range job.Tasks {
-					statusResultMap["status"] = task.State
-					statusResultMap["result"] = task.Result
-					itemsList = append(itemsList, PipelineItem{Title: m.formatStatusView(statusResultMap, task.Name, "    "), Desc: task.Log})
+					itemsList = append(itemsList, PipelineItem{Title: m.formatStatusView(task.Status, task.Name, "    "), Desc: task.Log})
 				}
 			}
 		}
@@ -75,8 +70,7 @@ func (m *Model) SetTaskList(ps pipelineState) {
 
 func (m *Model) SetPipelineList() {
 	for i := range m.PipelineList.Items() {
-		statusResultMap := map[string]interface{}{"status": m.PipelineList.Items()[i].(PipelineItem).Status, "result": m.PipelineList.Items()[i].(PipelineItem).Status}
-		symbol := m.getSymbol(statusResultMap)
+		symbol := m.getSymbol(m.PipelineList.Items()[i].(PipelineItem).Status)
 		m.PipelineList.Items()[i] = PipelineItem{Symbol: symbol, Title: m.PipelineList.Items()[i].(PipelineItem).Title, Status: m.PipelineList.Items()[i].(PipelineItem).Status, Desc: m.PipelineList.Items()[i].(PipelineItem).Desc}
 	}
 }
