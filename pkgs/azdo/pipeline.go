@@ -355,7 +355,7 @@ func getRecordStatus(record Record) string {
 }
 
 func (c *AzdoClient) getPipelineRepository(pipelineId int) string {
-	apiURL := fmt.Sprintf("%s/_apis/pipelines/%d?%s", c.orgUrl, pipelineId, c.defaultApiVersion)
+	apiURL := fmt.Sprintf("%s/_apis/pipelines/%d?%s", c.orgUrl, pipelineId, "api-version=7.1-preview.1")
 	req, err := http.NewRequest("GET", apiURL, nil)
 	if err != nil {
 		panic(err)
