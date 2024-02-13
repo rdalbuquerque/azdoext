@@ -51,7 +51,8 @@ func (m *model) setAzdoClientFromRemote() {
 	parts := strings.Split(u.Path, "/")
 	organization := parts[1]
 	project := parts[2]
-	m.azdo = azdo.New(organization, project, os.Getenv("AZDO_PERSONAL_ACCESS_TOKEN"))
+	repository := parts[4]
+	m.azdo = azdo.New(organization, project, repository, os.Getenv("AZDO_PERSONAL_ACCESS_TOKEN"))
 }
 
 func initialModel() model {

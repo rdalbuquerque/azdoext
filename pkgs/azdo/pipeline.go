@@ -339,7 +339,9 @@ func (m *Model) FetchPipelines(wait time.Duration) tea.Cmd {
 			pipelineId := int(pipelineObj["id"].(float64))
 			status, _ := m.getPipelineStatus(pipelineId)
 			symbol := m.getSymbol(status)
-			pipelineList = append(pipelineList, PipelineItem{Title: pipelineName, Desc: pipelineId, Status: status, Symbol: symbol})
+			if m.azdoClient.getPipelineRepository(pipelineId) == m.repositoryId {
+				pipelineList = append(pipelineList, PipelineItem{Title: pipelineName, Desc: pipelineId, Status: status, Symbol: symbol})
+			}
 		}
 		return PipelinesFetchedMsg(pipelineList)
 	}
@@ -350,4 +352,28 @@ func getRecordStatus(record Record) string {
 		return record.Result
 	}
 	return record.State
+}
+
+func (c *AzdoClient) getPipelineRepository(pipelineId int) string {
+	apiURL := fmt.Sprintf("%s/_apis/pipelines/%d?%s", c.orgUrl, pipelineId, c.defaultApiVersion)
+	req, err := http.NewRequest("GET", apiURL, nil)
+	if err != nil {
+		panic(err)
+	}
+	req.Header = c.authHeader
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		panic(err)
+	}
+	var r map[string]interface{}
+	err = json.Unmarshal(body, &r)
+	if err != nil {
+		panic(err)
+	}
+	return r["configuration"].(map[string]interface{})["repository"].(map[string]interface{})["id"].(string)
 }

@@ -1,7 +1,10 @@
 package azdo
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"slices"
 	"time"
@@ -60,11 +63,15 @@ type Model struct {
 	Client                   *AzdoClient
 	PipelineList             list.Model
 	azdoClient               *AzdoClient
+	organization             string
+	project                  string
+	repository               string
+	repositoryId             string
 	RunOrFollowList          list.Model
 	RunOrFollowChoiceEnabled bool
 }
 
-func New(org, project, pat string) *Model {
+func New(org, project, repository, pat string) *Model {
 	vp := searchableviewport.New(0, 0)
 	pspinner := spinner.New()
 	pspinner.Spinner = spinner.Dot
@@ -77,6 +84,7 @@ func New(org, project, pat string) *Model {
 	pipelineList.SetShowStatusBar(false)
 	runOrFollowList := list.New([]list.Item{PipelineItem{Title: "Run"}, PipelineItem{Title: "Follow"}}, itemDelegate{}, 30, 0)
 	runOrFollowList.Title = "Run new or follow?"
+	repositoryId := getRepository(repository, azdoclient)
 	return &Model{
 		TaskList:        tl,
 		pipelineSpinner: pspinner,
@@ -84,6 +92,10 @@ func New(org, project, pat string) *Model {
 		azdoClient:      azdoclient,
 		PipelineList:    pipelineList,
 		RunOrFollowList: runOrFollowList,
+		organization:    org,
+		project:         project,
+		repository:      repository,
+		repositoryId:    repositoryId,
 	}
 }
 
@@ -249,4 +261,35 @@ func (m *Model) getSymbol(status string) string {
 	} else {
 		return symbolMap[status].String()
 	}
+}
+
+func getRepository(repository string, azdoclient *AzdoClient) string {
+	apiURL := fmt.Sprintf("%s/_apis/git/repositories/%s?%s", azdoclient.orgUrl, repository, "api-version=7.1-preview.1")
+	req, err := http.NewRequest("GET", apiURL, nil)
+	if err != nil {
+		panic(err)
+	}
+
+	// Add authorization header
+	req.Header = azdoclient.authHeader
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	return getRepositoryId(resp)
+}
+
+func getRepositoryId(resp *http.Response) string {
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		panic(err)
+	}
+	var r map[string]interface{}
+	err = json.Unmarshal(body, &r)
+	if err != nil {
+		panic(err)
+	}
+	return r["id"].(string)
 }
