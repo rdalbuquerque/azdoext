@@ -1,2 +1,67 @@
 Pushed
 Pushed
+file: azdo-logs.txt, status: false
+
+file: git.go, status: false
+
+file: main-log.txt, status: false
+
+file: main.go, status: false
+
+file: azdo-logs.txt, status: false
+
+file: git.go, status: false
+
+file: main-log.txt, status: false
+
+file: main.go, status: false
+
+file: azdo-logs.txt, status: 77
+
+file: git.go, status: 77
+
+file: main-log.txt, status: 77
+
+file: main.go, status: 77
+
+file: azdo-logs.txt, status: &{77 32 }
+
+file: azdo-logs.txt, status: &{77 32 }
+
+file: git.go, status: &{77 77 }
+
+file: git.go, status: &{77 77 }
+
+file: main-log.txt, status: &{77 77 }
+
+file: main-log.txt, status: &{77 77 }
+
+file: main.go, status: &{77 32 }
+
+file: main.go, status: &{77 32 }
+
+file: azdo-logs.txt, status: 77
+
+file: azdo-logs.txt, status: &{77 32 }
+
+file: git.go, status: 77
+
+file: git.go, status: &{77 32 }
+
+file: main-log.txt, status: 77
+
+file: main-log.txt, status: &{77 77 }
+
+file: main.go, status: 77
+
+file: main.go, status: &{77 32 }
+
+Pushed
+file: azdo-logs.txt, status: 77
+
+file: azdo-logs.txt, status: &{77 32 }
+
+file: main-log.txt, status: 32
+
+file: main-log.txt, status: &{32 77 }
+
