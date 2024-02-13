@@ -3,6 +3,7 @@ package azdo
 import (
 	"fmt"
 	"os"
+	"slices"
 	"time"
 
 	"explore-bubbletea/pkgs/searchableviewport"
@@ -122,7 +123,7 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 			}
 			if m.activeSection == PipelineListSection {
 				selectedPipeline := m.PipelineList.SelectedItem().(PipelineItem)
-				if selectedPipeline.Status != "completed" {
+				if !slices.Contains(pipelineResults, selectedPipeline.Status) {
 					m.RunOrFollowChoiceEnabled = true
 					return m, nil
 				}

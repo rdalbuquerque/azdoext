@@ -19,8 +19,6 @@ import (
 )
 
 var pipelineResults = []string{"succeeded", "failed", "partiallySucceeded", "canceled"}
-var taskResults = []string{"abandoned", "canceled", "failed", "skipped", "succeeded", "succeededWithIssues"}
-var taskStates = []string{"completed", "inProgress", "pending"}
 
 type AzdoClient struct {
 	authHeader        map[string][]string
