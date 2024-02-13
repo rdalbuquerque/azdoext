@@ -18,7 +18,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-var pipelineResults = []string{"succeeded", "failed", "partiallySucceeded", "canceled"}
+var pipelineResults = []string{"succeeded", "failed", "partiallySucceeded", "canceled", "noRuns"}
 
 type AzdoClient struct {
 	authHeader        map[string][]string
