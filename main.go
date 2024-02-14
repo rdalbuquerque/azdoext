@@ -141,6 +141,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.prOrPipelineChoice.SelectedItem().(stagedFileItem).name == "Open PR" {
 					m.activeSection = openPRSection
 					m.prTextarea.Focus()
+					return m, nil
 				} else {
 					return m, m.azdo.FetchPipelines(0)
 				}

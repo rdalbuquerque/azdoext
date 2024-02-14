@@ -78,3 +78,17 @@ file: main.go, status: 77
 file: main.go, status: &{77 32 }
 
 Pushed
+file: azdo-logs.txt, status: 77
+
+file: azdo-logs.txt, status: &{77 32 }
+
+file: main-log.txt, status: 77
+
+file: main-log.txt, status: &{77 32 }
+
+file: main.go, status: 77
+
+file: main.go, status: &{77 32 }
+
+Pushed
+Enter key pressed
