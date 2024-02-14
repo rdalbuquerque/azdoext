@@ -195,7 +195,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				title := titleAndDescription[0]
 				description := titleAndDescription[1]
 				m.prTextarea.Blur()
-				return m, func() tea.Msg { return m.azdo.OpenPR("master", m.azdo.Branch, title, description) }
+				return m, tea.Batch(func() tea.Msg { return m.azdo.OpenPR("master", m.azdo.Branch, title, description) }, m.azdo.FetchPipelines(0))
 			}
 			if m.commitTextarea.Focused() {
 				m.commitTextarea.Blur()
