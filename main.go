@@ -86,7 +86,7 @@ func (m *model) Init() tea.Cmd {
 	m.spinner = spinner.New()       // Initialize the spinner
 	m.spinner.Spinner = spinner.Dot // Set the spinner style
 	m.prTextarea = textarea.New()
-	m.prTextarea.Placeholder = "1st line - Title\nOther lines - Description"
+	m.prTextarea.Placeholder = "1st line - Title\n\nOther lines - Description"
 	r, err := git.PlainOpen(".")
 	if err != nil {
 		panic(err)
@@ -246,6 +246,11 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		prOrPipelineChoice, cmd := m.prOrPipelineChoice.Update(msg)
 		m.prOrPipelineChoice = prOrPipelineChoice
 		return m, cmd
+	}
+	if m.activeSection == openPRSection {
+		textarea, txtcmd := m.prTextarea.Update(msg)
+		m.prTextarea = textarea
+		return m, txtcmd
 	}
 	textarea, txtcmd := m.commitTextarea.Update(msg)
 	m.commitTextarea = textarea
