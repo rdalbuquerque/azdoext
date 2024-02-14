@@ -50,6 +50,7 @@ const (
 	worktreeSection
 	prOrPipelineSection
 	openPRSection
+	azdoSection
 )
 
 func (m *model) setAzdoClientFromRemote(branch string) {
@@ -89,7 +90,7 @@ func (m *model) Init() tea.Cmd {
 	m.prTextarea.Placeholder = "1st line - TitleOther lines - Description"
 	m.prTextarea.SetPromptFunc(5, func(i int) string {
 		if i == 0 {
-			return "Title:"
+			return "      Title:"
 		} else {
 			return "Description:"
 		}
@@ -151,6 +152,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.prTextarea.Focus()
 					return m, nil
 				} else {
+					m.activeSection = azdoSection
 					return m, m.azdo.FetchPipelines(0)
 				}
 			}
@@ -189,8 +191,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, cmd
 		case tea.KeyCtrlS:
 			if m.activeSection == openPRSection {
-				title := strings.Split(m.prTextarea.Value(), "\n")[0]
-				description := strings.Join(strings.Split(m.prTextarea.Value(), "\n")[1:], "\n")
+				titleAndDescription := strings.SplitN(m.prTextarea.Value(), "\n", 2)
+				title := titleAndDescription[0]
+				description := titleAndDescription[1]
 				m.prTextarea.Blur()
 				return m, func() tea.Msg { return m.azdo.OpenPR("master", m.azdo.Branch, title, description) }
 			}
@@ -243,6 +246,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.gitStatus = string(msg)
 	case azdo.PipelinesFetchedMsg, azdo.PipelineIdMsg, azdo.PipelineStateMsg, azdo.PRMsg:
+		if m.activeSection == openPRSection {
+			m.activeSection = azdoSection
+		}
 		azdo, cmd := m.azdo.Update(msg)
 		m.azdo = azdo
 		return m, cmd
@@ -272,13 +278,13 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *model) View() string {
-	if m.pushed {
-		if m.activeSection == prOrPipelineSection {
-			return activeStyle.Render(m.prOrPipelineChoice.View())
-		}
-		if m.activeSection == openPRSection {
-			return activeStyle.Render(lipgloss.JoinVertical(lipgloss.Top, "Open PR:", m.prTextarea.View()))
-		}
+	if m.activeSection == prOrPipelineSection {
+		return activeStyle.Render(m.prOrPipelineChoice.View())
+	}
+	if m.activeSection == openPRSection {
+		return activeStyle.Render(lipgloss.JoinVertical(lipgloss.Top, "Open PR:", m.prTextarea.View()))
+	}
+	if m.activeSection == azdoSection {
 		return m.azdo.View()
 	}
 	var gitCommitView, worktreeView string
