@@ -248,7 +248,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 	}
 	if m.activeSection == prOrPipelineSection {
-		m.prOrPipelineChoice, cmd = m.prOrPipelineChoice.Update(msg)
+		prOrPipelineChoice, cmd := m.prOrPipelineChoice.Update(msg)
+		m.prOrPipelineChoice = prOrPipelineChoice
 		return m, cmd
 	}
 	textarea, txtcmd := m.commitTextarea.Update(msg)
