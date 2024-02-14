@@ -16,7 +16,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	git "github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
 )
@@ -296,7 +295,6 @@ func (m *model) push() tea.Msg {
 	err := m.repo.Push(&git.PushOptions{
 		Auth:     &githttp.BasicAuth{Username: "", Password: os.Getenv("AZDO_PERSONAL_ACCESS_TOKEN")},
 		Progress: nil,
-		RefSpecs: []config.RefSpec{config.RefSpec("refs/heads/" + strings.Split(m.azdo.Branch, "/")[2] + ":refs/heads/" + strings.Split(m.azdo.Branch, "/")[2])},
 	})
 	if err != nil {
 		log2file(err.Error())
