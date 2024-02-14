@@ -181,7 +181,6 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, func() tea.Msg { return m.azdo.OpenPR("master", m.azdo.Branch, title, description) }
 			}
 			if m.commitTextarea.Focused() {
-				m.activeSection = prOrPipelineSection
 				m.commitTextarea.Blur()
 				if m.worktree != nil {
 					repo, err := m.repo.Config()
