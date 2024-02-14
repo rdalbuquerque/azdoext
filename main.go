@@ -86,7 +86,15 @@ func (m *model) Init() tea.Cmd {
 	m.spinner = spinner.New()       // Initialize the spinner
 	m.spinner.Spinner = spinner.Dot // Set the spinner style
 	m.prTextarea = textarea.New()
-	m.prTextarea.Placeholder = "1st line - Title\n\nOther lines - Description"
+	m.prTextarea.Placeholder = "1st line - TitleOther lines - Description"
+	m.prTextarea.SetPromptFunc(5, func(i int) string {
+		if i == 0 {
+			return "Title:"
+		} else {
+			return "Description:"
+		}
+	})
+
 	r, err := git.PlainOpen(".")
 	if err != nil {
 		panic(err)
