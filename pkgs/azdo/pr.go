@@ -14,6 +14,7 @@ type PRMsg string
 
 func (m *Model) OpenPR(from, to, title, description string) tea.Msg {
 	apiUrl := fmt.Sprintf("%s/_git/repositories/%s/pullrequests?api-version=7.1", m.azdoClient.orgUrl, m.repositoryId)
+	log2file(fmt.Sprintf("openPR apiUrl: %s\n", apiUrl))
 	prParams := map[string]interface{}{
 		"sourceRefName": fmt.Sprintf("refs/heads/%s", from),
 		"targetRefName": fmt.Sprintf("refs/heads/%s", to),

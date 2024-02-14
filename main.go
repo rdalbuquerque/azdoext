@@ -271,6 +271,11 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.prTextarea = textarea
 		return m, txtcmd
 	}
+	if m.activeSection == azdoSection {
+		azdo, cmd := m.azdo.Update(msg)
+		m.azdo = azdo
+		return m, cmd
+	}
 	textarea, txtcmd := m.commitTextarea.Update(msg)
 	m.commitTextarea = textarea
 	cmds = append(cmds, txtcmd)
