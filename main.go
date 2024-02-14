@@ -135,19 +135,19 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case tea.KeyEnter:
 			log2file("Enter key pressed")
+			if m.activeSection == prOrPipelineSection {
+				if m.prOrPipelineChoice.SelectedItem().(stagedFileItem).name == "Open PR" {
+					m.prTextarea.Focus()
+				} else {
+					return m, m.azdo.FetchPipelines(0)
+				}
+			}
 			if m.commitTextarea.Focused() {
 				textarea, txtcmd := m.commitTextarea.Update(msg)
 				m.commitTextarea = textarea
 				cmds = append(cmds, txtcmd)
 			}
 			if m.pushed {
-				if m.activeSection == prOrPipelineSection {
-					if m.prOrPipelineChoice.SelectedItem().(stagedFileItem).name == "Open PR" {
-						m.prTextarea.Focus()
-					} else {
-						return m, m.azdo.FetchPipelines(0)
-					}
-				}
 				azdo, azdocmd := m.azdo.Update(msg)
 				cmds = append(cmds, azdocmd)
 				m.azdo = azdo
@@ -174,40 +174,43 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.prTextarea.Focused() {
 				title := strings.Split(m.prTextarea.Value(), "\n")[0]
 				description := strings.Join(strings.Split(m.prTextarea.Value(), "\n")[1:], "\n")
+				m.prTextarea.Blur()
 				return m, func() tea.Msg { return m.azdo.OpenPR("master", m.azdo.Branch, title, description) }
 			}
-			m.commitTextarea.Blur()
-			if m.worktree != nil {
-				repo, err := m.repo.Config()
-				if err != nil {
-					panic(err)
-				}
-				authorName := repo.Author.Name
-				authorEmail := repo.Author.Email
-				_, err = m.worktree.Commit(m.commitTextarea.Value(), &git.CommitOptions{
-					Author: &object.Signature{
-						Name:  authorName,
-						Email: authorEmail,
-						When:  time.Now(),
-					},
-				})
-				if err != nil {
-					m.gitStatus = err.Error()
+			if m.commitTextarea.Focused() {
+				m.commitTextarea.Blur()
+				if m.worktree != nil {
+					repo, err := m.repo.Config()
+					if err != nil {
+						panic(err)
+					}
+					authorName := repo.Author.Name
+					authorEmail := repo.Author.Email
+					_, err = m.worktree.Commit(m.commitTextarea.Value(), &git.CommitOptions{
+						Author: &object.Signature{
+							Name:  authorName,
+							Email: authorEmail,
+							When:  time.Now(),
+						},
+					})
+					if err != nil {
+						m.gitStatus = err.Error()
+						return m, nil
+					}
+					if m.noStagedFiles() {
+						m.addAllToStage()
+						list, cmd := m.stagedFileList.Update(msg)
+						m.stagedFileList = list
+						cmds = append(cmds, cmd)
+					}
+					m.gitStatus = "Changes committed"
+					m.pushing = true
+					cmds = append(cmds, m.push, m.spinner.Tick)
+					return m, tea.Batch(cmds...)
+				} else {
+					m.gitStatus = "Worktree is not initialized"
 					return m, nil
 				}
-				if m.noStagedFiles() {
-					m.addAllToStage()
-					list, cmd := m.stagedFileList.Update(msg)
-					m.stagedFileList = list
-					cmds = append(cmds, cmd)
-				}
-				m.gitStatus = "Changes committed"
-				m.pushing = true
-				cmds = append(cmds, m.push, m.spinner.Tick)
-				return m, tea.Batch(cmds...)
-			} else {
-				m.gitStatus = "Worktree is not initialized"
-				return m, nil
 			}
 		}
 
@@ -253,10 +256,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *model) View() string {
 	if m.pushed {
+		if m.prTextarea.Focused() {
+			return activeStyle.Render(lipgloss.JoinVertical(lipgloss.Top, "Open PR", m.prTextarea.View()))
+		}
 		return m.azdo.View()
-	}
-	if m.prTextarea.Focused() {
-		return activeStyle.Render(lipgloss.JoinVertical(lipgloss.Top, "Open PR", m.prTextarea.View()))
 	}
 	var gitCommitView, worktreeView string
 	gitCommitSection := lipgloss.JoinVertical(lipgloss.Top, "Git commit:", m.commitTextarea.View())

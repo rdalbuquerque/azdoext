@@ -1,0 +1,26 @@
+file: main.go, status: 77
+
+file: main.go, status: &{77 32 }
+
+file: pkgs/azdo/azdo.go, status: 77
+
+file: pkgs/azdo/azdo.go, status: &{77 32 }
+
+file: pkgs/azdo/pipeline.go, status: 77
+
+file: pkgs/azdo/pipeline.go, status: &{77 32 }
+
+file: pkgs/azdo/pr.go, status: 65
+
+file: pkgs/azdo/pr.go, status: &{65 32 }
+
+file: azdo-logs.txt, status: 68
+
+file: azdo-logs.txt, status: &{68 32 }
+
+file: main-log.txt, status: 68
+
+file: main-log.txt, status: &{68 32 }
+
+Pushed
+Pushed
