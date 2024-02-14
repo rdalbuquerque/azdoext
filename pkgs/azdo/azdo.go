@@ -67,7 +67,7 @@ type Model struct {
 	project                  string
 	repository               string
 	repositoryId             string
-	branch                   string
+	Branch                   string
 	RunOrFollowList          list.Model
 	RunOrFollowChoiceEnabled bool
 }
@@ -97,7 +97,7 @@ func New(org, project, repository, branch, pat string) *Model {
 		project:         project,
 		repository:      repository,
 		repositoryId:    repositoryId,
-		branch:          branch,
+		Branch:          branch,
 	}
 }
 

@@ -29,16 +29,18 @@ var (
 )
 
 type model struct {
-	textarea       textarea.Model
-	worktree       *git.Worktree
-	repo           *git.Repository
-	gitStatus      string
-	spinner        spinner.Model // Add this line
-	pushing        bool          // Add this line
-	pushed         bool
-	azdo           *azdo.Model
-	activeSection  activeSection
-	stagedFileList list.Model
+	commitTextarea     textarea.Model
+	prTextarea         textarea.Model
+	worktree           *git.Worktree
+	repo               *git.Repository
+	gitStatus          string
+	spinner            spinner.Model // Add this line
+	pushing            bool          // Add this line
+	pushed             bool
+	azdo               *azdo.Model
+	activeSection      activeSection
+	stagedFileList     list.Model
+	prOrPipelineChoice list.Model
 }
 
 type activeSection int
@@ -72,8 +74,8 @@ func initialModel() model {
 	ti.Placeholder = "Your commit message here"
 	ti.Focus()
 	return model{
-		textarea:  ti,
-		gitStatus: "preparing git",
+		commitTextarea: ti,
+		gitStatus:      "preparing git",
 	}
 }
 
@@ -82,6 +84,8 @@ func (m *model) Init() tea.Cmd {
 	_ = os.Remove("log.txt")
 	m.spinner = spinner.New()       // Initialize the spinner
 	m.spinner.Spinner = spinner.Dot // Set the spinner style
+	m.prTextarea = textarea.New()
+	m.prTextarea.Placeholder = "1st line - Title\nOther lines - Description"
 	r, err := git.PlainOpen(".")
 	if err != nil {
 		panic(err)
@@ -104,7 +108,7 @@ func (m *model) Init() tea.Cmd {
 	}
 	branch := ref.Name()
 	m.setAzdoClientFromRemote(branch.String())
-
+	m.prOrPipelineChoice = list.New([]list.Item{stagedFileItem{name: "Open PR"}, stagedFileItem{name: "Go to pipelines"}}, gitItemDelegate{}, 20, 20)
 	return func() tea.Msg {
 		return gitOutputMsg(gitStatus.String())
 	}
@@ -119,32 +123,31 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.azdo.SetHeights(msg.Height - 2)
 		activeStyle.Height(msg.Height - 2)
 		InactiveStyle.Height(msg.Height - 2)
-		m.textarea.SetHeight(msg.Height - 4)
+		m.commitTextarea.SetHeight(msg.Height - 4)
+		m.prTextarea.SetHeight(msg.Height - 4)
 		m.stagedFileList.SetHeight(msg.Height - 2)
 		return m, nil
 	case tea.KeyMsg:
-		switch msg.String() {
-		case "ctrl+shift+a":
-			log2file("ctrl+shift+a")
-			m.addAllToStage()
-			list, cmd := m.stagedFileList.Update(msg)
-			m.stagedFileList = list
-			return m, cmd
-		}
-
 		switch msg.Type {
 		case tea.KeyEsc:
-			if m.textarea.Focused() {
-				m.textarea.Blur()
+			if m.commitTextarea.Focused() {
+				m.commitTextarea.Blur()
 			}
 		case tea.KeyEnter:
 			log2file("Enter key pressed")
-			if m.textarea.Focused() {
-				textarea, txtcmd := m.textarea.Update(msg)
-				m.textarea = textarea
+			if m.commitTextarea.Focused() {
+				textarea, txtcmd := m.commitTextarea.Update(msg)
+				m.commitTextarea = textarea
 				cmds = append(cmds, txtcmd)
 			}
 			if m.pushed {
+				if m.activeSection == prOrPipelineSection {
+					if m.prOrPipelineChoice.SelectedItem().(stagedFileItem).name == "Open PR" {
+						m.prTextarea.Focus()
+					} else {
+						return m, m.azdo.FetchPipelines(0)
+					}
+				}
 				azdo, azdocmd := m.azdo.Update(msg)
 				cmds = append(cmds, azdocmd)
 				m.azdo = azdo
@@ -155,9 +158,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyTab:
 			if m.activeSection == gitcommitSection {
 				m.activeSection = worktreeSection
-				m.textarea.Blur()
+				m.commitTextarea.Blur()
 			} else {
-				m.textarea.Focus()
+				m.commitTextarea.Focus()
 				m.activeSection = gitcommitSection
 			}
 		case tea.KeyCtrlA:
@@ -168,7 +171,12 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.stagedFileList = fileList
 			return m, cmd
 		case tea.KeyCtrlS:
-			m.textarea.Blur()
+			if m.prTextarea.Focused() {
+				title := strings.Split(m.prTextarea.Value(), "\n")[0]
+				description := strings.Join(strings.Split(m.prTextarea.Value(), "\n")[1:], "\n")
+				return m, func() tea.Msg { return m.azdo.OpenPR("master", m.azdo.Branch, title, description) }
+			}
+			m.commitTextarea.Blur()
 			if m.worktree != nil {
 				repo, err := m.repo.Config()
 				if err != nil {
@@ -176,7 +184,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				authorName := repo.Author.Name
 				authorEmail := repo.Author.Email
-				_, err = m.worktree.Commit(m.textarea.Value(), &git.CommitOptions{
+				_, err = m.worktree.Commit(m.commitTextarea.Value(), &git.CommitOptions{
 					Author: &object.Signature{
 						Name:  authorName,
 						Email: authorEmail,
@@ -205,15 +213,17 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case gitErrorMsg:
 		m.gitStatus = string(msg)
-		m.textarea.Blur()
+		m.commitTextarea.Blur()
 	case gitOutputMsg:
 		if msg == "Pushed" {
 			m.pushed = true
 			m.pushing = false
+			m.activeSection = prOrPipelineSection
+
 			return m, m.azdo.FetchPipelines(0)
 		}
 		m.gitStatus = string(msg)
-	case azdo.PipelinesFetchedMsg, azdo.PipelineIdMsg, azdo.PipelineStateMsg:
+	case azdo.PipelinesFetchedMsg, azdo.PipelineIdMsg, azdo.PipelineStateMsg, azdo.PRMsg:
 		azdo, cmd := m.azdo.Update(msg)
 		m.azdo = azdo
 		return m, cmd
@@ -231,8 +241,12 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.stagedFileList, cmd = m.stagedFileList.Update(msg)
 		return m, cmd
 	}
-	textarea, txtcmd := m.textarea.Update(msg)
-	m.textarea = textarea
+	if m.activeSection == prOrPipelineSection {
+		m.prOrPipelineChoice, cmd = m.prOrPipelineChoice.Update(msg)
+		return m, cmd
+	}
+	textarea, txtcmd := m.commitTextarea.Update(msg)
+	m.commitTextarea = textarea
 	cmds = append(cmds, txtcmd)
 	return m, tea.Batch(cmds...)
 }
@@ -241,8 +255,11 @@ func (m *model) View() string {
 	if m.pushed {
 		return m.azdo.View()
 	}
+	if m.prTextarea.Focused() {
+		return activeStyle.Render(lipgloss.JoinVertical(lipgloss.Top, "Open PR", m.prTextarea.View()))
+	}
 	var gitCommitView, worktreeView string
-	gitCommitSection := lipgloss.JoinVertical(lipgloss.Top, "Git commit:", m.textarea.View())
+	gitCommitSection := lipgloss.JoinVertical(lipgloss.Top, "Git commit:", m.commitTextarea.View())
 	if m.activeSection == gitcommitSection {
 		gitCommitView = activeStyle.Render(gitCommitSection)
 		worktreeView = InactiveStyle.Render(m.stagedFileList.View())
