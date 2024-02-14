@@ -11,16 +11,8 @@ import (
 	git "github.com/go-git/go-git/v5"
 )
 
-func (m *model) addToStage() {
-	selected := m.stagedFileList.SelectedItem()
-	if selected == nil {
-		return
-	}
-	item, ok := selected.(stagedFileItem)
-	if !ok {
-		return
-	}
-	if _, err := m.worktree.Add(item.name); err != nil {
+func (m *model) addAllToStage() {
+	if err := m.worktree.AddGlob("."); err != nil {
 		panic(err)
 	}
 	status, err := m.worktree.Status()
@@ -48,6 +40,29 @@ func (m *model) addToStage() {
 		fileItems = append(fileItems, stagedFileItem{name: file, staged: staged})
 	}
 	m.stagedFileList.SetItems(fileItems)
+}
+
+func (m *model) addToStage() {
+	selected := m.stagedFileList.SelectedItem()
+	if selected == nil {
+		return
+	}
+	item, ok := selected.(stagedFileItem)
+	if !ok {
+		return
+	}
+	if _, err := m.worktree.Add(item.name); err != nil {
+		panic(err)
+	}
+	for i := range m.stagedFileList.Items() {
+		if m.stagedFileList.Items()[i].(stagedFileItem).name == item.name {
+			newItem := stagedFileItem{
+				name:   item.name,
+				staged: true,
+			}
+			m.stagedFileList.Items()[i] = newItem
+		}
+	}
 }
 
 func setStagedFileList(worktree *git.Worktree) list.Model {
@@ -100,4 +115,13 @@ func (d gitItemDelegate) Render(w io.Writer, m list.Model, index int, listItem l
 	}
 
 	fmt.Fprint(w, fn(str))
+}
+
+func (m *model) noStagedFiles() bool {
+	for _, file := range m.stagedFileList.Items() {
+		if file.(stagedFileItem).staged {
+			return false
+		}
+	}
+	return true
 }

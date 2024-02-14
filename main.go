@@ -123,6 +123,15 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.stagedFileList.SetHeight(msg.Height - 2)
 		return m, nil
 	case tea.KeyMsg:
+		switch msg.String() {
+		case "ctrl+shift+a":
+			log2file("ctrl+shift+a")
+			m.addAllToStage()
+			list, cmd := m.stagedFileList.Update(msg)
+			m.stagedFileList = list
+			return m, cmd
+		}
+
 		switch msg.Type {
 		case tea.KeyEsc:
 			if m.textarea.Focused() {
@@ -161,10 +170,16 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyCtrlS:
 			m.textarea.Blur()
 			if m.worktree != nil {
-				_, err := m.worktree.Commit(m.textarea.Value(), &git.CommitOptions{
+				repo, err := m.repo.Config()
+				if err != nil {
+					panic(err)
+				}
+				authorName := repo.Author.Name
+				authorEmail := repo.Author.Email
+				_, err = m.worktree.Commit(m.textarea.Value(), &git.CommitOptions{
 					Author: &object.Signature{
-						Name:  "name",
-						Email: "email",
+						Name:  authorName,
+						Email: authorEmail,
 						When:  time.Now(),
 					},
 				})
@@ -172,11 +187,16 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.gitStatus = err.Error()
 					return m, nil
 				}
-
+				if m.noStagedFiles() {
+					m.addAllToStage()
+					list, cmd := m.stagedFileList.Update(msg)
+					m.stagedFileList = list
+					cmds = append(cmds, cmd)
+				}
 				m.gitStatus = "Changes committed"
-
 				m.pushing = true
-				return m, tea.Batch(m.push, m.spinner.Tick)
+				cmds = append(cmds, m.push, m.spinner.Tick)
+				return m, tea.Batch(cmds...)
 			} else {
 				m.gitStatus = "Worktree is not initialized"
 				return m, nil
