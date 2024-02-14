@@ -22,6 +22,7 @@ func (m *Model) OpenPR(from, to, title, description string) tea.Msg {
 		"description":   description,
 	}
 	prParamsJson, _ := json.Marshal(prParams)
+	log2file(fmt.Sprintf("openPR prParamsJson: %s\n", string(prParamsJson)))
 	req, err := http.NewRequest("POST", apiUrl, bytes.NewBuffer(prParamsJson))
 	if err != nil {
 		panic(err)
