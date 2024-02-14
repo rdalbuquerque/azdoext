@@ -215,3 +215,24 @@ Enter key pressed
 Enter key pressed
 Enter key pressed
 Enter key pressed
+file: main-log.txt, status: 77
+
+file: main-log.txt, status: &{77 32 }
+
+file: pkgs/azdo/azdo.go, status: 77
+
+file: pkgs/azdo/azdo.go, status: &{77 32 }
+
+file: pkgs/azdo/pr.go, status: 77
+
+file: pkgs/azdo/pr.go, status: &{77 32 }
+
+file: azdo-logs.txt, status: 68
+
+file: azdo-logs.txt, status: &{68 32 }
+
+Pushed
+Enter key pressed
+Enter key pressed
+Enter key pressed
+Enter key pressed
