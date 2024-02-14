@@ -49,6 +49,7 @@ const (
 	gitcommitSection activeSection = iota
 	worktreeSection
 	prOrPipelineSection
+	openPRSection
 )
 
 func (m *model) setAzdoClientFromRemote(branch string) {
@@ -125,6 +126,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		InactiveStyle.Height(msg.Height - 2)
 		m.commitTextarea.SetHeight(msg.Height - 4)
 		m.prTextarea.SetHeight(msg.Height - 4)
+		m.prOrPipelineChoice.SetHeight(msg.Height - 2)
 		m.stagedFileList.SetHeight(msg.Height - 2)
 		return m, nil
 	case tea.KeyMsg:
@@ -137,6 +139,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			log2file("Enter key pressed")
 			if m.activeSection == prOrPipelineSection {
 				if m.prOrPipelineChoice.SelectedItem().(stagedFileItem).name == "Open PR" {
+					m.activeSection = openPRSection
 					m.prTextarea.Focus()
 				} else {
 					return m, m.azdo.FetchPipelines(0)
@@ -171,13 +174,14 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.stagedFileList = fileList
 			return m, cmd
 		case tea.KeyCtrlS:
-			if m.prTextarea.Focused() {
+			if m.activeSection == openPRSection {
 				title := strings.Split(m.prTextarea.Value(), "\n")[0]
 				description := strings.Join(strings.Split(m.prTextarea.Value(), "\n")[1:], "\n")
 				m.prTextarea.Blur()
 				return m, func() tea.Msg { return m.azdo.OpenPR("master", m.azdo.Branch, title, description) }
 			}
 			if m.commitTextarea.Focused() {
+				m.activeSection = prOrPipelineSection
 				m.commitTextarea.Blur()
 				if m.worktree != nil {
 					repo, err := m.repo.Config()
@@ -186,6 +190,12 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 					authorName := repo.Author.Name
 					authorEmail := repo.Author.Email
+					if m.noStagedFiles() {
+						m.addAllToStage()
+						list, cmd := m.stagedFileList.Update(msg)
+						m.stagedFileList = list
+						cmds = append(cmds, cmd)
+					}
 					_, err = m.worktree.Commit(m.commitTextarea.Value(), &git.CommitOptions{
 						Author: &object.Signature{
 							Name:  authorName,
@@ -196,12 +206,6 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					if err != nil {
 						m.gitStatus = err.Error()
 						return m, nil
-					}
-					if m.noStagedFiles() {
-						m.addAllToStage()
-						list, cmd := m.stagedFileList.Update(msg)
-						m.stagedFileList = list
-						cmds = append(cmds, cmd)
 					}
 					m.gitStatus = "Changes committed"
 					m.pushing = true
@@ -222,8 +226,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.pushed = true
 			m.pushing = false
 			m.activeSection = prOrPipelineSection
-
-			return m, m.azdo.FetchPipelines(0)
+			return m, nil
 		}
 		m.gitStatus = string(msg)
 	case azdo.PipelinesFetchedMsg, azdo.PipelineIdMsg, azdo.PipelineStateMsg, azdo.PRMsg:
@@ -256,8 +259,11 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *model) View() string {
 	if m.pushed {
-		if m.prTextarea.Focused() {
-			return activeStyle.Render(lipgloss.JoinVertical(lipgloss.Top, "Open PR", m.prTextarea.View()))
+		if m.activeSection == prOrPipelineSection {
+			return activeStyle.Render(m.prOrPipelineChoice.View())
+		}
+		if m.activeSection == openPRSection {
+			return activeStyle.Render(lipgloss.JoinVertical(lipgloss.Top, "Open PR:", m.prTextarea.View()))
 		}
 		return m.azdo.View()
 	}
