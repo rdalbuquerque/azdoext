@@ -237,11 +237,6 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.spinner, cmd = m.spinner.Update(msg)
 		return m, cmd
 	}
-	if m.azdo != nil && m.pushed {
-		azdo, cmd := m.azdo.Update(msg)
-		m.azdo = azdo
-		return m, cmd
-	}
 	if m.activeSection == worktreeSection {
 		m.stagedFileList, cmd = m.stagedFileList.Update(msg)
 		return m, cmd
