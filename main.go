@@ -159,6 +159,11 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.commitTextarea = textarea
 				cmds = append(cmds, txtcmd)
 			}
+			if m.activeSection == openPRSection {
+				prtext, prcmd := m.prTextarea.Update(msg)
+				m.prTextarea = prtext
+				return m, prcmd
+			}
 			if m.pushed {
 				azdo, azdocmd := m.azdo.Update(msg)
 				cmds = append(cmds, azdocmd)
