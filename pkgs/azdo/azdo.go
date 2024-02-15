@@ -257,7 +257,6 @@ func (m *Model) formatStatusView(status, name, indent string) string {
 }
 
 func (m *Model) getSymbol(status string) string {
-	log2file(fmt.Sprintf("getting symbol for %v\n", status))
 	if status == "inProgress" {
 		return m.pipelineSpinner.View()
 	} else {
