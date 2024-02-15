@@ -25,7 +25,7 @@ type gitErrorMsg string
 
 var (
 	activeStyle   = azdo.ActiveStyle.Copy()
-	InactiveStyle = azdo.InactiveStyle.Copy()
+	inactiveStyle = azdo.InactiveStyle.Copy()
 )
 
 type model struct {
@@ -132,7 +132,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.azdo.SetHeights(msg.Height - 2)
 		activeStyle.Height(msg.Height - 2)
-		InactiveStyle.Height(msg.Height - 2)
+		inactiveStyle.Height(msg.Height - 2)
 		m.commitTextarea.SetHeight(msg.Height - 4)
 		m.prTextarea.SetHeight(msg.Height - 4)
 		m.prOrPipelineChoice.SetHeight(msg.Height - 2)
@@ -285,22 +285,27 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *model) View() string {
-	if m.activeSection == prOrPipelineSection {
-		return activeStyle.Render(m.prOrPipelineChoice.View())
-	}
-	if m.activeSection == openPRSection {
-		return activeStyle.Render(lipgloss.JoinVertical(lipgloss.Top, "Open PR:", m.prTextarea.View()))
-	}
 	if m.activeSection == azdoSection {
 		return m.azdo.View()
 	}
 	var gitCommitView, worktreeView string
-	gitCommitSection := lipgloss.JoinVertical(lipgloss.Top, "Git commit:", m.commitTextarea.View())
+	gitCommitSection := lipgloss.JoinVertical(lipgloss.Center, "Git commit:", m.commitTextarea.View())
+	if m.activeSection == prOrPipelineSection {
+		gitCommitView = inactiveStyle.Render(gitCommitSection)
+		worktreeView = inactiveStyle.Render(m.stagedFileList.View())
+		return lipgloss.JoinHorizontal(lipgloss.Left, gitCommitView, " ", worktreeView, " ", activeStyle.Render(m.prOrPipelineChoice.View()))
+	}
+	if m.activeSection == openPRSection {
+		gitCommitView = inactiveStyle.Render(gitCommitSection)
+		worktreeView = inactiveStyle.Render(m.stagedFileList.View())
+		prCommitSection := lipgloss.JoinVertical(lipgloss.Center, "Open PR:", m.prTextarea.View())
+		return lipgloss.JoinHorizontal(lipgloss.Left, gitCommitView, " ", worktreeView, " ", inactiveStyle.Render(m.prOrPipelineChoice.View()), " ", activeStyle.Render(prCommitSection))
+	}
 	if m.activeSection == gitcommitSection {
 		gitCommitView = activeStyle.Render(gitCommitSection)
-		worktreeView = InactiveStyle.Render(m.stagedFileList.View())
+		worktreeView = inactiveStyle.Render(m.stagedFileList.View())
 	} else if m.activeSection == worktreeSection {
-		gitCommitView = InactiveStyle.Render(gitCommitSection)
+		gitCommitView = inactiveStyle.Render(gitCommitSection)
 		worktreeView = activeStyle.Render(m.stagedFileList.View())
 	}
 	if m.pushing {
