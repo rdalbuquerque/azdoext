@@ -9,6 +9,7 @@ import (
 	"net/url"
 
 	"explore-bubbletea/pkgs/azdo"
+	"explore-bubbletea/pkgs/listitems"
 
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/spinner"
@@ -118,7 +119,7 @@ func (m *model) Init() tea.Cmd {
 	}
 	branch := ref.Name()
 	m.setAzdoClientFromRemote(branch.String())
-	m.prOrPipelineChoice = list.New([]list.Item{stagedFileItem{name: "Open PR"}, stagedFileItem{name: "Go to pipelines"}}, gitItemDelegate{}, 20, 20)
+	m.prOrPipelineChoice = list.New([]list.Item{listitems.StagedFileItem{Name: "Open PR"}, listitems.StagedFileItem{Name: "Go to pipelines"}}, listitems.GitItemDelegate{}, 20, 20)
 	return func() tea.Msg {
 		return gitOutputMsg(gitStatus.String())
 	}
@@ -147,7 +148,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyEnter:
 			log2file("Enter key pressed")
 			if m.activeSection == prOrPipelineSection {
-				if m.prOrPipelineChoice.SelectedItem().(stagedFileItem).name == "Open PR" {
+				if m.prOrPipelineChoice.SelectedItem().(listitems.StagedFileItem).Name == "Open PR" {
 					m.activeSection = openPRSection
 					m.prTextarea.Focus()
 					return m, nil

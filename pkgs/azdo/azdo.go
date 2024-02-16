@@ -9,6 +9,7 @@ import (
 	"slices"
 	"time"
 
+	"explore-bubbletea/pkgs/listitems"
 	"explore-bubbletea/pkgs/searchableviewport"
 
 	"github.com/charmbracelet/bubbles/list"
@@ -77,13 +78,13 @@ func New(org, project, repository, branch, pat string) *Model {
 	pspinner := spinner.New()
 	pspinner.Spinner = spinner.Dot
 	pspinner.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#00a9ff"))
-	tl := list.New([]list.Item{}, itemDelegate{}, 30, 0)
+	tl := list.New([]list.Item{}, listitems.ItemDelegate{}, 30, 0)
 	tl.SetShowStatusBar(false)
 	azdoclient := NewAzdoClient(org, project, pat)
-	pipelineList := list.New([]list.Item{}, itemDelegate{}, 30, 0)
+	pipelineList := list.New([]list.Item{}, listitems.ItemDelegate{}, 30, 0)
 	pipelineList.Title = "Pipelines"
 	pipelineList.SetShowStatusBar(false)
-	runOrFollowList := list.New([]list.Item{PipelineItem{Title: "Run"}, PipelineItem{Title: "Follow"}}, itemDelegate{}, 30, 0)
+	runOrFollowList := list.New([]list.Item{listitems.PipelineItem{Title: "Run"}, listitems.PipelineItem{Title: "Follow"}}, listitems.ItemDelegate{}, 30, 0)
 	runOrFollowList.Title = "Run new or follow?"
 	repositoryId := getRepository(repository, azdoclient)
 	return &Model{
@@ -127,8 +128,8 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 		case tea.KeyEnter:
 			if m.RunOrFollowChoiceEnabled {
 				m.RunOrFollowChoiceEnabled = false
-				runOrFollow := m.RunOrFollowList.SelectedItem().(PipelineItem).Title
-				selectedPipelineId := m.PipelineList.SelectedItem().(PipelineItem).Desc.(int)
+				runOrFollow := m.RunOrFollowList.SelectedItem().(listitems.PipelineItem).Title
+				selectedPipelineId := m.PipelineList.SelectedItem().(listitems.PipelineItem).Desc.(int)
 				if runOrFollow == "Run" {
 					return m, func() tea.Msg { return m.RunOrFollowPipeline(selectedPipelineId, true) }
 				} else {
@@ -136,7 +137,7 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 				}
 			}
 			if m.activeSection == PipelineListSection {
-				selectedPipeline := m.PipelineList.SelectedItem().(PipelineItem)
+				selectedPipeline := m.PipelineList.SelectedItem().(listitems.PipelineItem)
 				if !slices.Contains(pipelineResults, selectedPipeline.Status) {
 					m.RunOrFollowChoiceEnabled = true
 					return m, nil
@@ -165,7 +166,7 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 		if ps.IsRunning {
 			m.PipelineState = pipelineState(msg)
 			m.SetTaskList(ps)
-			m.logViewPort.SetContent(m.TaskList.SelectedItem().(PipelineItem).Desc.(string))
+			m.logViewPort.SetContent(m.TaskList.SelectedItem().(listitems.PipelineItem).Desc.(string))
 			m.logViewPort.GotoBottom()
 			return m, m.azdoClient.getPipelineState(m.pipelineId, 1*time.Second)
 		}
@@ -189,9 +190,9 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 	switch m.activeSection {
 	case TaskListSection:
 		log2file("ListSection\n")
-		var selectedRecord PipelineItem
+		var selectedRecord listitems.PipelineItem
 		m.TaskList, cmd = m.TaskList.Update(msg)
-		selectedRecord, ok := m.TaskList.SelectedItem().(PipelineItem)
+		selectedRecord, ok := m.TaskList.SelectedItem().(listitems.PipelineItem)
 		if !ok {
 			return m, cmd
 		}

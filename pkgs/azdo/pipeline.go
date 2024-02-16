@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/base64"
+	"explore-bubbletea/pkgs/listitems"
 	"fmt"
 	"io"
 	"net/http"
@@ -340,7 +341,7 @@ func (m *Model) FetchPipelines(wait time.Duration) tea.Cmd {
 			status, _ := m.getPipelineStatus(pipelineId)
 			symbol := m.getSymbol(status)
 			if m.azdoClient.getPipelineRepository(pipelineId) == m.repositoryId {
-				pipelineList = append(pipelineList, PipelineItem{Title: pipelineName, Desc: pipelineId, Status: status, Symbol: symbol})
+				pipelineList = append(pipelineList, listitems.PipelineItem{Title: pipelineName, Desc: pipelineId, Status: status, Symbol: symbol})
 			}
 		}
 		return PipelinesFetchedMsg(pipelineList)

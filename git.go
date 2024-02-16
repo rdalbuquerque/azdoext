@@ -1,16 +1,11 @@
 package main
 
-
-
-
 import (
 	"fmt"
-	"io"
-	"strings"
+
+	"explore-bubbletea/pkgs/listitems"
 
 	"github.com/charmbracelet/bubbles/list"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	git "github.com/go-git/go-git/v5"
 )
 
@@ -40,7 +35,7 @@ func (m *model) addAllToStage() {
 			}
 		}
 		log2file(fmt.Sprintf("file: %s, status: %v\n", file, fileStatus))
-		fileItems = append(fileItems, stagedFileItem{name: file, staged: staged})
+		fileItems = append(fileItems, listitems.StagedFileItem{Name: file, Staged: staged})
 	}
 	m.stagedFileList.SetItems(fileItems)
 }
@@ -50,18 +45,18 @@ func (m *model) addToStage() {
 	if selected == nil {
 		return
 	}
-	item, ok := selected.(stagedFileItem)
+	item, ok := selected.(listitems.StagedFileItem)
 	if !ok {
 		return
 	}
-	if _, err := m.worktree.Add(item.name); err != nil {
+	if _, err := m.worktree.Add(item.Name); err != nil {
 		panic(err)
 	}
 	for i := range m.stagedFileList.Items() {
-		if m.stagedFileList.Items()[i].(stagedFileItem).name == item.name {
-			newItem := stagedFileItem{
-				name:   item.name,
-				staged: true,
+		if m.stagedFileList.Items()[i].(listitems.StagedFileItem).Name == item.Name {
+			newItem := listitems.StagedFileItem{
+				Name:   item.Name,
+				Staged: true,
 			}
 			m.stagedFileList.Items()[i] = newItem
 		}
@@ -75,54 +70,16 @@ func setStagedFileList(worktree *git.Worktree) list.Model {
 	}
 	fileItems := []list.Item{}
 	for file, _ := range status {
-		fileItems = append(fileItems, stagedFileItem{name: file, staged: status[file].Staging == git.Added})
+		fileItems = append(fileItems, listitems.StagedFileItem{Name: file, Staged: status[file].Staging == git.Added})
 	}
-	stagedFileList := list.New(fileItems, gitItemDelegate{}, 20, 0)
+	stagedFileList := list.New(fileItems, listitems.GitItemDelegate{}, 20, 0)
 	stagedFileList.Title = "Status"
 	return stagedFileList
 }
 
-var (
-	itemStyle         = lipgloss.NewStyle().PaddingLeft(4)
-	selectedItemStyle = lipgloss.NewStyle().PaddingLeft(2)
-	stagedFileStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("#00ff00"))
-)
-
-type stagedFileItem struct {
-	name   string
-	staged bool
-}
-
-func (i stagedFileItem) FilterValue() string { return "" }
-
-type gitItemDelegate struct{}
-
-func (d gitItemDelegate) Height() int                             { return 1 }
-func (d gitItemDelegate) Spacing() int                            { return 0 }
-func (d gitItemDelegate) Update(_ tea.Msg, _ *list.Model) tea.Cmd { return nil }
-func (d gitItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
-	i, ok := listItem.(stagedFileItem)
-	if !ok {
-		return
-	}
-
-	str := i.name
-	if i.staged {
-		str = stagedFileStyle.Render(str)
-	}
-	fn := itemStyle.Render
-	if index == m.Index() {
-		fn = func(s ...string) string {
-			return selectedItemStyle.Render("| " + strings.Join(s, " "))
-		}
-	}
-
-	fmt.Fprint(w, fn(str))
-}
-
 func (m *model) noStagedFiles() bool {
 	for _, file := range m.stagedFileList.Items() {
-		if file.(stagedFileItem).staged {
+		if file.(listitems.StagedFileItem).Staged {
 			return false
 		}
 	}
