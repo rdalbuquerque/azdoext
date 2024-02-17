@@ -1,0 +1,86 @@
+package sections
+
+import (
+	"fmt"
+
+	"github.com/charmbracelet/bubbles/textarea"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+)
+
+type CommitSection struct {
+	hidden   bool
+	focused  bool
+	title    string
+	textarea textarea.Model
+}
+
+func (cs *CommitSection) IsHidden() bool {
+	return cs.hidden
+}
+
+func (cs *CommitSection) IsFocused() bool {
+	return cs.focused
+}
+
+func NewCommitSection() Section {
+	title := "Git commit:"
+	textarea := textarea.New()
+	return &CommitSection{
+		hidden:   false,
+		focused:  true,
+		title:    title,
+		textarea: textarea,
+	}
+}
+
+func (cs *CommitSection) SetDimensions(width, height int) {
+	cs.textarea.SetWidth(40)
+	cs.textarea.SetHeight(height - 4)
+}
+
+func (cs *CommitSection) Update(msg tea.Msg) (Section, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "ctrl+c":
+			return nil, tea.Quit
+		case "ctrl+s":
+			if cs.textarea.Focused() {
+				cs.textarea.Blur()
+			}
+			return cs, nil
+		}
+	}
+	textarea, cmd := cs.textarea.Update(msg)
+	cs.textarea = textarea
+	return cs, cmd
+}
+
+func (cs *CommitSection) View() string {
+	if !cs.hidden {
+		log2file(fmt.Sprintf("cs.focused: %v", cs.focused))
+		if cs.focused {
+			return ActiveStyle.Render(lipgloss.JoinVertical(lipgloss.Center, cs.title, cs.textarea.View()))
+		}
+		return InactiveStyle.Render(lipgloss.JoinVertical(lipgloss.Center, cs.title, cs.textarea.View()))
+	}
+	return ""
+}
+
+func (cs *CommitSection) Hide() {
+	cs.hidden = true
+}
+
+func (cs *CommitSection) Show() {
+	cs.hidden = false
+}
+
+func (cs *CommitSection) Focus() {
+	log2file("cs.Focus()")
+	cs.focused = true
+}
+
+func (cs *CommitSection) Blur() {
+	cs.focused = false
+}

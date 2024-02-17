@@ -4,21 +4,18 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"time"
 
 	"net/url"
 
 	"explore-bubbletea/pkgs/azdo"
 	"explore-bubbletea/pkgs/listitems"
+	"explore-bubbletea/pkgs/sections"
 
 	"github.com/charmbracelet/bubbles/list"
-	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textarea"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	git "github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/plumbing/object"
-	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
 )
 
 type gitOutputMsg string
@@ -30,26 +27,19 @@ var (
 )
 
 type model struct {
-	commitTextarea     textarea.Model
 	prTextarea         textarea.Model
-	worktree           *git.Worktree
 	repo               *git.Repository
 	gitStatus          string
-	spinner            spinner.Model // Add this line
-	pushing            bool          // Add this line
-	pushed             bool
 	azdo               *azdo.Model
 	activeSection      activeSection
-	stagedFileList     list.Model
 	prOrPipelineChoice list.Model
+	sections           []sections.Section
 }
 
 type activeSection int
 
 const (
-	gitcommitSection activeSection = iota
-	worktreeSection
-	prOrPipelineSection
+	prOrPipelineSection activeSection = iota
 	openPRSection
 	azdoSection
 )
@@ -73,20 +63,25 @@ func (m *model) setAzdoClientFromRemote(branch string) {
 }
 
 func initialModel() model {
-	ti := textarea.New()
-	ti.Placeholder = "Your commit message here"
-	ti.Focus()
+	commitSection := sections.NewCommitSection()
+	commitSection.Show()
+	commitSection.Focus()
+	worktreeSection := sections.NewWorktreeSection()
+	worktreeSection.Section.Show()
+	_, err := worktreeSection.Repo.Head()
+	if err != nil {
+		panic(err)
+	}
+	log2file("initialModel")
 	return model{
-		commitTextarea: ti,
-		gitStatus:      "preparing git",
+		sections: []sections.Section{commitSection, worktreeSection.Section},
 	}
 }
 
+type InitializedMsg bool
+
 func (m *model) Init() tea.Cmd {
-	// reset log file
-	_ = os.Remove("log.txt")
-	m.spinner = spinner.New()       // Initialize the spinner
-	m.spinner.Spinner = spinner.Dot // Set the spinner style
+	log2file("Init")
 	m.prTextarea = textarea.New()
 	m.prTextarea.Placeholder = "Title and description"
 	m.prTextarea.SetPromptFunc(5, func(i int) string {
@@ -96,237 +91,142 @@ func (m *model) Init() tea.Cmd {
 			return " Desc:"
 		}
 	})
-
-	r, err := git.PlainOpen(".")
-	if err != nil {
-		panic(err)
-	}
-	w, err := r.Worktree()
-	if err != nil {
-		panic(err)
-	}
-	m.stagedFileList = setStagedFileList(w)
-	gitStatus, err := w.Status()
-	if err != nil {
-		panic(err)
-	}
-	m.worktree = w
-	m.repo = r
-
-	ref, err := r.Head()
-	if err != nil {
-		panic(err)
-	}
-	branch := ref.Name()
-	m.setAzdoClientFromRemote(branch.String())
+	// branch := ref.Name()
+	// m.setAzdoClientFromRemote(branch.String())
 	m.prOrPipelineChoice = list.New([]list.Item{listitems.StagedFileItem{Name: "Open PR"}, listitems.StagedFileItem{Name: "Go to pipelines"}}, listitems.GitItemDelegate{}, 20, 20)
 	return func() tea.Msg {
-		return gitOutputMsg(gitStatus.String())
+		return InitializedMsg(true)
 	}
 }
 
 // Main update function.
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
-	var cmd tea.Cmd
 	switch msg := msg.(type) {
-	case tea.WindowSizeMsg:
-		m.azdo.SetHeights(msg.Height - 2)
-		activeStyle.Height(msg.Height - 2)
-		inactiveStyle.Height(msg.Height - 2)
-		m.commitTextarea.SetHeight(msg.Height - 4)
-		m.prTextarea.SetHeight(msg.Height - 4)
-		m.prOrPipelineChoice.SetHeight(msg.Height - 2)
-		m.stagedFileList.SetHeight(msg.Height - 2)
-		return m, nil
 	case tea.KeyMsg:
-		switch msg.Type {
-		case tea.KeyEsc:
-			if m.commitTextarea.Focused() {
-				m.commitTextarea.Blur()
-			}
-		case tea.KeyEnter:
-			log2file("Enter key pressed")
-			if m.activeSection == prOrPipelineSection {
-				if m.prOrPipelineChoice.SelectedItem().(listitems.StagedFileItem).Name == "Open PR" {
-					m.activeSection = openPRSection
-					m.prTextarea.Focus()
-					return m, nil
-				} else {
-					m.activeSection = azdoSection
-					return m, m.azdo.FetchPipelines(0)
-				}
-			}
-			if m.commitTextarea.Focused() {
-				textarea, txtcmd := m.commitTextarea.Update(msg)
-				m.commitTextarea = textarea
-				cmds = append(cmds, txtcmd)
-			}
-			if m.activeSection == openPRSection {
-				prtext, prcmd := m.prTextarea.Update(msg)
-				m.prTextarea = prtext
-				return m, prcmd
-			}
-			if m.pushed {
-				azdo, azdocmd := m.azdo.Update(msg)
-				cmds = append(cmds, azdocmd)
-				m.azdo = azdo
-			}
-			return m, tea.Batch(cmds...)
-		case tea.KeyCtrlC:
+		switch msg.String() {
+		case "ctrl+c":
 			return m, tea.Quit
-		case tea.KeyTab:
-			if m.activeSection == gitcommitSection {
-				m.activeSection = worktreeSection
-				m.commitTextarea.Blur()
-			} else {
-				m.commitTextarea.Focus()
-				m.activeSection = gitcommitSection
-			}
-		case tea.KeyCtrlA:
-			if m.activeSection == worktreeSection {
-				m.addToStage()
-			}
-			fileList, cmd := m.stagedFileList.Update(msg)
-			m.stagedFileList = fileList
-			return m, cmd
-		case tea.KeyCtrlS:
-			if m.activeSection == openPRSection {
-				titleAndDescription := strings.SplitN(m.prTextarea.Value(), "\n", 2)
-				title := titleAndDescription[0]
-				description := titleAndDescription[1]
-				m.prTextarea.Blur()
-				return m, tea.Batch(func() tea.Msg {
-					return m.azdo.OpenPR(strings.Split(m.azdo.Branch, "/")[2], "master", title, description)
-				}, m.azdo.FetchPipelines(0))
-			}
-			if m.commitTextarea.Focused() {
-				m.commitTextarea.Blur()
-				if m.worktree != nil {
-					repo, err := m.repo.Config()
-					if err != nil {
-						panic(err)
-					}
-					authorName := repo.Author.Name
-					authorEmail := repo.Author.Email
-					if m.noStagedFiles() {
-						m.addAllToStage()
-						list, cmd := m.stagedFileList.Update(msg)
-						m.stagedFileList = list
-						cmds = append(cmds, cmd)
-					}
-					_, err = m.worktree.Commit(m.commitTextarea.Value(), &git.CommitOptions{
-						Author: &object.Signature{
-							Name:  authorName,
-							Email: authorEmail,
-							When:  time.Now(),
-						},
-					})
-					if err != nil {
-						m.gitStatus = err.Error()
-						return m, nil
-					}
-					m.gitStatus = "Changes committed"
-					m.pushing = true
-					cmds = append(cmds, m.push, m.spinner.Tick)
-					return m, tea.Batch(cmds...)
-				} else {
-					m.gitStatus = "Worktree is not initialized"
-					return m, nil
-				}
-			}
-		}
-
-	case gitErrorMsg:
-		m.gitStatus = string(msg)
-		m.commitTextarea.Blur()
-	case gitOutputMsg:
-		if msg == "Pushed" {
-			m.pushed = true
-			m.pushing = false
-			m.activeSection = prOrPipelineSection
+		case "tab":
+			m.switchSection()
 			return m, nil
 		}
-		m.gitStatus = string(msg)
-	case azdo.PipelinesFetchedMsg, azdo.PipelineIdMsg, azdo.PipelineStateMsg, azdo.PRMsg:
-		if m.activeSection == openPRSection {
-			m.activeSection = azdoSection
+	case InitializedMsg:
+		log2file("InitializedMsg")
+		return m, nil
+	case tea.WindowSizeMsg:
+		sections.ActiveStyle.Height(msg.Height - 2)
+		sections.InactiveStyle.Height(msg.Height - 2)
+		for _, section := range m.sections {
+			section.SetDimensions(msg.Width, msg.Height)
 		}
-		azdo, cmd := m.azdo.Update(msg)
-		m.azdo = azdo
-		return m, cmd
+		return m, nil
 	}
-	if m.pushing {
-		m.spinner, cmd = m.spinner.Update(msg)
-		return m, cmd
+	var sections []sections.Section
+	for _, section := range m.sections {
+		if !section.IsHidden() {
+			sec, cmd := section.Update(msg)
+			sections = append(sections, sec)
+			cmds = append(cmds, cmd)
+		}
 	}
-	if m.activeSection == worktreeSection {
-		m.stagedFileList, cmd = m.stagedFileList.Update(msg)
-		return m, cmd
-	}
-	if m.activeSection == prOrPipelineSection {
-		prOrPipelineChoice, cmd := m.prOrPipelineChoice.Update(msg)
-		m.prOrPipelineChoice = prOrPipelineChoice
-		return m, cmd
-	}
-	if m.activeSection == openPRSection {
-		textarea, txtcmd := m.prTextarea.Update(msg)
-		m.prTextarea = textarea
-		return m, txtcmd
-	}
-	if m.activeSection == azdoSection {
-		azdo, cmd := m.azdo.Update(msg)
-		m.azdo = azdo
-		return m, cmd
-	}
-	textarea, txtcmd := m.commitTextarea.Update(msg)
-	m.commitTextarea = textarea
-	cmds = append(cmds, txtcmd)
+	m.sections = sections
 	return m, tea.Batch(cmds...)
+	// switch msg := msg.(type) {
+	// case InitializedMsg:
+	// 	log2file("InitializedMsg")
+	// 	return m, nil
+	// case tea.WindowSizeMsg:
+	// 	sections.ActiveStyle.Height(msg.Height - 2)
+	// 	sections.InactiveStyle.Height(msg.Height - 2)
+	// 	for _, section := range m.sections {
+	// 		section.SetDimensions(msg.Width, msg.Height)
+	// 	}
+	// 	// m.azdo.SetHeights(msg.Height - 2)
+	// 	m.prTextarea.SetHeight(msg.Height - 4)
+	// 	m.prOrPipelineChoice.SetHeight(msg.Height - 2)
+	// 	return m, nil
+	// case tea.KeyMsg:
+	// 	switch msg.Type {
+	// 	case tea.KeyEnter:
+	// 		log2file("Enter key pressed")
+	// 		if m.activeSection == prOrPipelineSection {
+	// 			if m.prOrPipelineChoice.SelectedItem().(listitems.StagedFileItem).Name == "Open PR" {
+	// 				m.activeSection = openPRSection
+	// 				m.prTextarea.Focus()
+	// 				return m, nil
+	// 			} else {
+	// 				m.activeSection = azdoSection
+	// 				return m, m.azdo.FetchPipelines(0)
+	// 			}
+	// 		}
+	// 		if m.activeSection == openPRSection {
+	// 			prtext, prcmd := m.prTextarea.Update(msg)
+	// 			m.prTextarea = prtext
+	// 			return m, prcmd
+	// 		}
+	// 		return m, tea.Batch(cmds...)
+	// 	case tea.KeyCtrlC:
+	// 		return m, tea.Quit
+	// 	case tea.KeyTab:
+	// 		m.switchSection()
+	// 		// case tea.KeyCtrlS:
+	// 		// 	if m.activeSection == openPRSection {
+	// 		// 		titleAndDescription := strings.SplitN(m.prTextarea.Value(), "\n", 2)
+	// 		// 		title := titleAndDescription[0]
+	// 		// 		description := titleAndDescription[1]
+	// 		// 		m.prTextarea.Blur()
+	// 		// 		return m, tea.Batch(func() tea.Msg {
+	// 		// 			return m.azdo.OpenPR(strings.Split(m.azdo.Branch, "/")[2], "master", title, description)
+	// 		// 		}, m.azdo.FetchPipelines(0))
+	// 		// 	}
+	// 	}
+	// case sections.GitPushedMsg:
+	// 	if msg {
+	// 		m.activeSection = prOrPipelineSection
+	// 		return m, nil
+	// 	}
+	// case sections.GitPushingMsg:
+	// case azdo.PipelinesFetchedMsg, azdo.PipelineIdMsg, azdo.PipelineStateMsg, azdo.PRMsg:
+	// 	if m.activeSection == openPRSection {
+	// 		m.activeSection = azdoSection
+	// 	}
+	// 	azdo, cmd := m.azdo.Update(msg)
+	// 	m.azdo = azdo
+	// 	return m, cmd
+	// }
+	// if m.activeSection == prOrPipelineSection {
+	// 	prOrPipelineChoice, cmd := m.prOrPipelineChoice.Update(msg)
+	// 	m.prOrPipelineChoice = prOrPipelineChoice
+	// 	return m, cmd
+	// }
+	// if m.activeSection == openPRSection {
+	// 	textarea, txtcmd := m.prTextarea.Update(msg)
+	// 	m.prTextarea = textarea
+	// 	return m, txtcmd
+	// }
+	// if m.activeSection == azdoSection {
+	// 	azdo, cmd := m.azdo.Update(msg)
+	// 	m.azdo = azdo
+	// 	return m, cmd
+	// }
+	// return m, tea.Batch(cmds...)
 }
 
 func (m *model) View() string {
-	if m.activeSection == azdoSection {
-		return m.azdo.View()
+	var view string
+	for _, section := range m.sections {
+		log2file("Viewing section")
+		if section.IsHidden() {
+			continue
+		}
+		view = attachView(view, section.View())
 	}
-	var gitCommitView, worktreeView string
-	gitCommitSection := lipgloss.JoinVertical(lipgloss.Center, "Git commit:", m.commitTextarea.View())
-	if m.activeSection == prOrPipelineSection {
-		gitCommitView = inactiveStyle.Render(gitCommitSection)
-		worktreeView = inactiveStyle.Render(m.stagedFileList.View())
-		return lipgloss.JoinHorizontal(lipgloss.Left, gitCommitView, " ", worktreeView, " ", activeStyle.Render(m.prOrPipelineChoice.View()))
-	}
-	if m.activeSection == openPRSection {
-		gitCommitView = inactiveStyle.Render(gitCommitSection)
-		worktreeView = inactiveStyle.Render(m.stagedFileList.View())
-		prCommitSection := lipgloss.JoinVertical(lipgloss.Center, "Open PR:", m.prTextarea.View())
-		return lipgloss.JoinHorizontal(lipgloss.Left, gitCommitView, " ", worktreeView, " ", inactiveStyle.Render(m.prOrPipelineChoice.View()), " ", activeStyle.Render(prCommitSection))
-	}
-	if m.activeSection == gitcommitSection {
-		gitCommitView = activeStyle.Render(gitCommitSection)
-		worktreeView = inactiveStyle.Render(m.stagedFileList.View())
-	} else if m.activeSection == worktreeSection {
-		gitCommitView = inactiveStyle.Render(gitCommitSection)
-		worktreeView = activeStyle.Render(m.stagedFileList.View())
-	}
-	if m.pushing {
-		m.stagedFileList.Title = "Pushing"
-	}
-	return lipgloss.JoinHorizontal(lipgloss.Left, gitCommitView, "  ", worktreeView)
+	return view
 }
 
-func (m *model) push() tea.Msg {
-	err := m.repo.Push(&git.PushOptions{
-		Auth:     &githttp.BasicAuth{Username: "", Password: os.Getenv("AZDO_PERSONAL_ACCESS_TOKEN")},
-		Progress: nil,
-	})
-	if err != nil {
-		log2file(err.Error())
-		return gitErrorMsg(err.Error())
-	} else {
-		log2file("Pushed")
-		return gitOutputMsg("Pushed")
-	}
+func attachView(view string, sectionView string) string {
+	return lipgloss.JoinHorizontal(lipgloss.Left, view, "  ", sectionView)
 }
 
 func main() {
@@ -345,5 +245,21 @@ func log2file(msg string) {
 	defer f.Close()
 	if _, err := f.WriteString(msg + "\n"); err != nil {
 		fmt.Println(err)
+	}
+}
+
+func (m *model) switchSection() {
+	for i, section := range m.sections {
+		if section.IsFocused() {
+			section.Blur()
+			if i+1 == len(m.sections) {
+				m.sections[0].Focus()
+				m.activeSection = activeSection(i)
+				return
+			}
+			m.sections[i+1].Focus()
+			m.activeSection = activeSection(i + 1)
+			return
+		}
 	}
 }
