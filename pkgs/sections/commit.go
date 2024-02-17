@@ -49,11 +49,11 @@ func (cs *CommitSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 			if cs.textarea.Focused() {
 				cs.textarea.Blur()
 			}
-			return cs, nil
+			return cs, func() tea.Msg { return commitMsg(cs.textarea.Value()) }
 		}
 	}
-	textarea, cmd := cs.textarea.Update(msg)
-	cs.textarea = textarea
+	ta, cmd := cs.textarea.Update(msg)
+	cs.textarea = ta
 	return cs, cmd
 }
 
@@ -77,10 +77,13 @@ func (cs *CommitSection) Show() {
 }
 
 func (cs *CommitSection) Focus() {
-	log2file("cs.Focus()")
+	cs.textarea.Focus()
 	cs.focused = true
 }
 
 func (cs *CommitSection) Blur() {
+	cs.textarea.Blur()
 	cs.focused = false
 }
+
+type commitMsg string

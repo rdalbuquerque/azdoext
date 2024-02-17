@@ -3,10 +3,13 @@ package sections
 import (
 	"explore-bubbletea/pkgs/listitems"
 	"os"
+	"time"
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	git "github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing/object"
 	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
 )
 
@@ -31,9 +34,8 @@ func (ws *WorktreeSection) push() tea.Msg {
 	})
 	if err != nil {
 		panic(err)
-	} else {
-		return GitPushedMsg(true)
 	}
+	return GitPushedMsg(true)
 }
 
 func (ws *WorktreeSection) addAllToStage() {
@@ -46,20 +48,7 @@ func (ws *WorktreeSection) addAllToStage() {
 	}
 	fileItems := []list.Item{}
 	for file, _ := range status {
-		// Check if the file is staged
-		fileStatus, ok := status[file]
-		var staged bool
-		if !ok {
-			panic("file not ok")
-		} else {
-			// File is tracked; check if it's staged for commit
-			if fileStatus.Staging == git.Added || fileStatus.Staging == git.Modified || fileStatus.Staging == git.Deleted {
-				staged = true
-			} else {
-				staged = false
-			}
-		}
-		fileItems = append(fileItems, listitems.StagedFileItem{Name: file, Staged: staged})
+		fileItems = append(fileItems, listitems.StagedFileItem{Name: file, Staged: true})
 	}
 	ws.status.SetItems(fileItems)
 }
@@ -90,7 +79,7 @@ func NewWorktreeSection() WorktreeSectionData {
 
 func (ws *WorktreeSection) SetDimensions(width, height int) {
 	ws.status.SetWidth(40)
-	ws.status.SetHeight(height - 2)
+	ws.status.SetHeight(height - 4)
 }
 
 func (ws *WorktreeSection) IsHidden() bool {
@@ -112,13 +101,28 @@ func (ws *WorktreeSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 			status, cmd := ws.status.Update(msg)
 			ws.status = status
 			return ws, cmd
-		case "ctrl+s":
-			if ws.noStagedFiles() {
-				ws.addAllToStage()
-				ws.status.Title = "Pushing..."
-				return ws, tea.Batch(ws.push, func() tea.Msg { return GitPushingMsg(true) })
-			}
 		}
+	case commitMsg:
+		if ws.noStagedFiles() {
+			ws.addAllToStage()
+		}
+		ws.status.Title = "Pushing..."
+		repo, err := ws.repo.Config()
+		if err != nil {
+			panic(err)
+		}
+		authorName := repo.Author.Name
+		authorEmail := repo.Author.Email
+		ws.worktree.Commit(string(msg), &git.CommitOptions{
+			Author: &object.Signature{
+				Name:  authorName,
+				Email: authorEmail,
+				When:  time.Now(),
+			},
+		})
+		return ws, tea.Batch(ws.push, func() tea.Msg { return GitPushingMsg(true) })
+	case GitPushedMsg:
+		ws.status.Title = "Pushed"
 	}
 	status, cmd := ws.status.Update(msg)
 	ws.status = status
@@ -128,9 +132,9 @@ func (ws *WorktreeSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 func (ws *WorktreeSection) View() string {
 	if !ws.hidden {
 		if ws.focused {
-			return ActiveStyle.Render(ws.status.View())
+			return ActiveStyle.Render(lipgloss.JoinVertical(lipgloss.Center, ws.status.Title, ws.status.View()))
 		}
-		return InactiveStyle.Render(ws.status.View())
+		return InactiveStyle.Render(lipgloss.JoinVertical(lipgloss.Center, ws.status.Title, ws.status.View()))
 	}
 	return ""
 }
@@ -160,8 +164,9 @@ func (ws *WorktreeSection) setStagedFileList() list.Model {
 	for file, _ := range status {
 		fileItems = append(fileItems, listitems.StagedFileItem{Name: file, Staged: status[file].Staging == git.Added})
 	}
-	stagedFileList := list.New(fileItems, listitems.GitItemDelegate{}, 20, 0)
-	stagedFileList.Title = "Status"
+	stagedFileList := list.New(fileItems, listitems.GitItemDelegate{}, 0, 0)
+	stagedFileList.SetShowTitle(false)
+	stagedFileList.SetShowStatusBar(false)
 	return stagedFileList
 }
 
