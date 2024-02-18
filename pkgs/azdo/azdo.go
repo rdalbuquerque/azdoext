@@ -136,24 +136,26 @@ func (m *Model) Update(msg tea.Msg) (sections.Section, tea.Cmd) {
 			}
 			return m, nil
 		case tea.KeyEnter:
-			if m.RunOrFollowChoiceEnabled {
-				m.RunOrFollowChoiceEnabled = false
-				runOrFollow := m.RunOrFollowList.SelectedItem().(listitems.PipelineItem).Title
-				selectedPipelineId := m.PipelineList.SelectedItem().(listitems.PipelineItem).Desc.(int)
-				if runOrFollow == "Run" {
-					return m, func() tea.Msg { return m.RunOrFollowPipeline(selectedPipelineId, true) }
-				} else {
-					return m, func() tea.Msg { return m.RunOrFollowPipeline(selectedPipelineId, false) }
+			if m.focused {
+				if m.RunOrFollowChoiceEnabled {
+					m.RunOrFollowChoiceEnabled = false
+					runOrFollow := m.RunOrFollowList.SelectedItem().(listitems.PipelineItem).Title
+					selectedPipelineId := m.PipelineList.SelectedItem().(listitems.PipelineItem).Desc.(int)
+					if runOrFollow == "Run" {
+						return m, func() tea.Msg { return m.RunOrFollowPipeline(selectedPipelineId, true) }
+					} else {
+						return m, func() tea.Msg { return m.RunOrFollowPipeline(selectedPipelineId, false) }
+					}
 				}
-			}
-			if m.activeSection == PipelineListSection {
-				selectedPipeline := m.PipelineList.SelectedItem().(listitems.PipelineItem)
-				if !slices.Contains(pipelineResults, selectedPipeline.Status) {
-					m.RunOrFollowChoiceEnabled = true
-					return m, nil
+				if m.activeSection == PipelineListSection {
+					selectedPipeline := m.PipelineList.SelectedItem().(listitems.PipelineItem)
+					if !slices.Contains(pipelineResults, selectedPipeline.Status) {
+						m.RunOrFollowChoiceEnabled = true
+						return m, nil
+					}
+					m.TaskList.Title = selectedPipeline.Title
+					return m, func() tea.Msg { return m.RunOrFollowPipeline(selectedPipeline.Desc.(int), false) }
 				}
-				m.TaskList.Title = selectedPipeline.Title
-				return m, func() tea.Msg { return m.RunOrFollowPipeline(selectedPipeline.Desc.(int), false) }
 			}
 		case tea.KeyBackspace:
 			if m.activeSection != ViewportSection {
