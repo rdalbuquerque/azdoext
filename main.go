@@ -71,6 +71,7 @@ func (m *model) Init() tea.Cmd {
 	log2file("azdo added")
 	azdosection.Hide()
 	m.sections[azdoSection] = azdosection
+	m.orderedSections = append(m.orderedSections, azdoSection)
 	_, cmd := m.sections[worktree].Update(sections.BroadcastGitInfoMsg(true))
 	return cmd
 }
