@@ -104,11 +104,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 	for _, section := range m.orderedSections {
-		if !m.sections[section].IsHidden() {
-			sec, cmd := m.sections[section].Update(msg)
-			m.sections[section] = sec
-			cmds = append(cmds, cmd)
-		}
+		sec, cmd := m.sections[section].Update(msg)
+		m.sections[section] = sec
+		cmds = append(cmds, cmd)
 	}
 	return m, tea.Batch(cmds...)
 	// switch msg := msg.(type) {
