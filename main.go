@@ -51,6 +51,15 @@ type model struct {
 // 	m.azdo = azdo.New(organization, project, repository, branch, os.Getenv("AZDO_PERSONAL_ACCESS_TOKEN"))
 // }
 
+type newSection func() sections.Section
+
+func (m *model) addSection(section sectionName, new newSection) {
+	newSection := new()
+	newSection.Show()
+	newSection.Focus()
+	m.sections[section] = newSection
+}
+
 func initialModel() model {
 	commitSection := sections.NewCommitSection()
 	commitSection.Show()
@@ -61,15 +70,12 @@ func initialModel() model {
 	if err != nil {
 		panic(err)
 	}
-	choiceSection := sections.NewChoice()
-	choiceSection.Hide()
 	return model{
 		sections: map[sectionName]sections.Section{
 			commit:   commitSection,
 			worktree: worktreeSection.Section,
-			choice:   choiceSection,
 		},
-		orderedSections: []sectionName{commit, worktree, choice},
+		orderedSections: []sectionName{commit, worktree},
 	}
 }
 
@@ -115,7 +121,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	case sections.GitPushedMsg:
-		m.sections[choice].Show()
+		m.addSection(choice, sections.NewChoice)
 	}
 	for _, section := range m.orderedSections {
 		if !m.sections[section].IsHidden() {
