@@ -165,6 +165,7 @@ func (ws *WorktreeSection) setStagedFileList() list.Model {
 		fileItems = append(fileItems, listitems.StagedFileItem{Name: file, Staged: status[file].Staging == git.Added})
 	}
 	stagedFileList := list.New(fileItems, listitems.GitItemDelegate{}, 0, 0)
+	stagedFileList.Title = "Git status:"
 	stagedFileList.SetShowTitle(false)
 	stagedFileList.SetShowStatusBar(false)
 	return stagedFileList

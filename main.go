@@ -3,23 +3,24 @@ package main
 import (
 	"fmt"
 	"os"
-	"strings"
-
-	"net/url"
 
 	"explore-bubbletea/pkgs/azdo"
-	"explore-bubbletea/pkgs/listitems"
 	"explore-bubbletea/pkgs/sections"
 
-	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/textarea"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	git "github.com/go-git/go-git/v5"
 )
 
 type gitOutputMsg string
 type gitErrorMsg string
+type sectionName string
+
+const (
+	commit   sectionName = "commit"
+	worktree sectionName = "worktree"
+	choice   sectionName = "choice"
+)
 
 var (
 	activeStyle   = azdo.ActiveStyle.Copy()
@@ -27,40 +28,28 @@ var (
 )
 
 type model struct {
-	prTextarea         textarea.Model
-	repo               *git.Repository
-	gitStatus          string
-	azdo               *azdo.Model
-	activeSection      activeSection
-	prOrPipelineChoice list.Model
-	sections           []sections.Section
+	prTextarea      textarea.Model
+	sections        map[sectionName]sections.Section
+	orderedSections []sectionName
 }
 
-type activeSection int
+// func (m *model) setAzdoClientFromRemote(branch string) {
+// 	remotes, err := m.repo.Remotes()
+// 	if err != nil {
+// 		panic(err)
+// 	}
+// 	remote := remotes[0].Config().URLs[0]
 
-const (
-	prOrPipelineSection activeSection = iota
-	openPRSection
-	azdoSection
-)
-
-func (m *model) setAzdoClientFromRemote(branch string) {
-	remotes, err := m.repo.Remotes()
-	if err != nil {
-		panic(err)
-	}
-	remote := remotes[0].Config().URLs[0]
-
-	u, err := url.Parse(remote)
-	if err != nil {
-		panic(err)
-	}
-	parts := strings.Split(u.Path, "/")
-	organization := parts[1]
-	project := parts[2]
-	repository := parts[4]
-	m.azdo = azdo.New(organization, project, repository, branch, os.Getenv("AZDO_PERSONAL_ACCESS_TOKEN"))
-}
+// 	u, err := url.Parse(remote)
+// 	if err != nil {
+// 		panic(err)
+// 	}
+// 	parts := strings.Split(u.Path, "/")
+// 	organization := parts[1]
+// 	project := parts[2]
+// 	repository := parts[4]
+// 	m.azdo = azdo.New(organization, project, repository, branch, os.Getenv("AZDO_PERSONAL_ACCESS_TOKEN"))
+// }
 
 func initialModel() model {
 	commitSection := sections.NewCommitSection()
@@ -72,9 +61,15 @@ func initialModel() model {
 	if err != nil {
 		panic(err)
 	}
-	log2file("initialModel")
+	choiceSection := sections.NewChoice()
+	choiceSection.Hide()
 	return model{
-		sections: []sections.Section{commitSection, worktreeSection.Section},
+		sections: map[sectionName]sections.Section{
+			commit:   commitSection,
+			worktree: worktreeSection.Section,
+			choice:   choiceSection,
+		},
+		orderedSections: []sectionName{commit, worktree, choice},
 	}
 }
 
@@ -91,9 +86,6 @@ func (m *model) Init() tea.Cmd {
 			return " Desc:"
 		}
 	})
-	// branch := ref.Name()
-	// m.setAzdoClientFromRemote(branch.String())
-	m.prOrPipelineChoice = list.New([]list.Item{listitems.StagedFileItem{Name: "Open PR"}, listitems.StagedFileItem{Name: "Go to pipelines"}}, listitems.GitItemDelegate{}, 20, 20)
 	return func() tea.Msg {
 		return InitializedMsg(true)
 	}
@@ -115,22 +107,23 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		log2file("InitializedMsg")
 		return m, nil
 	case tea.WindowSizeMsg:
+		log2file("WindowSizeMsg")
 		sections.ActiveStyle.Height(msg.Height - 2)
 		sections.InactiveStyle.Height(msg.Height - 2)
 		for _, section := range m.sections {
 			section.SetDimensions(msg.Width, msg.Height)
 		}
 		return m, nil
+	case sections.GitPushedMsg:
+		m.sections[choice].Show()
 	}
-	var sections []sections.Section
-	for _, section := range m.sections {
-		if !section.IsHidden() {
-			sec, cmd := section.Update(msg)
-			sections = append(sections, sec)
+	for _, section := range m.orderedSections {
+		if !m.sections[section].IsHidden() {
+			sec, cmd := m.sections[section].Update(msg)
+			m.sections[section] = sec
 			cmds = append(cmds, cmd)
 		}
 	}
-	m.sections = sections
 	return m, tea.Batch(cmds...)
 	// switch msg := msg.(type) {
 	// case InitializedMsg:
@@ -215,12 +208,11 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *model) View() string {
 	var view string
-	for _, section := range m.sections {
-		log2file("Viewing section")
-		if section.IsHidden() {
-			continue
+	for _, section := range m.orderedSections {
+		log2file(fmt.Sprintf("section: %v", section))
+		if !m.sections[section].IsHidden() {
+			view = attachView(view, m.sections[section].View())
 		}
-		view = attachView(view, section.View())
 	}
 	return view
 }
@@ -249,16 +241,21 @@ func log2file(msg string) {
 }
 
 func (m *model) switchSection() {
-	for i, section := range m.sections {
+	shownSections := []sectionName{}
+	for _, section := range m.orderedSections {
+		if !m.sections[section].IsHidden() {
+			shownSections = append(shownSections, section)
+		}
+	}
+	for i, sec := range shownSections {
+		section := m.sections[sec]
 		if section.IsFocused() {
 			section.Blur()
-			if i+1 == len(m.sections) {
-				m.sections[0].Focus()
-				m.activeSection = activeSection(i)
-				return
+			nextKey := shownSections[0] // default to the first key
+			if i+1 < len(shownSections) {
+				nextKey = shownSections[i+1] // if there's a next key, use it
 			}
-			m.sections[i+1].Focus()
-			m.activeSection = activeSection(i + 1)
+			m.sections[nextKey].Focus()
 			return
 		}
 	}

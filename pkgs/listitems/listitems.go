@@ -84,3 +84,31 @@ func (d GitItemDelegate) Render(w io.Writer, m list.Model, index int, listItem l
 
 	fmt.Fprint(w, fn(str))
 }
+
+type ChoiceItem struct {
+	Choice string
+}
+
+func (i ChoiceItem) FilterValue() string { return "" }
+
+type ChoiceItemDelegate struct{}
+
+func (d ChoiceItemDelegate) Height() int                             { return 1 }
+func (d ChoiceItemDelegate) Spacing() int                            { return 0 }
+func (d ChoiceItemDelegate) Update(_ tea.Msg, _ *list.Model) tea.Cmd { return nil }
+func (d ChoiceItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
+	i, ok := listItem.(ChoiceItem)
+	if !ok {
+		return
+	}
+
+	str := i.Choice
+	fn := itemStyle.Render
+	if index == m.Index() {
+		fn = func(s ...string) string {
+			return selectedItemStyle.Render("| " + strings.Join(s, " "))
+		}
+	}
+
+	fmt.Fprint(w, fn(str))
+}
