@@ -57,6 +57,7 @@ func (m *model) addSection(section sectionName, new newSection) {
 	newSection := new()
 	newSection.Show()
 	newSection.Focus()
+	m.orderedSections = append(m.orderedSections, section)
 	m.sections[section] = newSection
 }
 
