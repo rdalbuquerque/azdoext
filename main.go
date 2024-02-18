@@ -54,6 +54,9 @@ type model struct {
 type newSection func() sections.Section
 
 func (m *model) addSection(section sectionName, new newSection) {
+	for _, sec := range m.orderedSections {
+		m.sections[sec].Blur()
+	}
 	newSection := new()
 	newSection.Show()
 	newSection.Focus()
