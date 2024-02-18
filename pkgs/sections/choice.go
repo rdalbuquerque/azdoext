@@ -20,7 +20,7 @@ func NewChoice() Section {
 		listitems.ChoiceItem{Choice: "Go to pipeline"},
 	}, listitems.ChoiceItemDelegate{}, 0, 0)
 	choices.Title = "PR or pipelines:"
-	choices.SetHeight(ActiveStyle.GetHeight())
+	choices.SetHeight(ActiveStyle.GetHeight() - 2)
 	choices.SetShowTitle(false)
 	return &Choice{
 		hidden:  false,

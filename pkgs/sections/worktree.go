@@ -101,6 +101,13 @@ func (ws *WorktreeSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 			status, cmd := ws.status.Update(msg)
 			ws.status = status
 			return ws, cmd
+		default:
+			if ws.focused {
+				status, cmd := ws.status.Update(msg)
+				ws.status = status
+				return ws, cmd
+			}
+			return ws, nil
 		}
 	case commitMsg:
 		if ws.noStagedFiles() {
