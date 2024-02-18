@@ -44,6 +44,13 @@ func (c *Choice) IsFocused() bool {
 
 func (c *Choice) Update(msg tea.Msg) (Section, tea.Cmd) {
 	if c.focused {
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch msg.String() {
+			case "enter":
+				return c, func() tea.Msg { return SubmitChoiceMsg(c.choices.SelectedItem().(listitems.ChoiceItem).Choice) }
+			}
+		}
 		choice, cmd := c.choices.Update(msg)
 		c.choices = choice
 		return c, cmd
@@ -76,3 +83,5 @@ func (c *Choice) Focus() {
 func (c *Choice) Blur() {
 	c.focused = false
 }
+
+type SubmitChoiceMsg string

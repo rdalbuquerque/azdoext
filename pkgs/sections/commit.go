@@ -1,8 +1,6 @@
 package sections
 
 import (
-	"fmt"
-
 	"github.com/charmbracelet/bubbles/textarea"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -57,7 +55,6 @@ func (cs *CommitSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 
 func (cs *CommitSection) View() string {
 	if !cs.hidden {
-		log2file(fmt.Sprintf("cs.focused: %v", cs.focused))
 		if cs.focused {
 			return ActiveStyle.Render(lipgloss.JoinVertical(lipgloss.Center, cs.title, cs.textarea.View()))
 		}

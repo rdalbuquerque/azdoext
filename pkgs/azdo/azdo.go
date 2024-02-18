@@ -111,6 +111,7 @@ func (m *Model) SetHeights(height int) *Model {
 func (m *Model) Update(msg tea.Msg) (sections.Section, tea.Cmd) {
 	switch msg := msg.(type) {
 	case sections.GitInfoMsg:
+		log2file(fmt.Sprintf("GitInfoMsg: %v\n", msg))
 		remoteUrl := msg.RemoteUrl
 		org := strings.Split(remoteUrl, "/")[3]
 		project := strings.Split(remoteUrl, "/")[4]

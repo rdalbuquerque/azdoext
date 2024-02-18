@@ -20,6 +20,7 @@ const (
 	worktree    sectionName = "worktree"
 	choice      sectionName = "choice"
 	azdoSection sectionName = "azdoSection"
+	openPR      sectionName = "openPR"
 )
 
 var (
@@ -96,6 +97,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case sections.GitPushedMsg:
 		m.addSection(choice, sections.NewChoice)
+	case sections.SubmitChoiceMsg:
+		if msg == "Open PR" {
+			m.addSection(openPR, sections.NewPRSection)
+		}
 	}
 	for _, section := range m.orderedSections {
 		if !m.sections[section].IsHidden() {
@@ -189,7 +194,6 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *model) View() string {
 	var view string
 	for _, section := range m.orderedSections {
-		log2file(fmt.Sprintf("section: %v", section))
 		if !m.sections[section].IsHidden() {
 			view = attachView(view, m.sections[section].View())
 		}
