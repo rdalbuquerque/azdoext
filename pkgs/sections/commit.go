@@ -43,8 +43,6 @@ func (cs *CommitSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "ctrl+c":
-			return nil, tea.Quit
 		case "ctrl+s":
 			if cs.textarea.Focused() {
 				cs.textarea.Blur()

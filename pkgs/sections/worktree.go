@@ -21,12 +21,6 @@ type WorktreeSection struct {
 	repo     *git.Repository
 }
 
-type WorktreeSectionData struct {
-	Section  Section
-	Repo     *git.Repository
-	Worktree *git.Worktree
-}
-
 func (ws *WorktreeSection) push() tea.Msg {
 	err := ws.repo.Push(&git.PushOptions{
 		Auth:     &githttp.BasicAuth{Username: "", Password: os.Getenv("AZDO_PERSONAL_ACCESS_TOKEN")},
@@ -53,28 +47,25 @@ func (ws *WorktreeSection) addAllToStage() {
 	ws.status.SetItems(fileItems)
 }
 
-func NewWorktreeSection() WorktreeSectionData {
+func NewWorktreeSection() Section {
+	log2file("NewWorktreeSection")
 	r, err := git.PlainOpen(".")
 	if err != nil {
 		panic(err)
 	}
+	log2file("NewWorktreeSection: PlainOpen")
 	w, err := r.Worktree()
 	if err != nil {
 		panic(err)
 	}
+	log2file("NewWorktreeSection: Worktree")
 	worktreeSection := &WorktreeSection{
-		hidden:   false,
-		focused:  false,
 		repo:     r,
 		worktree: w,
 	}
 	worktreeSection.status = worktreeSection.setStagedFileList()
 
-	return WorktreeSectionData{
-		Section:  worktreeSection,
-		Repo:     r,
-		Worktree: w,
-	}
+	return worktreeSection
 }
 
 func (ws *WorktreeSection) SetDimensions(width, height int) {
@@ -109,6 +100,18 @@ func (ws *WorktreeSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 			}
 			return ws, nil
 		}
+	case BroadcastGitInfoMsg:
+		log2file("BroadcastGitInfoMsg")
+		repo, err := ws.repo.Config()
+		if err != nil {
+			panic(err)
+		}
+		remoteUrl := repo.Remotes["origin"].URLs[0]
+		ref, err := ws.repo.Head()
+		if err != nil {
+			panic(err)
+		}
+		return ws, func() tea.Msg { return GitInfoMsg{CurrentBranch: ref.Name().String(), RemoteUrl: remoteUrl} }
 	case commitMsg:
 		if ws.noStagedFiles() {
 			ws.addAllToStage()
@@ -212,3 +215,8 @@ func (ws *WorktreeSection) noStagedFiles() bool {
 
 type GitPushedMsg bool
 type GitPushingMsg bool
+type BroadcastGitInfoMsg bool
+type GitInfoMsg struct {
+	CurrentBranch string
+	RemoteUrl     string
+}

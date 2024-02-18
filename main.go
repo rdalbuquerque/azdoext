@@ -7,7 +7,6 @@ import (
 	"explore-bubbletea/pkgs/azdo"
 	"explore-bubbletea/pkgs/sections"
 
-	"github.com/charmbracelet/bubbles/textarea"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -17,9 +16,10 @@ type gitErrorMsg string
 type sectionName string
 
 const (
-	commit   sectionName = "commit"
-	worktree sectionName = "worktree"
-	choice   sectionName = "choice"
+	commit      sectionName = "commit"
+	worktree    sectionName = "worktree"
+	choice      sectionName = "choice"
+	azdoSection sectionName = "azdoSection"
 )
 
 var (
@@ -28,36 +28,20 @@ var (
 )
 
 type model struct {
-	prTextarea      textarea.Model
 	sections        map[sectionName]sections.Section
 	orderedSections []sectionName
 }
 
-// func (m *model) setAzdoClientFromRemote(branch string) {
-// 	remotes, err := m.repo.Remotes()
-// 	if err != nil {
-// 		panic(err)
-// 	}
-// 	remote := remotes[0].Config().URLs[0]
-
-// 	u, err := url.Parse(remote)
-// 	if err != nil {
-// 		panic(err)
-// 	}
-// 	parts := strings.Split(u.Path, "/")
-// 	organization := parts[1]
-// 	project := parts[2]
-// 	repository := parts[4]
-// 	m.azdo = azdo.New(organization, project, repository, branch, os.Getenv("AZDO_PERSONAL_ACCESS_TOKEN"))
-// }
-
 type newSection func() sections.Section
 
 func (m *model) addSection(section sectionName, new newSection) {
+	log2file(fmt.Sprintf("addSection: %v", section))
 	for _, sec := range m.orderedSections {
+		log2file(fmt.Sprintf("blurring sec: %v", sec))
 		m.sections[sec].Blur()
 	}
 	newSection := new()
+	log2file(fmt.Sprintf("newSection: %v", newSection))
 	newSection.Show()
 	newSection.Focus()
 	m.orderedSections = append(m.orderedSections, section)
@@ -68,18 +52,11 @@ func initialModel() model {
 	commitSection := sections.NewCommitSection()
 	commitSection.Show()
 	commitSection.Focus()
-	worktreeSection := sections.NewWorktreeSection()
-	worktreeSection.Section.Show()
-	_, err := worktreeSection.Repo.Head()
-	if err != nil {
-		panic(err)
-	}
 	return model{
 		sections: map[sectionName]sections.Section{
-			commit:   commitSection,
-			worktree: worktreeSection.Section,
+			commit: commitSection,
 		},
-		orderedSections: []sectionName{commit, worktree},
+		orderedSections: []sectionName{commit},
 	}
 }
 
@@ -87,18 +64,14 @@ type InitializedMsg bool
 
 func (m *model) Init() tea.Cmd {
 	log2file("Init")
-	m.prTextarea = textarea.New()
-	m.prTextarea.Placeholder = "Title and description"
-	m.prTextarea.SetPromptFunc(5, func(i int) string {
-		if i == 0 {
-			return "Title:"
-		} else {
-			return " Desc:"
-		}
-	})
-	return func() tea.Msg {
-		return InitializedMsg(true)
-	}
+	m.addSection(worktree, sections.NewWorktreeSection)
+	log2file("worktree added")
+	azdosection := azdo.New()
+	log2file("azdo added")
+	azdosection.Hide()
+	m.sections[azdoSection] = azdosection
+	_, cmd := m.sections[worktree].Update(sections.BroadcastGitInfoMsg(true))
+	return cmd
 }
 
 // Main update function.
@@ -113,9 +86,6 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.switchSection()
 			return m, nil
 		}
-	case InitializedMsg:
-		log2file("InitializedMsg")
-		return m, nil
 	case tea.WindowSizeMsg:
 		log2file("WindowSizeMsg")
 		sections.ActiveStyle.Height(msg.Height - 2)

@@ -7,10 +7,12 @@ import (
 	"net/http"
 	"os"
 	"slices"
+	"strings"
 	"time"
 
 	"explore-bubbletea/pkgs/listitems"
 	"explore-bubbletea/pkgs/searchableviewport"
+	"explore-bubbletea/pkgs/sections"
 
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/spinner"
@@ -54,6 +56,8 @@ var (
 )
 
 type Model struct {
+	hidden                   bool
+	focused                  bool
 	TaskList                 list.Model
 	pipelineId               int
 	PipelineState            pipelineState
@@ -73,32 +77,26 @@ type Model struct {
 	RunOrFollowChoiceEnabled bool
 }
 
-func New(org, project, repository, branch, pat string) *Model {
+func New() sections.Section {
+	log2file("New\n")
 	vp := searchableviewport.New(0, 0)
 	pspinner := spinner.New()
 	pspinner.Spinner = spinner.Dot
 	pspinner.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#00a9ff"))
 	tl := list.New([]list.Item{}, listitems.ItemDelegate{}, 30, 0)
 	tl.SetShowStatusBar(false)
-	azdoclient := NewAzdoClient(org, project, pat)
 	pipelineList := list.New([]list.Item{}, listitems.ItemDelegate{}, 30, 0)
 	pipelineList.Title = "Pipelines"
 	pipelineList.SetShowStatusBar(false)
 	runOrFollowList := list.New([]list.Item{listitems.PipelineItem{Title: "Run"}, listitems.PipelineItem{Title: "Follow"}}, listitems.ItemDelegate{}, 30, 0)
 	runOrFollowList.Title = "Run new or follow?"
-	repositoryId := getRepository(repository, azdoclient)
+	log2file("New done\n")
 	return &Model{
 		TaskList:        tl,
 		pipelineSpinner: pspinner,
 		logViewPort:     vp,
-		azdoClient:      azdoclient,
 		PipelineList:    pipelineList,
 		RunOrFollowList: runOrFollowList,
-		organization:    org,
-		project:         project,
-		repository:      repository,
-		repositoryId:    repositoryId,
-		Branch:          branch,
 	}
 }
 
@@ -110,8 +108,19 @@ func (m *Model) SetHeights(height int) *Model {
 	return m
 }
 
-func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
+func (m *Model) Update(msg tea.Msg) (sections.Section, tea.Cmd) {
 	switch msg := msg.(type) {
+	case sections.GitInfoMsg:
+		remoteUrl := msg.RemoteUrl
+		org := strings.Split(remoteUrl, "/")[3]
+		project := strings.Split(remoteUrl, "/")[4]
+		repository := strings.Split(remoteUrl, "/")[6]
+		branch := msg.CurrentBranch
+		azdoclient := NewAzdoClient(org, project, os.Getenv("AZDO_PERSONAL_ACCESS_TOKEN"))
+		repositoryId := getRepository(repository, azdoclient)
+		log2file(fmt.Sprintf("org: %s, project: %s, repository: %s, repositoryId: %s, branch: %s\n", org, project, repository, repositoryId, branch))
+		m.organization, m.project, m.repository, m.repositoryId, m.Branch, m.azdoClient = org, project, repository, repositoryId, branch, azdoclient
+		return m, nil
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyCtrlC:
@@ -160,6 +169,11 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 		default:
 			log2file(fmt.Sprintf("default: %v\n", msg))
 		}
+	case sections.SubmitPRMsg:
+		titleAndDescription := strings.SplitN(string(msg), "\n", 2)
+		title := titleAndDescription[0]
+		description := titleAndDescription[1]
+		return m, func() tea.Msg { return m.OpenPR(strings.Split(m.Branch, "/")[2], "master", title, description) }
 	case PipelineStateMsg:
 		ps := pipelineState(msg)
 		m.PipelineState = ps
