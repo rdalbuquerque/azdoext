@@ -171,6 +171,7 @@ func (m *Model) Update(msg tea.Msg) (sections.Section, tea.Cmd) {
 			log2file(fmt.Sprintf("default: %v\n", msg))
 		}
 	case sections.SubmitPRMsg:
+		log2file("SubmitPRMsg\n")
 		titleAndDescription := strings.SplitN(string(msg), "\n", 2)
 		title := titleAndDescription[0]
 		description := titleAndDescription[1]
