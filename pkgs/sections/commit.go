@@ -42,10 +42,10 @@ func (cs *CommitSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+s":
-			if cs.textarea.Focused() {
+			if cs.focused {
 				cs.textarea.Blur()
+				return cs, func() tea.Msg { return commitMsg(cs.textarea.Value()) }
 			}
-			return cs, func() tea.Msg { return commitMsg(cs.textarea.Value()) }
 		}
 	}
 	ta, cmd := cs.textarea.Update(msg)
