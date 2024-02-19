@@ -25,8 +25,6 @@ func NewCommitSection() Section {
 	title := "Git commit:"
 	textarea := textarea.New()
 	return &CommitSection{
-		hidden:   false,
-		focused:  true,
 		title:    title,
 		textarea: textarea,
 	}
@@ -42,6 +40,7 @@ func (cs *CommitSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+s":
+			log2file("ctrl+s on CommitSection")
 			if cs.focused {
 				cs.textarea.Blur()
 				return cs, func() tea.Msg { return commitMsg(cs.textarea.Value()) }
