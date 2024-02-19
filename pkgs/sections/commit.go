@@ -42,6 +42,7 @@ func (cs *CommitSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 		case "ctrl+s":
 			log2file("ctrl+s on CommitSection")
 			if cs.focused {
+				log2file("ctrl+s on CommitSection focused")
 				cs.textarea.Blur()
 				return cs, func() tea.Msg { return commitMsg(cs.textarea.Value()) }
 			}
