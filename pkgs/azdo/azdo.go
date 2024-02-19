@@ -55,6 +55,11 @@ var (
 	}
 )
 
+type repositoryStruct struct {
+	Id            string `json:"id"`
+	DefaultBranch string `json:"defaultBranch"`
+}
+
 type Model struct {
 	hidden                   bool
 	focused                  bool
@@ -72,7 +77,8 @@ type Model struct {
 	project                  string
 	repository               string
 	repositoryId             string
-	Branch                   string
+	CurrentBranch            string
+	DefaultBranch            string
 	RunOrFollowList          list.Model
 	RunOrFollowChoiceEnabled bool
 }
@@ -116,11 +122,10 @@ func (m *Model) Update(msg tea.Msg) (sections.Section, tea.Cmd) {
 		org := strings.Split(remoteUrl, "/")[3]
 		project := strings.Split(remoteUrl, "/")[4]
 		repository := strings.Split(remoteUrl, "/")[6]
-		branch := msg.CurrentBranch
+		currentbranch := msg.CurrentBranch
 		azdoclient := NewAzdoClient(org, project, os.Getenv("AZDO_PERSONAL_ACCESS_TOKEN"))
-		repositoryId := getRepository(repository, azdoclient)
-		log2file(fmt.Sprintf("org: %s, project: %s, repository: %s, repositoryId: %s, branch: %s\n", org, project, repository, repositoryId, branch))
-		m.organization, m.project, m.repository, m.repositoryId, m.Branch, m.azdoClient = org, project, repository, repositoryId, branch, azdoclient
+		repositoryId, defaultBranch := getRepository(repository, azdoclient)
+		m.organization, m.project, m.repository, m.repositoryId, m.CurrentBranch, m.DefaultBranch, m.azdoClient = org, project, repository, repositoryId, currentbranch, defaultBranch, azdoclient
 		return m, nil
 	case tea.KeyMsg:
 		switch msg.Type {
@@ -177,7 +182,7 @@ func (m *Model) Update(msg tea.Msg) (sections.Section, tea.Cmd) {
 		titleAndDescription := strings.SplitN(string(msg), "\n", 2)
 		title := titleAndDescription[0]
 		description := titleAndDescription[1]
-		return m, func() tea.Msg { return m.OpenPR(strings.Split(m.Branch, "/")[2], "master", title, description) }
+		return m, func() tea.Msg { return m.OpenPR(m.CurrentBranch, m.DefaultBranch, title, description) }
 	case PipelineStateMsg:
 		ps := pipelineState(msg)
 		m.PipelineState = ps
@@ -283,13 +288,12 @@ func (m *Model) getSymbol(status string) string {
 	}
 }
 
-func getRepository(repository string, azdoclient *AzdoClient) string {
+func getRepository(repository string, azdoclient *AzdoClient) (string, string) {
 	apiURL := fmt.Sprintf("%s/_apis/git/repositories/%s?%s", azdoclient.orgUrl, repository, "api-version=7.1-preview.1")
 	req, err := http.NewRequest("GET", apiURL, nil)
 	if err != nil {
 		panic(err)
 	}
-
 	// Add authorization header
 	req.Header = azdoclient.authHeader
 
@@ -297,19 +301,15 @@ func getRepository(repository string, azdoclient *AzdoClient) string {
 	if err != nil {
 		panic(err)
 	}
-	return getRepositoryId(resp)
-}
-
-func getRepositoryId(resp *http.Response) string {
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		panic(err)
 	}
-	var r map[string]interface{}
-	err = json.Unmarshal(body, &r)
+	var repo repositoryStruct
+	err = json.Unmarshal(body, &repo)
 	if err != nil {
 		panic(err)
 	}
-	return r["id"].(string)
+	return repo.Id, repo.DefaultBranch
 }

@@ -131,7 +131,7 @@ func (m *Model) RunOrFollowPipeline(id int, runNew bool) tea.Msg {
 		"resources": map[string]interface{}{
 			"repositories": map[string]interface{}{
 				"self": map[string]interface{}{
-					"refName": m.Branch,
+					"refName": m.CurrentBranch,
 				},
 			},
 		},
