@@ -1,8 +1,6 @@
 package sections
 
 import (
-	"fmt"
-
 	"github.com/charmbracelet/bubbles/textarea"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -43,15 +41,12 @@ func (cs *CommitSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 		case tea.KeyMsg:
 			switch msg.String() {
 			case "ctrl+s":
-				log2file("ctrl+s on CommitSection")
-				log2file("ctrl+s on CommitSection focused")
 				cs.textarea.Blur()
 				return cs, func() tea.Msg { return commitMsg(cs.textarea.Value()) }
 			}
 		}
 		ta, cmd := cs.textarea.Update(msg)
 		cs.textarea = ta
-		log2file(fmt.Sprintf("cmd on CommitSection: %v", cmd))
 		return cs, cmd
 	}
 	return cs, nil

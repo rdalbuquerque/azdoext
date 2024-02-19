@@ -33,7 +33,7 @@ func NewPRSection() Section {
 			return " Desc:"
 		}
 	})
-	return &CommitSection{
+	return &PRSection{
 		title:    title,
 		textarea: textarea,
 	}
