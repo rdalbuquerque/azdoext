@@ -102,8 +102,12 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg == "Open PR" {
 			m.addSection(openPR, sections.NewPRSection)
 		}
+	case sections.SubmitPRMsg:
+		log2file("SubmitPRMsg")
+		m.sections[commit].Hide()
 	}
 	for _, section := range m.orderedSections {
+		log2file(fmt.Sprintf("section: %v", section))
 		sec, cmd := m.sections[section].Update(msg)
 		m.sections[section] = sec
 		cmds = append(cmds, cmd)
