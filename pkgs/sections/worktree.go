@@ -113,6 +113,7 @@ func (ws *WorktreeSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 		}
 		return ws, func() tea.Msg { return GitInfoMsg{CurrentBranch: ref.Name().String(), RemoteUrl: remoteUrl} }
 	case commitMsg:
+		log2file("commitMsg on WorktreeSection")
 		if ws.noStagedFiles() {
 			ws.addAllToStage()
 		}
