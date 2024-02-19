@@ -38,22 +38,23 @@ func (cs *CommitSection) SetDimensions(width, height int) {
 }
 
 func (cs *CommitSection) Update(msg tea.Msg) (Section, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch msg.String() {
-		case "ctrl+s":
-			log2file("ctrl+s on CommitSection")
-			if cs.focused {
+	if cs.focused {
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch msg.String() {
+			case "ctrl+s":
+				log2file("ctrl+s on CommitSection")
 				log2file("ctrl+s on CommitSection focused")
 				cs.textarea.Blur()
 				return cs, func() tea.Msg { return commitMsg(cs.textarea.Value()) }
 			}
 		}
+		ta, cmd := cs.textarea.Update(msg)
+		cs.textarea = ta
+		log2file(fmt.Sprintf("cmd on CommitSection: %v", cmd))
+		return cs, cmd
 	}
-	ta, cmd := cs.textarea.Update(msg)
-	cs.textarea = ta
-	log2file(fmt.Sprintf("cmd on CommitSection: %v", cmd))
-	return cs, cmd
+	return cs, nil
 }
 
 func (cs *CommitSection) View() string {
