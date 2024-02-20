@@ -86,7 +86,6 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case "tab":
 			m.switchSection()
-			return m, nil
 		}
 	case tea.WindowSizeMsg:
 		log2file("WindowSizeMsg")
@@ -104,7 +103,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case sections.SubmitPRMsg:
 		log2file("SubmitPRMsg")
-		m.sections[commit].Hide()
+		for _, section := range m.orderedSections {
+			m.sections[section].Hide()
+		}
+		m.sections[azdoSection].Show()
 	}
 	for _, section := range m.orderedSections {
 		log2file(fmt.Sprintf("section: %v", section))
