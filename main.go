@@ -105,6 +105,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.addSection(openPR, sections.NewPRSection)
 		} else {
 			m.setExclusiveFocus(azdoSection)
+			return m, func() tea.Msg { return azdo.GoToPipelinesMsg(true) }
 		}
 	case azdo.PROpenedMsg:
 		if msg {
