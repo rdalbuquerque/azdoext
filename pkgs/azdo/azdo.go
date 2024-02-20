@@ -143,7 +143,9 @@ func (m *Model) Update(msg tea.Msg) (sections.Section, tea.Cmd) {
 			}
 			return m, nil
 		case tea.KeyEnter:
+			log2file("enter\n")
 			if m.focused {
+				log2file("focused\n")
 				if m.RunOrFollowChoiceEnabled {
 					m.RunOrFollowChoiceEnabled = false
 					runOrFollow := m.RunOrFollowList.SelectedItem().(listitems.PipelineItem).Title
@@ -156,6 +158,7 @@ func (m *Model) Update(msg tea.Msg) (sections.Section, tea.Cmd) {
 				}
 				if m.activeSection == PipelineListSection {
 					selectedPipeline := m.PipelineList.SelectedItem().(listitems.PipelineItem)
+					log2file(fmt.Sprintf("selectedPipeline: %v\n", selectedPipeline))
 					if !slices.Contains(pipelineResults, selectedPipeline.Status) {
 						m.RunOrFollowChoiceEnabled = true
 						return m, nil

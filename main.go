@@ -38,11 +38,10 @@ type newSection func() sections.Section
 func (m *model) addSection(section sectionName, new newSection) {
 	log2file(fmt.Sprintf("addSection: %v", section))
 	for _, sec := range m.orderedSections {
-		log2file(fmt.Sprintf("blurring sec: %v", sec))
 		m.sections[sec].Blur()
 	}
 	newSection := new()
-	log2file(fmt.Sprintf("newSection: %v", newSection))
+	newSection.SetDimensions(0, sections.ActiveStyle.GetHeight())
 	newSection.Show()
 	newSection.Focus()
 	m.orderedSections = append(m.orderedSections, section)
