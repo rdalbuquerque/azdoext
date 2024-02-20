@@ -83,7 +83,7 @@ func NewAzdoClient(org, project, pat string) *AzdoClient {
 	return &AzdoClient{
 		authHeader:        authHeader,
 		orgUrl:            fmt.Sprintf("https://dev.azure.com/%s/%s", org, project),
-		defaultApiVersion: "api-version=7.2-preview.7",
+		defaultApiVersion: "api-version=7.1",
 	}
 }
 
@@ -315,7 +315,8 @@ func processLog(text io.ReadCloser) string {
 func (m *Model) FetchPipelines(wait time.Duration) tea.Cmd {
 	return func() tea.Msg {
 		time.Sleep(wait)
-		apiURL := fmt.Sprintf("%s/_apis/pipelines?api-version=6.0-preview.1", m.azdoClient.orgUrl)
+		apiURL := fmt.Sprintf("%s/_apis/pipelines?api-version=7.1", m.azdoClient.orgUrl)
+		log2file(fmt.Sprintf("FetchPipelines apiUrl: %s\n", apiURL))
 		client := &http.Client{}
 		req, err := http.NewRequest("GET", apiURL, nil)
 		if err != nil {

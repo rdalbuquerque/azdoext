@@ -31,6 +31,8 @@ var (
 type model struct {
 	sections        map[sectionName]sections.Section
 	orderedSections []sectionName
+	height          int
+	width           int
 }
 
 type newSection func() sections.Section
@@ -41,7 +43,7 @@ func (m *model) addSection(section sectionName, new newSection) {
 		m.sections[sec].Blur()
 	}
 	newSection := new()
-	newSection.SetDimensions(0, sections.ActiveStyle.GetHeight())
+	newSection.SetDimensions(0, m.height-2)
 	newSection.Show()
 	newSection.Focus()
 	m.orderedSections = append(m.orderedSections, section)
@@ -88,8 +90,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case tea.WindowSizeMsg:
 		log2file("WindowSizeMsg")
-		sections.ActiveStyle.Height(msg.Height - 2)
-		sections.InactiveStyle.Height(msg.Height - 2)
+		m.height = msg.Height
+		m.width = msg.Width
 		for _, section := range m.sections {
 			section.SetDimensions(msg.Width, msg.Height)
 		}
