@@ -255,7 +255,7 @@ func (m *model) switchSection() {
 
 func (m *model) setExclusiveFocus(section sectionName) {
 	for _, sec := range m.orderedSections {
-		m.sections[sec].Blur()
+		m.sections[sec].Hide()
 	}
 	m.sections[section].Focus()
 }
