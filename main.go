@@ -103,13 +103,12 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case sections.SubmitChoiceMsg:
 		if msg == "Open PR" {
 			m.addSection(openPR, sections.NewPRSection)
+		} else {
+			m.setExclusiveFocus(azdoSection)
 		}
 	case azdo.PROpenedMsg:
 		if msg {
-			for _, section := range m.orderedSections {
-				m.sections[section].Hide()
-			}
-			m.sections[azdoSection].Focus()
+			m.setExclusiveFocus(azdoSection)
 		}
 	}
 	for _, section := range m.orderedSections {
@@ -252,4 +251,11 @@ func (m *model) switchSection() {
 			return
 		}
 	}
+}
+
+func (m *model) setExclusiveFocus(section sectionName) {
+	for _, sec := range m.orderedSections {
+		m.sections[sec].Blur()
+	}
+	m.sections[section].Focus()
 }
