@@ -95,7 +95,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		sections.ActiveStyle.Height(m.height - 2)
 		sections.InactiveStyle.Height(m.height - 2)
 		for _, section := range m.sections {
-			section.SetDimensions(msg.Width, msg.Height-2)
+			section.SetDimensions(msg.Width, msg.Height)
 		}
 		return m, nil
 	case sections.GitPushedMsg:
