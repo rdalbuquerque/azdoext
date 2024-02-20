@@ -43,7 +43,7 @@ func (m *model) addSection(section sectionName, new newSection) {
 		m.sections[sec].Blur()
 	}
 	newSection := new()
-	newSection.SetDimensions(0, m.height-2)
+	newSection.SetDimensions(0, m.height)
 	newSection.Show()
 	newSection.Focus()
 	m.orderedSections = append(m.orderedSections, section)
