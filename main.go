@@ -109,7 +109,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			for _, section := range m.orderedSections {
 				m.sections[section].Hide()
 			}
-			m.sections[azdoSection].Show()
+			m.sections[azdoSection].Focus()
 		}
 	}
 	for _, section := range m.orderedSections {

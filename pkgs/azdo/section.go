@@ -9,6 +9,7 @@ func (m *Model) Show() {
 }
 
 func (m *Model) Focus() {
+	m.Show()
 	m.focused = true
 }
 
