@@ -26,7 +26,7 @@ func NewPRSection() Section {
 	textarea := textarea.New()
 	textarea.SetHeight(ActiveStyle.GetHeight() - 2)
 	textarea.Placeholder = "Title and description"
-	textarea.SetPromptFunc(12, func(i int) string {
+	textarea.SetPromptFunc(6, func(i int) string {
 		if i == 0 {
 			return "Title:"
 		} else {
@@ -40,7 +40,7 @@ func NewPRSection() Section {
 }
 
 func (pr *PRSection) SetDimensions(width, height int) {
-	pr.textarea.SetWidth(40)
+	pr.textarea.SetWidth(34)
 	pr.textarea.SetHeight(height - 4)
 }
 

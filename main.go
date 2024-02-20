@@ -79,7 +79,6 @@ func (m *model) Init() tea.Cmd {
 	return cmd
 }
 
-// Main update function.
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 	switch msg := msg.(type) {
@@ -91,13 +90,12 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.switchSection()
 		}
 	case tea.WindowSizeMsg:
-		log2file("WindowSizeMsg")
 		m.height = msg.Height
 		m.width = msg.Width
 		sections.ActiveStyle.Height(m.height - 2)
 		sections.InactiveStyle.Height(m.height - 2)
 		for _, section := range m.sections {
-			section.SetDimensions(msg.Width, msg.Height)
+			section.SetDimensions(msg.Width, msg.Height-2)
 		}
 		return m, nil
 	case sections.GitPushedMsg:
