@@ -94,6 +94,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		log2file("WindowSizeMsg")
 		m.height = msg.Height
 		m.width = msg.Width
+		sections.ActiveStyle.Height(m.height - 2)
+		sections.InactiveStyle.Height(m.height - 2)
 		for _, section := range m.sections {
 			section.SetDimensions(msg.Width, msg.Height)
 		}
@@ -119,85 +121,6 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 	}
 	return m, tea.Batch(cmds...)
-	// switch msg := msg.(type) {
-	// case InitializedMsg:
-	// 	log2file("InitializedMsg")
-	// 	return m, nil
-	// case tea.WindowSizeMsg:
-	// 	sections.ActiveStyle.Height(msg.Height - 2)
-	// 	sections.InactiveStyle.Height(msg.Height - 2)
-	// 	for _, section := range m.sections {
-	// 		section.SetDimensions(msg.Width, msg.Height)
-	// 	}
-	// 	// m.azdo.SetHeights(msg.Height - 2)
-	// 	m.prTextarea.SetHeight(msg.Height - 4)
-	// 	m.prOrPipelineChoice.SetHeight(msg.Height - 2)
-	// 	return m, nil
-	// case tea.KeyMsg:
-	// 	switch msg.Type {
-	// 	case tea.KeyEnter:
-	// 		log2file("Enter key pressed")
-	// 		if m.activeSection == prOrPipelineSection {
-	// 			if m.prOrPipelineChoice.SelectedItem().(listitems.StagedFileItem).Name == "Open PR" {
-	// 				m.activeSection = openPRSection
-	// 				m.prTextarea.Focus()
-	// 				return m, nil
-	// 			} else {
-	// 				m.activeSection = azdoSection
-	// 				return m, m.azdo.FetchPipelines(0)
-	// 			}
-	// 		}
-	// 		if m.activeSection == openPRSection {
-	// 			prtext, prcmd := m.prTextarea.Update(msg)
-	// 			m.prTextarea = prtext
-	// 			return m, prcmd
-	// 		}
-	// 		return m, tea.Batch(cmds...)
-	// 	case tea.KeyCtrlC:
-	// 		return m, tea.Quit
-	// 	case tea.KeyTab:
-	// 		m.switchSection()
-	// 		// case tea.KeyCtrlS:
-	// 		// 	if m.activeSection == openPRSection {
-	// 		// 		titleAndDescription := strings.SplitN(m.prTextarea.Value(), "\n", 2)
-	// 		// 		title := titleAndDescription[0]
-	// 		// 		description := titleAndDescription[1]
-	// 		// 		m.prTextarea.Blur()
-	// 		// 		return m, tea.Batch(func() tea.Msg {
-	// 		// 			return m.azdo.OpenPR(strings.Split(m.azdo.Branch, "/")[2], "master", title, description)
-	// 		// 		}, m.azdo.FetchPipelines(0))
-	// 		// 	}
-	// 	}
-	// case sections.GitPushedMsg:
-	// 	if msg {
-	// 		m.activeSection = prOrPipelineSection
-	// 		return m, nil
-	// 	}
-	// case sections.GitPushingMsg:
-	// case azdo.PipelinesFetchedMsg, azdo.PipelineIdMsg, azdo.PipelineStateMsg, azdo.PRMsg:
-	// 	if m.activeSection == openPRSection {
-	// 		m.activeSection = azdoSection
-	// 	}
-	// 	azdo, cmd := m.azdo.Update(msg)
-	// 	m.azdo = azdo
-	// 	return m, cmd
-	// }
-	// if m.activeSection == prOrPipelineSection {
-	// 	prOrPipelineChoice, cmd := m.prOrPipelineChoice.Update(msg)
-	// 	m.prOrPipelineChoice = prOrPipelineChoice
-	// 	return m, cmd
-	// }
-	// if m.activeSection == openPRSection {
-	// 	textarea, txtcmd := m.prTextarea.Update(msg)
-	// 	m.prTextarea = textarea
-	// 	return m, txtcmd
-	// }
-	// if m.activeSection == azdoSection {
-	// 	azdo, cmd := m.azdo.Update(msg)
-	// 	m.azdo = azdo
-	// 	return m, cmd
-	// }
-	// return m, tea.Batch(cmds...)
 }
 
 func (m *model) View() string {
