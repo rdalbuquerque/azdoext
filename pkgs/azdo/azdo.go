@@ -240,6 +240,7 @@ func (m *Model) Update(msg tea.Msg) (sections.Section, tea.Cmd) {
 
 func (m *Model) View() string {
 	var taskListView, logViewportView, pipelineListView string
+	log2file(fmt.Sprintf("activeSection: %v\n", m.activeSection))
 	switch m.activeSection {
 	case PipelineListSection:
 		if m.RunOrFollowChoiceEnabled {
