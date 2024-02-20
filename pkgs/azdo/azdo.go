@@ -106,15 +106,6 @@ func New() sections.Section {
 	}
 }
 
-func (m *Model) SetHeights(height int) *Model {
-	ActiveStyle = ActiveStyle.Height(height - 2)
-	m.TaskList.SetHeight(height - 2)
-	m.logViewPort.SetDimensions(80, height-2)
-	m.PipelineList.SetHeight(height - 2)
-	m.RunOrFollowList.SetHeight(height - 2)
-	return m
-}
-
 func (m *Model) Update(msg tea.Msg) (sections.Section, tea.Cmd) {
 	switch msg := msg.(type) {
 	case sections.GitInfoMsg:

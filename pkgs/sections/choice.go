@@ -16,7 +16,7 @@ type Choice struct {
 
 func NewChoice() Section {
 	choices := list.New([]list.Item{
-		listitems.ChoiceItem{Choice: "Open PRaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+		listitems.ChoiceItem{Choice: "Open PR"},
 		listitems.ChoiceItem{Choice: "Go to pipeline"},
 	}, listitems.ChoiceItemDelegate{}, 0, 0)
 	choices.Title = "PR or pipelines:"
@@ -31,7 +31,7 @@ func NewChoice() Section {
 
 func (c *Choice) SetDimensions(width, height int) {
 	c.choices.SetWidth(DefaultWidth)
-	c.choices.SetHeight(height - 3)
+	c.choices.SetHeight(height - DefaultHeightDiff)
 }
 
 func (c *Choice) IsHidden() bool {

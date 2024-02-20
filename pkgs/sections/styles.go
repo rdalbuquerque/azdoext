@@ -10,5 +10,6 @@ var (
 	InactiveStyle = lipgloss.NewStyle().
 			Border(lipgloss.NormalBorder(), true, false, true, false).
 			BorderForeground(lipgloss.Color("#6c6c6c"))
-	DefaultWidth = 20
+	DefaultWidth      = 40
+	DefaultHeightDiff = 3
 )

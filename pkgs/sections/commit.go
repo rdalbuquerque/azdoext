@@ -32,7 +32,7 @@ func NewCommitSection() Section {
 
 func (cs *CommitSection) SetDimensions(width, height int) {
 	cs.textarea.SetWidth(DefaultWidth)
-	cs.textarea.SetHeight(height - 3)
+	cs.textarea.SetHeight(height - DefaultHeightDiff)
 }
 
 func (cs *CommitSection) Update(msg tea.Msg) (Section, tea.Cmd) {

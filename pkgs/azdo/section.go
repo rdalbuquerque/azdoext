@@ -1,5 +1,7 @@
 package azdo
 
+import "explore-bubbletea/pkgs/sections"
+
 func (m *Model) Hide() {
 	m.hidden = true
 }
@@ -26,5 +28,11 @@ func (m *Model) IsHidden() bool {
 }
 
 func (m *Model) SetDimensions(width, height int) {
-	m.SetHeights(height)
+	ActiveStyle = ActiveStyle.Height(height - 2)
+	m.TaskList.SetHeight(height - 2)
+	m.TaskList.SetWidth(sections.DefaultWidth)
+	m.logViewPort.SetDimensions(width-m.TaskList.Width(), height-2)
+	m.PipelineList.SetHeight(height - 2)
+	m.PipelineList.SetWidth(sections.DefaultWidth)
+	m.RunOrFollowList.SetHeight(height - 2)
 }

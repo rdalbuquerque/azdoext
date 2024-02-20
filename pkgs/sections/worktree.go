@@ -70,7 +70,7 @@ func NewWorktreeSection() Section {
 
 func (ws *WorktreeSection) SetDimensions(width, height int) {
 	ws.status.SetWidth(DefaultWidth)
-	ws.status.SetHeight(height - 3)
+	ws.status.SetHeight(height - DefaultHeightDiff)
 }
 
 func (ws *WorktreeSection) IsHidden() bool {
