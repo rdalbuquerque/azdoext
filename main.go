@@ -101,12 +101,13 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg == "Open PR" {
 			m.addSection(openPR, sections.NewPRSection)
 		}
-	case sections.SubmitPRMsg:
-		log2file("SubmitPRMsg")
-		for _, section := range m.orderedSections {
-			m.sections[section].Hide()
+	case azdo.PROpenedMsg:
+		if msg {
+			for _, section := range m.orderedSections {
+				m.sections[section].Hide()
+			}
+			m.sections[azdoSection].Show()
 		}
-		m.sections[azdoSection].Show()
 	}
 	for _, section := range m.orderedSections {
 		log2file(fmt.Sprintf("section: %v", section))

@@ -180,6 +180,9 @@ func (m *Model) Update(msg tea.Msg) (sections.Section, tea.Cmd) {
 	case sections.SubmitPRMsg:
 		log2file("SubmitPRMsg\n")
 		titleAndDescription := strings.SplitN(string(msg), "\n", 2)
+		if len(titleAndDescription) != 2 {
+			return m, func() tea.Msg { return sections.PRErrorMsg("Title and description are required") }
+		}
 		title := titleAndDescription[0]
 		description := titleAndDescription[1]
 		return m, func() tea.Msg { return m.OpenPR(m.CurrentBranch, m.DefaultBranch, title, description) }

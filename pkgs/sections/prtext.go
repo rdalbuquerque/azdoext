@@ -55,6 +55,8 @@ func (pr *PRSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 			}
 			return pr, func() tea.Msg { return SubmitPRMsg(pr.textarea.Value()) }
 		}
+	case PRErrorMsg:
+		pr.textarea.Placeholder = string(msg)
 	}
 	ta, cmd := pr.textarea.Update(msg)
 	pr.textarea = ta
@@ -90,3 +92,4 @@ func (pr *PRSection) Blur() {
 }
 
 type SubmitPRMsg string
+type PRErrorMsg string

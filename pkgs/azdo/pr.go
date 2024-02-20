@@ -10,7 +10,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-type PRMsg string
+type PROpenedMsg bool
 
 func (m *Model) OpenPR(from, to, title, description string) tea.Msg {
 	apiUrl := fmt.Sprintf("%s/_apis/git/repositories/%s/pullrequests?api-version=7.1", m.azdoClient.orgUrl, m.repositoryId)
@@ -41,7 +41,7 @@ func (m *Model) OpenPR(from, to, title, description string) tea.Msg {
 	log2file(fmt.Sprintf("openPR response: %s\n", string(body)))
 	// check for 409 conflict response
 	if resp.StatusCode == 409 {
-		return PRMsg("PR already exists.")
+		return PROpenedMsg(false)
 	}
-	return PRMsg("Successfully opened PR.")
+	return PROpenedMsg(true)
 }
