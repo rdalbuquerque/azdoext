@@ -74,6 +74,8 @@ func (m *model) Init() tea.Cmd {
 	m.sections[azdoSection] = azdosection
 	m.orderedSections = append(m.orderedSections, azdoSection)
 	_, cmd := m.sections[worktree].Update(sections.BroadcastGitInfoMsg(true))
+	m.sections[worktree].Blur()
+	m.sections[commit].Focus()
 	return cmd
 }
 
