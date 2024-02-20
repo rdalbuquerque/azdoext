@@ -170,7 +170,6 @@ func (m *Model) Update(msg tea.Msg) (sections.Section, tea.Cmd) {
 			}
 		case tea.KeyBackspace:
 			if m.activeSection != ViewportSection {
-				log2file("backspace\n")
 				if m.RunOrFollowChoiceEnabled {
 					m.RunOrFollowChoiceEnabled = false
 					return m, nil
@@ -180,11 +179,8 @@ func (m *Model) Update(msg tea.Msg) (sections.Section, tea.Cmd) {
 				}
 				return m, nil
 			}
-		default:
-			log2file(fmt.Sprintf("default: %v\n", msg))
 		}
 	case sections.SubmitPRMsg:
-		log2file("SubmitPRMsg\n")
 		titleAndDescription := strings.SplitN(string(msg), "\n", 2)
 		if len(titleAndDescription) != 2 {
 			return m, func() tea.Msg { return sections.PRErrorMsg("Title and description are required") }
@@ -206,8 +202,11 @@ func (m *Model) Update(msg tea.Msg) (sections.Section, tea.Cmd) {
 	case PROpenedMsg, GoToPipelinesMsg:
 		return m, tea.Batch(m.FetchPipelines(0), m.pipelineSpinner.Tick)
 	case PipelinesFetchedMsg:
+		log2file(fmt.Sprintf("PipelinesFetchedMsg: %v\n", msg))
 		m.PipelineList.SetItems(msg)
-		return m, m.FetchPipelines(1 * time.Second)
+		pipelineList, cmd := m.PipelineList.Update(msg)
+		m.PipelineList = pipelineList
+		return m, tea.Batch(m.FetchPipelines(1*time.Second), cmd)
 	case PipelineIdMsg:
 		m.PipelineState.IsRunning = true
 		m.activeSection = TaskListSection
@@ -223,7 +222,6 @@ func (m *Model) Update(msg tea.Msg) (sections.Section, tea.Cmd) {
 	var cmd tea.Cmd
 	switch m.activeSection {
 	case TaskListSection:
-		log2file("ListSection\n")
 		var selectedRecord listitems.PipelineItem
 		m.TaskList, cmd = m.TaskList.Update(msg)
 		selectedRecord, ok := m.TaskList.SelectedItem().(listitems.PipelineItem)
