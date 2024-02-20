@@ -20,6 +20,8 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+type GoToPipelinesMsg bool
+
 type ActiveSection int
 
 const (
@@ -197,9 +199,11 @@ func (m *Model) Update(msg tea.Msg) (sections.Section, tea.Cmd) {
 			return m, m.azdoClient.getPipelineState(m.pipelineId, 1*time.Second)
 		}
 		return m, nil
+	case PROpenedMsg, GoToPipelinesMsg:
+		return m, tea.Batch(m.FetchPipelines(0), m.pipelineSpinner.Tick)
 	case PipelinesFetchedMsg:
 		m.PipelineList.SetItems(msg)
-		return m, tea.Batch(m.FetchPipelines(1*time.Second), m.pipelineSpinner.Tick)
+		return m, m.FetchPipelines(1 * time.Second)
 	case PipelineIdMsg:
 		m.PipelineState.IsRunning = true
 		m.activeSection = TaskListSection
