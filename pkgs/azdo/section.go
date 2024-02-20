@@ -26,7 +26,8 @@ func (m *Model) IsHidden() bool {
 }
 
 func (m *Model) SetDimensions(width, height int) {
-	ActiveStyle = ActiveStyle.Height(height - 2)
+	ActiveStyle = ActiveStyle.Height(height - 2).MaxHeight(height - 2)
+	InactiveStyle = InactiveStyle.Height(height - 2).MaxHeight(height - 2)
 	m.TaskList.SetHeight(height - 2)
 	m.logViewPort.SetDimensions(80, height-2)
 	m.PipelineList.SetHeight(height - 2)
