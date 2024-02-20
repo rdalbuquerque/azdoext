@@ -40,7 +40,7 @@ func NewPRSection() Section {
 }
 
 func (pr *PRSection) SetDimensions(width, height int) {
-	pr.textarea.SetWidth(40)
+	pr.textarea.SetWidth(DefaultWidth)
 	pr.textarea.SetHeight(height - 3)
 }
 
@@ -49,7 +49,6 @@ func (pr *PRSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+s":
-			log2file("ctrl+s on PRSection")
 			if pr.textarea.Focused() {
 				pr.textarea.Blur()
 			}
