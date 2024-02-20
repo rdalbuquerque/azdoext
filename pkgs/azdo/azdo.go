@@ -86,7 +86,6 @@ type Model struct {
 }
 
 func New() sections.Section {
-	log2file("New\n")
 	vp := searchableviewport.New(0, 0)
 	pspinner := spinner.New()
 	pspinner.Spinner = spinner.Dot
@@ -98,7 +97,6 @@ func New() sections.Section {
 	pipelineList.SetShowStatusBar(false)
 	runOrFollowList := list.New([]list.Item{listitems.PipelineItem{Title: "Run"}, listitems.PipelineItem{Title: "Follow"}}, listitems.ItemDelegate{}, 30, 0)
 	runOrFollowList.Title = "Run new or follow?"
-	log2file("New done\n")
 	return &Model{
 		TaskList:        tl,
 		pipelineSpinner: pspinner,
@@ -120,7 +118,6 @@ func (m *Model) SetHeights(height int) *Model {
 func (m *Model) Update(msg tea.Msg) (sections.Section, tea.Cmd) {
 	switch msg := msg.(type) {
 	case sections.GitInfoMsg:
-		log2file(fmt.Sprintf("GitInfoMsg: %v\n", msg))
 		remoteUrl := msg.RemoteUrl
 		org := strings.Split(remoteUrl, "/")[3]
 		project := strings.Split(remoteUrl, "/")[4]
@@ -136,7 +133,6 @@ func (m *Model) Update(msg tea.Msg) (sections.Section, tea.Cmd) {
 			m.done = true
 			return m, tea.Quit
 		case tea.KeyTab:
-			log2file("tab\n")
 			if m.activeSection == TaskListSection {
 				m.activeSection = ViewportSection
 			} else {
@@ -144,9 +140,7 @@ func (m *Model) Update(msg tea.Msg) (sections.Section, tea.Cmd) {
 			}
 			return m, nil
 		case tea.KeyEnter:
-			log2file("enter\n")
 			if m.focused {
-				log2file("focused\n")
 				if m.RunOrFollowChoiceEnabled {
 					m.RunOrFollowChoiceEnabled = false
 					runOrFollow := m.RunOrFollowList.SelectedItem().(listitems.PipelineItem).Title

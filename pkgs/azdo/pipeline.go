@@ -89,7 +89,6 @@ func NewAzdoClient(org, project, pat string) *AzdoClient {
 
 func (m *Model) getPipelineStatus(pipelineId int) (string, int) {
 	apiURL := fmt.Sprintf("%s/_apis/build/builds?definitions=%d&queryOrder=queueTimeDescending&$top=1&%s", m.azdoClient.orgUrl, pipelineId, m.azdoClient.defaultApiVersion)
-	log2file(fmt.Sprintf("getPipelineStatus apiUrl: %s\n", apiURL))
 	req, err := http.NewRequest("GET", apiURL, nil)
 	req.Header = m.azdoClient.authHeader
 	if err != nil {
@@ -111,7 +110,6 @@ func (m *Model) getPipelineStatus(pipelineId int) (string, int) {
 	}
 	runCount := int(r["count"].(float64))
 	if runCount == 0 {
-		log2file("No runs found\n")
 		return "noRuns", 0
 	}
 	run := r["value"].([]interface{})[0].(map[string]interface{})
@@ -317,7 +315,6 @@ func (m *Model) FetchPipelines(wait time.Duration) tea.Cmd {
 	return func() tea.Msg {
 		time.Sleep(wait)
 		apiURL := fmt.Sprintf("%s/_apis/pipelines?api-version=7.1", m.azdoClient.orgUrl)
-		log2file(fmt.Sprintf("FetchPipelines apiUrl: %s\n", apiURL))
 		client := &http.Client{}
 		req, err := http.NewRequest("GET", apiURL, nil)
 		if err != nil {
@@ -378,6 +375,5 @@ func (c *AzdoClient) getPipelineRepository(pipelineId int) string {
 	if err != nil {
 		panic(err)
 	}
-	log2file(fmt.Sprintf("getPipelineRepository id: %s\n", r["configuration"].(map[string]interface{})["repository"].(map[string]interface{})["id"].(string)))
 	return r["configuration"].(map[string]interface{})["repository"].(map[string]interface{})["id"].(string)
 }
