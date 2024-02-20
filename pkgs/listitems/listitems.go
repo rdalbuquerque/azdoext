@@ -37,10 +37,12 @@ func (d ItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 	}
 
 	var str string
+	titleStyle := lipgloss.NewStyle().MaxWidth(40)
+	title := titleStyle.Render(i.Title)
 	if i.Symbol != "" {
-		str = fmt.Sprintf("%s %s", i.Symbol, i.Title)
+		str = fmt.Sprintf("%s %s", i.Symbol, title)
 	} else {
-		str = i.Title
+		str = title
 	}
 
 	fn := itemStyle.Render
