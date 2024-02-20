@@ -198,9 +198,8 @@ func (m *Model) Update(msg tea.Msg) (sections.Section, tea.Cmd) {
 	case PipelinesFetchedMsg:
 		log2file(fmt.Sprintf("PipelinesFetchedMsg: %v\n", msg))
 		m.PipelineList.SetItems(msg)
-		pipelineList, cmd := m.PipelineList.Update(msg)
-		m.PipelineList = pipelineList
-		return m, tea.Batch(m.FetchPipelines(1*time.Second), cmd)
+		log2file(fmt.Sprintf("PipelineList: %v\n", m.PipelineList.Items()))
+		return m, m.FetchPipelines(1 * time.Second)
 	case PipelineIdMsg:
 		m.PipelineState.IsRunning = true
 		m.activeSection = TaskListSection
