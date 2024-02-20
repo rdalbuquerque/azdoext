@@ -89,6 +89,7 @@ func NewAzdoClient(org, project, pat string) *AzdoClient {
 
 func (m *Model) getPipelineStatus(pipelineId int) (string, int) {
 	apiURL := fmt.Sprintf("%s/_apis/build/builds?definitions=%d&queryOrder=queueTimeDescending&$top=1&%s", m.azdoClient.orgUrl, pipelineId, m.azdoClient.defaultApiVersion)
+	log2file(fmt.Sprintf("getPipelineStatus apiUrl: %s\n", apiURL))
 	req, err := http.NewRequest("GET", apiURL, nil)
 	req.Header = m.azdoClient.authHeader
 	if err != nil {
