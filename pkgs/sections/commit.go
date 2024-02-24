@@ -1,6 +1,9 @@
 package sections
 
 import (
+	"explore-bubbletea/pkgs/styles"
+	"fmt"
+
 	"github.com/charmbracelet/bubbles/textarea"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -31,8 +34,8 @@ func NewCommitSection() Section {
 }
 
 func (cs *CommitSection) SetDimensions(width, height int) {
-	cs.textarea.SetWidth(DefaultWidth)
-	cs.textarea.SetHeight(height - DefaultHeightDiff)
+	cs.textarea.SetWidth(styles.DefaultSectionWidth)
+	cs.textarea.SetHeight(height - 1)
 }
 
 func (cs *CommitSection) Update(msg tea.Msg) (Section, tea.Cmd) {
@@ -53,11 +56,18 @@ func (cs *CommitSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 }
 
 func (cs *CommitSection) View() string {
+	f, err := tea.LogToFile("commitsection-view.txt", "debug")
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+
 	if !cs.hidden {
 		if cs.focused {
-			return ActiveStyle.Render(lipgloss.JoinVertical(lipgloss.Center, cs.title, cs.textarea.View()))
+			f.WriteString(fmt.Sprintf("Active Style Height: %v | cs.textarea height: %v\n", styles.ActiveStyle.GetHeight(), cs.textarea.Height()))
+			return styles.ActiveStyle.Render(lipgloss.JoinVertical(lipgloss.Center, cs.title, cs.textarea.View()))
 		}
-		return InactiveStyle.Render(lipgloss.JoinVertical(lipgloss.Center, cs.title, cs.textarea.View()))
+		return styles.InactiveStyle.Render(lipgloss.JoinVertical(lipgloss.Center, cs.title, cs.textarea.View()))
 	}
 	return ""
 }

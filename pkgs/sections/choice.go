@@ -2,6 +2,7 @@ package sections
 
 import (
 	"explore-bubbletea/pkgs/listitems"
+	"explore-bubbletea/pkgs/styles"
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -14,13 +15,20 @@ type Choice struct {
 	choices list.Model
 }
 
+type OptionName string
+
+const (
+	OpenPROption   listitems.OptionName = "Open PR"
+	PipelineOption listitems.OptionName = "Go to pipeline"
+)
+
 func NewChoice() Section {
 	choices := list.New([]list.Item{
 		listitems.ChoiceItem{Choice: "Open PR"},
 		listitems.ChoiceItem{Choice: "Go to pipeline"},
 	}, listitems.ChoiceItemDelegate{}, 0, 0)
 	choices.Title = "PR or pipelines:"
-	choices.SetHeight(ActiveStyle.GetHeight() - 2)
+	choices.SetHeight(styles.ActiveStyle.GetHeight() - 2)
 	choices.SetShowTitle(false)
 	return &Choice{
 		hidden:  false,
@@ -30,8 +38,8 @@ func NewChoice() Section {
 }
 
 func (c *Choice) SetDimensions(width, height int) {
-	c.choices.SetWidth(DefaultWidth)
-	c.choices.SetHeight(height - DefaultHeightDiff)
+	c.choices.SetWidth(styles.DefaultSectionWidth)
+	c.choices.SetHeight(height - styles.DefaultSectionHeightDiff)
 }
 
 func (c *Choice) IsHidden() bool {
@@ -61,9 +69,9 @@ func (c *Choice) Update(msg tea.Msg) (Section, tea.Cmd) {
 func (c *Choice) View() string {
 	if !c.hidden {
 		if c.focused {
-			return ActiveStyle.Render(lipgloss.JoinVertical(lipgloss.Center, c.choices.Title, c.choices.View()))
+			return styles.ActiveStyle.Render(lipgloss.JoinVertical(lipgloss.Center, c.choices.Title, c.choices.View()))
 		}
-		return InactiveStyle.Render(lipgloss.JoinVertical(lipgloss.Center, c.choices.Title, c.choices.View()))
+		return styles.InactiveStyle.Render(lipgloss.JoinVertical(lipgloss.Center, c.choices.Title, c.choices.View()))
 	}
 	return ""
 }

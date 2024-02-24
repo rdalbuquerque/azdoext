@@ -2,6 +2,7 @@ package sections
 
 import (
 	"explore-bubbletea/pkgs/listitems"
+	"explore-bubbletea/pkgs/styles"
 	"os"
 	"time"
 
@@ -58,7 +59,6 @@ func NewWorktreeSection() Section {
 	if err != nil {
 		panic(err)
 	}
-	log2file("NewWorktreeSection: Worktree")
 	worktreeSection := &WorktreeSection{
 		repo:     r,
 		worktree: w,
@@ -69,8 +69,8 @@ func NewWorktreeSection() Section {
 }
 
 func (ws *WorktreeSection) SetDimensions(width, height int) {
-	ws.status.SetWidth(DefaultWidth)
-	ws.status.SetHeight(height - DefaultHeightDiff)
+	ws.status.SetWidth(styles.DefaultSectionWidth)
+	ws.status.SetHeight(height - 1)
 }
 
 func (ws *WorktreeSection) IsHidden() bool {
@@ -143,9 +143,9 @@ func (ws *WorktreeSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 func (ws *WorktreeSection) View() string {
 	if !ws.hidden {
 		if ws.focused {
-			return ActiveStyle.Render(lipgloss.JoinVertical(lipgloss.Center, ws.status.Title, ws.status.View()))
+			return styles.ActiveStyle.Render(lipgloss.JoinVertical(lipgloss.Center, ws.status.Title, ws.status.View()))
 		}
-		return InactiveStyle.Render(lipgloss.JoinVertical(lipgloss.Center, ws.status.Title, ws.status.View()))
+		return styles.InactiveStyle.Render(lipgloss.JoinVertical(lipgloss.Center, ws.status.Title, ws.status.View()))
 	}
 	return ""
 }

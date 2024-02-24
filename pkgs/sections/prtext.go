@@ -1,6 +1,8 @@
 package sections
 
 import (
+	"explore-bubbletea/pkgs/styles"
+
 	"github.com/charmbracelet/bubbles/textarea"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -24,7 +26,7 @@ func (pr *PRSection) IsFocused() bool {
 func NewPRSection() Section {
 	title := "Open PR:"
 	textarea := textarea.New()
-	textarea.SetHeight(ActiveStyle.GetHeight() - 2)
+	textarea.SetHeight(styles.ActiveStyle.GetHeight() - 2)
 	textarea.Placeholder = "Title and description"
 	textarea.SetPromptFunc(6, func(i int) string {
 		if i == 0 {
@@ -40,8 +42,8 @@ func NewPRSection() Section {
 }
 
 func (pr *PRSection) SetDimensions(width, height int) {
-	pr.textarea.SetWidth(DefaultWidth)
-	pr.textarea.SetHeight(height - DefaultHeightDiff)
+	pr.textarea.SetWidth(styles.DefaultSectionWidth)
+	pr.textarea.SetHeight(height - styles.DefaultSectionHeightDiff)
 }
 
 func (pr *PRSection) Update(msg tea.Msg) (Section, tea.Cmd) {
@@ -65,9 +67,9 @@ func (pr *PRSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 func (pr *PRSection) View() string {
 	if !pr.hidden {
 		if pr.focused {
-			return ActiveStyle.Render(lipgloss.JoinVertical(lipgloss.Center, pr.title, pr.textarea.View()))
+			return styles.ActiveStyle.Render(lipgloss.JoinVertical(lipgloss.Center, pr.title, pr.textarea.View()))
 		}
-		return InactiveStyle.Render(lipgloss.JoinVertical(lipgloss.Center, pr.title, pr.textarea.View()))
+		return styles.InactiveStyle.Render(lipgloss.JoinVertical(lipgloss.Center, pr.title, pr.textarea.View()))
 	}
 	return ""
 }

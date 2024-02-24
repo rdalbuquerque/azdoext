@@ -87,8 +87,10 @@ func (d GitItemDelegate) Render(w io.Writer, m list.Model, index int, listItem l
 	fmt.Fprint(w, fn(str))
 }
 
+type OptionName string
+
 type ChoiceItem struct {
-	Choice string
+	Choice OptionName
 }
 
 func (i ChoiceItem) FilterValue() string { return "" }
@@ -104,7 +106,7 @@ func (d ChoiceItemDelegate) Render(w io.Writer, m list.Model, index int, listIte
 		return
 	}
 
-	str := i.Choice
+	str := string(i.Choice)
 	fn := itemStyle.Render
 	if index == m.Index() {
 		fn = func(s ...string) string {

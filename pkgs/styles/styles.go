@@ -1,4 +1,4 @@
-package sections
+package styles
 
 import "github.com/charmbracelet/lipgloss"
 
@@ -10,6 +10,15 @@ var (
 	InactiveStyle = lipgloss.NewStyle().
 			Border(lipgloss.NormalBorder(), true, false, true, false).
 			BorderForeground(lipgloss.Color("#6c6c6c"))
-	DefaultWidth      = 40
-	DefaultHeightDiff = 3
+	Height                   int
+	Width                    int
+	DefaultSectionWidth      = 40
+	DefaultSectionHeightDiff = 1
 )
+
+func SetDimensions(width, height int) {
+	Height = height
+	Width = width
+	ActiveStyle.Height(Height)
+	InactiveStyle.Height(Height)
+}
