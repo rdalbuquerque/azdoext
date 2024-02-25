@@ -8,7 +8,6 @@ import (
 	"explore-bubbletea/pkgs/sections"
 	"explore-bubbletea/pkgs/styles"
 
-	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -83,13 +82,17 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case azdo.PROpenedMsg:
 		m.pagesStack.Push(m.pages[pages.Pipelines])
-	case spinner.TickMsg:
-		f.WriteString(fmt.Sprintf("handling spinner.TickMsg\n"))
 	}
-	page, cmd := m.pagesStack.Peek().Update(msg)
-	m.pagesStack.Pop()
-	m.pagesStack.Push(page)
-	return m, cmd
+	// update all pages
+	updatedPages := make(map[pages.PageName]pages.PageInterface)
+	var cmds []tea.Cmd
+	for _, p := range m.pages {
+		updatedPage, cmd := p.Update(msg)
+		updatedPages[updatedPage.GetPageName()] = updatedPage
+		cmds = append(cmds, cmd)
+	}
+	m.pages = updatedPages
+	return m, tea.Batch(cmds...)
 }
 
 func (m *model) View() string {
