@@ -62,6 +62,12 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+b":
 			m.pagesStack.Pop()
 			return m, nil
+		case "tab":
+			m.pagesStack.Peek().SwitchSection()
+			return m, nil
+		case "enter":
+			_, cmd := m.pagesStack.Peek().Update(msg)
+			return m, cmd
 		}
 	case tea.WindowSizeMsg:
 		m.height = msg.Height
