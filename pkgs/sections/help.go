@@ -88,7 +88,7 @@ func NewHelp() Section {
 
 func (h *Help) SetDimensions(width, height int) {
 	log2file(fmt.Sprintf("help SetDimensions width: %v, height: %v", width, height))
-	h.viewport.Height = height - styles.DefaultSectionHeightDiff
+	h.viewport.Height = height
 }
 
 func (h *Help) IsHidden() bool {

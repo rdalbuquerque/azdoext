@@ -12,10 +12,10 @@ import (
 )
 
 type model struct {
-	pages      map[pages.PageName]pages.PageInterface
-	pagesStack pages.Stack
-	height     int
-	width      int
+	pages     map[pages.PageName]pages.PageInterface
+	pageStack pages.Stack
+	height    int
+	width     int
 }
 
 func initialModel() model {
@@ -28,17 +28,18 @@ func initialModel() model {
 		pages.Help:      helpPage,
 	}
 	pageStack := pages.Stack{}
-	pageStack.Push(pagesMap[pages.Git])
-	return model{
-		pages:      pagesMap,
-		pagesStack: pageStack,
+	m := model{
+		pages:     pagesMap,
+		pageStack: pageStack,
 	}
+	m.addPage(pages.Git)
+	return m
 }
 
 func (m *model) Init() tea.Cmd {
-	curPage := m.pagesStack.Peek()
+	curPage := m.pageStack.Peek()
 	if curPage.GetPageName() == pages.Git {
-		_, cmd := m.pagesStack.Peek().Update(sections.BroadcastGitInfoMsg(true))
+		_, cmd := m.pageStack.Peek().Update(sections.BroadcastGitInfoMsg(true))
 		return cmd
 	}
 	return nil
@@ -57,14 +58,13 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c":
 			return m, tea.Quit
 		case "ctrl+h":
-			m.pagesStack.Push(m.pages[pages.Help])
+			if m.pageStack.Peek().GetPageName() != pages.Help {
+				m.addPage(pages.Help)
+			}
 			return m, nil
 		case "ctrl+b":
-			m.pagesStack.Pop()
+			m.removeCurrentPage()
 			return m, nil
-		case "tab", "enter":
-			_, cmd := m.pagesStack.Peek().Update(msg)
-			return m, cmd
 		}
 	case tea.WindowSizeMsg:
 		m.height = msg.Height
@@ -74,17 +74,13 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			p.SetDimensions(0, msg.Height-3)
 		}
 		return m, nil
-	case sections.GitInfoMsg:
-		pipelinePage, cmd := m.pages[pages.Pipelines].Update(msg)
-		m.pages[pages.Pipelines] = pipelinePage
-		return m, cmd
 	case sections.SubmitChoiceMsg:
 		if msg == sections.SubmitChoiceMsg(sections.PipelineOption) {
-			m.pagesStack.Push(m.pages[pages.Pipelines])
+			m.addPage(pages.Pipelines)
 			return m, func() tea.Msg { return azdo.GoToPipelinesMsg(true) }
 		}
 	case azdo.PROpenedMsg:
-		m.pagesStack.Push(m.pages[pages.Pipelines])
+		m.addPage(pages.Pipelines)
 	}
 	// update all pages
 	updatedPages := make(map[pages.PageName]pages.PageInterface)
@@ -99,7 +95,18 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *model) View() string {
-	return m.pagesStack.Peek().View()
+	return m.pageStack.Peek().View()
+}
+
+func (m *model) addPage(pageName pages.PageName) {
+	p := m.pages[pageName]
+	p.SetAsCurrentPage()
+	m.pageStack.Push(p)
+}
+
+func (m *model) removeCurrentPage() {
+	m.pageStack.Peek().UnsetCurrentPage()
+	m.pageStack.Pop()
 }
 
 func main() {

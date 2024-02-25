@@ -12,10 +12,23 @@ import (
 )
 
 type GitPage struct {
+	current         bool
 	name            PageName
 	sections        map[sections.SectionName]sections.Section
 	orderedSections []sections.SectionName
 	shortHelp       string
+}
+
+func (p *GitPage) IsCurrentPage() bool {
+	return p.current
+}
+
+func (p *GitPage) SetAsCurrentPage() {
+	p.current = true
+}
+
+func (p *GitPage) UnsetCurrentPage() {
+	p.current = false
 }
 
 func (p *GitPage) AddSection(section sections.SectionName) {
@@ -60,27 +73,31 @@ func (p *GitPage) GetPageName() PageName {
 }
 
 func (p *GitPage) Update(msg tea.Msg) (PageInterface, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch msg.String() {
-		case "tab":
-			p.SwitchSection()
-			return p, nil
+	// process any msg only if this page is the current page
+	if p.current {
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch msg.String() {
+			case "tab":
+				p.switchSection()
+				return p, nil
+			}
+		case sections.GitPushedMsg:
+			p.AddSection(sections.ChoiceSection)
+		case sections.SubmitChoiceMsg:
+			if msg == "Open PR" {
+				p.AddSection(sections.OpenPR)
+			}
 		}
-	case sections.GitPushedMsg:
-		p.AddSection(sections.ChoiceSection)
-	case sections.SubmitChoiceMsg:
-		if msg == "Open PR" {
-			p.AddSection(sections.OpenPR)
+		var cmds []tea.Cmd
+		for _, section := range p.orderedSections {
+			sec, cmd := p.sections[section].Update(msg)
+			p.sections[section] = sec
+			cmds = append(cmds, cmd)
 		}
+		return p, tea.Batch(cmds...)
 	}
-	var cmds []tea.Cmd
-	for _, section := range p.orderedSections {
-		sec, cmd := p.sections[section].Update(msg)
-		p.sections[section] = sec
-		cmds = append(cmds, cmd)
-	}
-	return p, tea.Batch(cmds...)
+	return p, nil
 }
 
 func (p *GitPage) View() string {
@@ -94,7 +111,7 @@ func (p *GitPage) View() string {
 	return viewWithHelp
 }
 
-func (p *GitPage) SwitchSection() {
+func (p *GitPage) switchSection() {
 	shownSections := []sections.SectionName{}
 	for _, section := range p.orderedSections {
 		if !p.sections[section].IsHidden() {

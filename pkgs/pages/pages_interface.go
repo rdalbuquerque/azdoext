@@ -24,7 +24,9 @@ type PageInterface interface {
 	GetPageName() PageName
 	AddSection(sections.SectionName)
 	SetDimensions(width, height int)
-	SwitchSection()
 	Update(tea.Msg) (PageInterface, tea.Cmd)
 	View() string
+	IsCurrentPage() bool
+	SetAsCurrentPage()
+	UnsetCurrentPage()
 }

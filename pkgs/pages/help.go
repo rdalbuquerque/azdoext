@@ -8,6 +8,7 @@ import (
 )
 
 type HelpPage struct {
+	current  bool
 	name     PageName
 	sections map[sections.SectionName]sections.Section
 }
@@ -17,6 +18,18 @@ func NewHelpPage() PageInterface {
 	p.name = Help
 	p.AddSection(sections.HelpSection)
 	return p
+}
+
+func (p *HelpPage) IsCurrentPage() bool {
+	return p.current
+}
+
+func (p *HelpPage) SetAsCurrentPage() {
+	p.current = true
+}
+
+func (p *HelpPage) UnsetCurrentPage() {
+	p.current = false
 }
 
 func (p *HelpPage) GetPageName() PageName {
@@ -39,12 +52,13 @@ func (p *HelpPage) View() string {
 }
 
 func (p *HelpPage) Update(msg tea.Msg) (PageInterface, tea.Cmd) {
-	sec, cmd := p.sections[sections.HelpSection].Update(msg)
-	p.sections[sections.HelpSection] = sec
-	return p, cmd
+	if p.current {
+		sec, cmd := p.sections[sections.HelpSection].Update(msg)
+		p.sections[sections.HelpSection] = sec
+		return p, cmd
+	}
+	return p, nil
 }
-
-func (p *HelpPage) SwitchSection() {}
 
 func (p *HelpPage) SetDimensions(width, height int) {
 	p.sections[sections.HelpSection].SetDimensions(width, height)
