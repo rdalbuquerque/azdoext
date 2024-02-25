@@ -72,7 +72,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	case sections.GitInfoMsg:
-		pipelinePage, cmd := m.pages[pages.Pipelines].Update(sections.BroadcastGitInfoMsg(true))
+		pipelinePage, cmd := m.pages[pages.Pipelines].Update(msg)
 		m.pages[pages.Pipelines] = pipelinePage
 		return m, cmd
 	case sections.SubmitChoiceMsg:
