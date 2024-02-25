@@ -49,14 +49,6 @@ func (p *PipelinesPage) Update(msg tea.Msg) (PageInterface, tea.Cmd) {
 	defer f.Close()
 	f.WriteString(fmt.Sprintf("handling msg: %v\n", msg))
 
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch msg.String() {
-		case "tab":
-			p.SwitchSection()
-			return p, nil
-		}
-	}
 	var cmds []tea.Cmd
 	for _, section := range p.orderedSections {
 		sec, cmd := p.sections[section].Update(msg)
