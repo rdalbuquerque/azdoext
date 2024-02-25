@@ -8,6 +8,7 @@ import (
 	"explore-bubbletea/pkgs/sections"
 	"explore-bubbletea/pkgs/styles"
 
+	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -82,9 +83,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case azdo.PROpenedMsg:
 		m.pagesStack.Push(m.pages[pages.Pipelines])
+	case spinner.TickMsg:
+		f.WriteString(fmt.Sprintf("handling spinner.TickMsg\n"))
 	}
 	page, cmd := m.pagesStack.Peek().Update(msg)
-	f.WriteString(fmt.Sprintf("page updated: %v\n", page.GetPageName()))
 	m.pagesStack.Pop()
 	m.pagesStack.Push(page)
 	return m, cmd
