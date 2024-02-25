@@ -7,6 +7,7 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour"
+	"github.com/charmbracelet/lipgloss"
 )
 
 const content = `
@@ -59,6 +60,7 @@ type Help struct {
 	hidden   bool
 	focused  bool
 	viewport viewport.Model
+	style    lipgloss.Style
 }
 
 func NewHelp() Section {
@@ -80,6 +82,7 @@ func NewHelp() Section {
 
 	return &Help{
 		viewport: vp,
+		style:    styles.ActiveStyle.Copy(),
 	}
 }
 
@@ -107,7 +110,7 @@ func (h *Help) Update(msg tea.Msg) (Section, tea.Cmd) {
 
 func (h *Help) View() string {
 	if h.focused {
-		return styles.ActiveStyle.Width(styles.Width).Render(h.viewport.View())
+		return h.style.Width(styles.Width).Render(h.viewport.View())
 	}
 	return ""
 }

@@ -21,6 +21,7 @@ func (p *PipelinesPage) AddSection(section sections.SectionName) {
 	newSection.SetDimensions(0, styles.Height)
 	newSection.Show()
 	newSection.Focus()
+	p.orderedSections = append(p.orderedSections, section)
 	p.sections[section] = newSection
 }
 
