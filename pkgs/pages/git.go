@@ -2,6 +2,7 @@ package pages
 
 import (
 	"explore-bubbletea/pkgs/sections"
+	"explore-bubbletea/pkgs/styles"
 	"fmt"
 
 	bubbleshelp "github.com/charmbracelet/bubbles/help"
@@ -34,7 +35,7 @@ func (p *GitPage) AddSection(section sections.SectionName) {
 	}
 	newSection := sectionNewFuncs[section]()
 	f.WriteString(fmt.Sprintf("adding section [%v] with height [%d]\n", section, 0))
-	newSection.SetDimensions(0, 0)
+	newSection.SetDimensions(0, styles.Height)
 	newSection.Show()
 	newSection.Focus()
 	p.orderedSections = append(p.orderedSections, section)
