@@ -3,6 +3,7 @@ package pages
 import (
 	"explore-bubbletea/pkgs/sections"
 	"explore-bubbletea/pkgs/styles"
+	"fmt"
 
 	bubbleshelp "github.com/charmbracelet/bubbles/help"
 	tea "github.com/charmbracelet/bubbletea"
@@ -41,6 +42,13 @@ func (p *PipelinesPage) GetPageName() PageName {
 }
 
 func (p *PipelinesPage) Update(msg tea.Msg) (PageInterface, tea.Cmd) {
+	f, err := tea.LogToFile("pipelines-update.txt", "debug")
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+	f.WriteString(fmt.Sprintf("handling msg: %v\n", msg))
+
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {

@@ -59,7 +59,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+h":
 			m.pagesStack.Push(m.pages[pages.Help])
 			return m, nil
-		case "esc":
+		case "ctrl+b":
 			m.pagesStack.Pop()
 			return m, nil
 		}
@@ -84,6 +84,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.pagesStack.Push(m.pages[pages.Pipelines])
 	}
 	page, cmd := m.pagesStack.Peek().Update(msg)
+	f.WriteString(fmt.Sprintf("page updated: %v\n", page.GetPageName()))
 	m.pagesStack.Pop()
 	m.pagesStack.Push(page)
 	return m, cmd
