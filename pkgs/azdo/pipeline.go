@@ -121,6 +121,7 @@ func (m *Model) getPipelineStatus(pipelineId int) (string, int) {
 }
 
 func (m *Model) RunOrFollowPipeline(id int, runNew bool) tea.Msg {
+	m.activeSection = TaskListSection
 	apiURL := fmt.Sprintf("%s/_apis/pipelines/%d/runs?%s", m.azdoClient.orgUrl, id, "api-version=7.1-preview.1")
 	if status, runId := m.getPipelineStatus(id); !slices.Contains(pipelineResults, status) && !runNew {
 		return PipelineIdMsg(runId)
