@@ -118,6 +118,7 @@ func (m *Model) Update(msg tea.Msg) (sections.Section, tea.Cmd) {
 			m.done = true
 			return m, tea.Quit
 		case tea.KeyTab:
+			log2file(fmt.Sprintf("keyTab with activeSection: %v\n", m.activeSection))
 			if m.activeSection == TaskListSection {
 				m.activeSection = ViewportSection
 			} else {

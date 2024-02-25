@@ -100,6 +100,6 @@ func (p *PipelinesPage) SwitchSection() {
 
 func (p *PipelinesPage) SetDimensions(width, height int) {
 	for _, section := range p.sections {
-		section.SetDimensions(width, height-1)
+		section.SetDimensions(width, height)
 	}
 }
