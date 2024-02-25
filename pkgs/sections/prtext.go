@@ -43,7 +43,7 @@ func NewPRSection() Section {
 
 func (pr *PRSection) SetDimensions(width, height int) {
 	pr.textarea.SetWidth(styles.DefaultSectionWidth)
-	pr.textarea.SetHeight(height - styles.DefaultSectionHeightDiff)
+	pr.textarea.SetHeight(height - 1)
 }
 
 func (pr *PRSection) Update(msg tea.Msg) (Section, tea.Cmd) {

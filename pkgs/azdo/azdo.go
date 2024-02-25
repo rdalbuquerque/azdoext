@@ -13,6 +13,7 @@ import (
 	"explore-bubbletea/pkgs/listitems"
 	"explore-bubbletea/pkgs/searchableviewport"
 	"explore-bubbletea/pkgs/sections"
+	"explore-bubbletea/pkgs/styles"
 
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/spinner"
@@ -31,13 +32,6 @@ const (
 )
 
 var (
-	ActiveStyle = lipgloss.NewStyle().
-			Border(lipgloss.NormalBorder(), true, false, true, false).
-			BorderForeground(lipgloss.Color("#00ff00"))
-
-	InactiveStyle = lipgloss.NewStyle().
-			Border(lipgloss.NormalBorder(), true, false, true, false).
-			BorderForeground(lipgloss.Color("#6c6c6c"))
 	noRuns             = lipgloss.NewStyle().SetString("■").Foreground(lipgloss.Color("#808080"))
 	pending            = lipgloss.NewStyle().SetString("⊛").Foreground(lipgloss.Color("#ffbf00"))
 	succeeded          = lipgloss.NewStyle().SetString("✔").Foreground(lipgloss.Color("#00ff00"))
@@ -236,19 +230,19 @@ func (m *Model) View() string {
 	switch m.activeSection {
 	case PipelineListSection:
 		if m.RunOrFollowChoiceEnabled {
-			runOrFollowView := ActiveStyle.Render(m.RunOrFollowList.View())
-			pipelineListView = InactiveStyle.Render(m.PipelineList.View())
+			runOrFollowView := styles.ActiveStyle.Render(m.RunOrFollowList.View())
+			pipelineListView = styles.InactiveStyle.Render(m.PipelineList.View())
 			return lipgloss.JoinHorizontal(lipgloss.Left, pipelineListView, "  ", runOrFollowView)
 		}
-		pipelineListView = ActiveStyle.Render(m.PipelineList.View())
+		pipelineListView = styles.ActiveStyle.Render(m.PipelineList.View())
 		return pipelineListView
 	case TaskListSection:
-		taskListView = ActiveStyle.Render(m.TaskList.View())
-		logViewportView = InactiveStyle.Render(m.logViewPort.View())
+		taskListView = styles.ActiveStyle.Render(m.TaskList.View())
+		logViewportView = styles.InactiveStyle.Render(m.logViewPort.View())
 		return lipgloss.JoinHorizontal(lipgloss.Left, taskListView, "  ", logViewportView)
 	case ViewportSection:
-		taskListView = InactiveStyle.Render(m.TaskList.View())
-		logViewportView = ActiveStyle.Render(m.logViewPort.View())
+		taskListView = styles.InactiveStyle.Render(m.TaskList.View())
+		logViewportView = styles.ActiveStyle.Render(m.logViewPort.View())
 		return lipgloss.JoinHorizontal(lipgloss.Left, taskListView, "  ", logViewportView)
 	}
 	return ""

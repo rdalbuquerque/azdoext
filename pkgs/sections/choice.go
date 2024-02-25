@@ -39,7 +39,7 @@ func NewChoice() Section {
 
 func (c *Choice) SetDimensions(width, height int) {
 	c.choices.SetWidth(styles.DefaultSectionWidth)
-	c.choices.SetHeight(height - styles.DefaultSectionHeightDiff)
+	c.choices.SetHeight(height - 1)
 }
 
 func (c *Choice) IsHidden() bool {

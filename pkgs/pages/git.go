@@ -27,6 +27,11 @@ func (p *GitPage) AddSection(section sections.SectionName) {
 	if p.sections == nil {
 		p.sections = make(map[sections.SectionName]sections.Section)
 	}
+	if len(p.orderedSections) > 0 {
+		for _, sec := range p.orderedSections {
+			p.sections[sec].Blur()
+		}
+	}
 	newSection := sectionNewFuncs[section]()
 	f.WriteString(fmt.Sprintf("adding section [%v] with height [%d]\n", section, 0))
 	newSection.SetDimensions(0, 0)
