@@ -6,6 +6,8 @@ import (
 	"os"
 	"time"
 
+	bubbleshelp "github.com/charmbracelet/bubbles/help"
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -15,11 +17,12 @@ import (
 )
 
 type WorktreeSection struct {
-	hidden   bool
-	focused  bool
-	status   list.Model
-	worktree *git.Worktree
-	repo     *git.Repository
+	hidden     bool
+	focused    bool
+	status     list.Model
+	worktree   *git.Worktree
+	repo       *git.Repository
+	customhelp string
 }
 
 func (ws *WorktreeSection) push() tea.Msg {
@@ -64,13 +67,23 @@ func NewWorktreeSection() Section {
 		worktree: w,
 	}
 	worktreeSection.status = worktreeSection.setStagedFileList()
-
+	worktreeSection.status.SetShowHelp(false)
+	statusHelp := bubbleshelp.New()
+	hk := listitems.HelpKeys{}
+	hk.AdditionalShortHelpKeys = func() []key.Binding {
+		return []key.Binding{key.NewBinding(
+			key.WithKeys("ctrl+a"),
+			key.WithHelp("ctrl+a", "add to stage"),
+		)}
+	}
+	customhelp := statusHelp.View(hk)
+	worktreeSection.customhelp = customhelp
 	return worktreeSection
 }
 
 func (ws *WorktreeSection) SetDimensions(width, height int) {
 	ws.status.SetWidth(styles.DefaultSectionWidth)
-	ws.status.SetHeight(height - 1)
+	ws.status.SetHeight(height - 2)
 }
 
 func (ws *WorktreeSection) IsHidden() bool {
@@ -143,9 +156,9 @@ func (ws *WorktreeSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 func (ws *WorktreeSection) View() string {
 	if !ws.hidden {
 		if ws.focused {
-			return styles.ActiveStyle.Render(lipgloss.JoinVertical(lipgloss.Center, ws.status.Title, ws.status.View()))
+			return styles.ActiveStyle.Render(lipgloss.JoinVertical(lipgloss.Center, ws.status.Title, ws.status.View(), ws.customhelp))
 		}
-		return styles.InactiveStyle.Render(lipgloss.JoinVertical(lipgloss.Center, ws.status.Title, ws.status.View()))
+		return styles.InactiveStyle.Render(lipgloss.JoinVertical(lipgloss.Center, ws.status.Title, ws.status.View(), ws.customhelp))
 	}
 	return ""
 }

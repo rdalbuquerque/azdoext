@@ -48,12 +48,20 @@ func (h helpKeys) FullHelp() [][]key.Binding {
 func (h helpKeys) ShortHelp() []key.Binding {
 	return []key.Binding{
 		key.NewBinding(
+			key.WithKeys("ctrl+h"),
+			key.WithHelp("ctrl+h", "help page"),
+		),
+		key.NewBinding(
+			key.WithKeys("tab"),
+			key.WithHelp("tab", "switch section"),
+		),
+		key.NewBinding(
 			key.WithKeys("ctrl+r"),
 			key.WithHelp("ctrl+r", "restart"),
 		),
 		key.NewBinding(
-			key.WithKeys("ctrl+h"),
-			key.WithHelp("ctrl+h", "help"),
+			key.WithKeys("ctrl+b"),
+			key.WithHelp("ctrl+b", "previous page"),
 		),
 	}
 }

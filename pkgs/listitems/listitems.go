@@ -5,6 +5,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -115,4 +116,31 @@ func (d ChoiceItemDelegate) Render(w io.Writer, m list.Model, index int, listIte
 	}
 
 	fmt.Fprint(w, fn(str))
+}
+
+type HelpKeys struct {
+	AdditionalShortHelpKeys func() []key.Binding
+}
+
+func (h HelpKeys) FullHelp() [][]key.Binding {
+	return nil
+}
+
+func (h HelpKeys) ShortHelp() []key.Binding {
+	keys := defaultKeys()
+	if h.AdditionalShortHelpKeys == nil {
+		return keys
+	}
+	extra := h.AdditionalShortHelpKeys()
+	keys = append(keys, extra...)
+	return keys
+}
+
+func defaultKeys() []key.Binding {
+	defaultHelp := []key.Binding{}
+	defaultHelp = append(defaultHelp, key.NewBinding(
+		key.WithKeys("enter"),
+		key.WithHelp("enter", "select"),
+	))
+	return defaultHelp
 }
