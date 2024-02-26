@@ -137,10 +137,14 @@ func (h HelpKeys) ShortHelp() []key.Binding {
 }
 
 func defaultKeys() []key.Binding {
-	defaultHelp := []key.Binding{}
+	updown := key.NewBinding(
+		key.WithKeys("up", "k", "down", "j"),
+		key.WithHelp("↑/k", "↓/j"),
+	)
+	defaultHelp := []key.Binding{updown}
 	defaultHelp = append(defaultHelp, key.NewBinding(
 		key.WithKeys("enter"),
-		key.WithHelp("enter", "select"),
+		key.WithHelp("↵", "select"),
 	))
 	return defaultHelp
 }
