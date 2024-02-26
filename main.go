@@ -99,6 +99,9 @@ func (m *model) View() string {
 }
 
 func (m *model) addPage(pageName pages.PageName) {
+	if len(m.pageStack) > 0 {
+		m.pageStack.Peek().UnsetCurrentPage()
+	}
 	p := m.pages[pageName]
 	p.SetAsCurrentPage()
 	m.pageStack.Push(p)
@@ -107,6 +110,7 @@ func (m *model) addPage(pageName pages.PageName) {
 func (m *model) removeCurrentPage() {
 	m.pageStack.Peek().UnsetCurrentPage()
 	m.pageStack.Pop()
+	m.pageStack.Peek().SetAsCurrentPage()
 }
 
 func main() {
