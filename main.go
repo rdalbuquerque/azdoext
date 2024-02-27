@@ -3,10 +3,10 @@ package main
 import (
 	"fmt"
 
-	"explore-bubbletea/pkgs/azdo"
-	"explore-bubbletea/pkgs/pages"
-	"explore-bubbletea/pkgs/sections"
-	"explore-bubbletea/pkgs/styles"
+	"azdoext/pkgs/azdo"
+	"azdoext/pkgs/pages"
+	"azdoext/pkgs/sections"
+	"azdoext/pkgs/styles"
 
 	tea "github.com/charmbracelet/bubbletea"
 )

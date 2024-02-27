@@ -1,8 +1,8 @@
 package sections
 
 import (
-	"explore-bubbletea/pkgs/listitems"
-	"explore-bubbletea/pkgs/styles"
+	"azdoext/pkgs/listitems"
+	"azdoext/pkgs/styles"
 	"os"
 	"time"
 

@@ -1,8 +1,8 @@
 package pages
 
 import (
-	"explore-bubbletea/pkgs/sections"
-	"explore-bubbletea/pkgs/styles"
+	"azdoext/pkgs/sections"
+	"azdoext/pkgs/styles"
 	"fmt"
 
 	bubbleshelp "github.com/charmbracelet/bubbles/help"

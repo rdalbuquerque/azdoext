@@ -1,7 +1,7 @@
 package sections
 
 import (
-	"explore-bubbletea/pkgs/styles"
+	"azdoext/pkgs/styles"
 
 	"github.com/charmbracelet/bubbles/textarea"
 	tea "github.com/charmbracelet/bubbletea"

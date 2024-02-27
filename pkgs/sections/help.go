@@ -1,7 +1,7 @@
 package sections
 
 import (
-	"explore-bubbletea/pkgs/styles"
+	"azdoext/pkgs/styles"
 	"fmt"
 
 	"github.com/charmbracelet/bubbles/viewport"

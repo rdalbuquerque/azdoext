@@ -1,8 +1,8 @@
 package pages
 
 import (
-	"explore-bubbletea/pkgs/sections"
-	"explore-bubbletea/pkgs/styles"
+	"azdoext/pkgs/sections"
+	"azdoext/pkgs/styles"
 
 	tea "github.com/charmbracelet/bubbletea"
 )

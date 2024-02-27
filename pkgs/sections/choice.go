@@ -1,8 +1,8 @@
 package sections
 
 import (
-	"explore-bubbletea/pkgs/listitems"
-	"explore-bubbletea/pkgs/styles"
+	"azdoext/pkgs/listitems"
+	"azdoext/pkgs/styles"
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"

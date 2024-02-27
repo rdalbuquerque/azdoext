@@ -1,4 +1,4 @@
-module explore-bubbletea
+module azdoext
 
 go 1.21.4
 

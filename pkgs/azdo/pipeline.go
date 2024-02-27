@@ -1,10 +1,10 @@
 package azdo
 
 import (
+	"azdoext/pkgs/listitems"
 	"bufio"
 	"bytes"
 	"encoding/base64"
-	"explore-bubbletea/pkgs/listitems"
 	"fmt"
 	"io"
 	"net/http"

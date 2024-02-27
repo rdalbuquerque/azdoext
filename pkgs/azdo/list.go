@@ -1,7 +1,7 @@
 package azdo
 
 import (
-	"explore-bubbletea/pkgs/listitems"
+	"azdoext/pkgs/listitems"
 
 	"github.com/charmbracelet/bubbles/list"
 )
