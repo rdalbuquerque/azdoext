@@ -103,8 +103,9 @@ func New() sections.Section {
 func (m *Model) Update(msg tea.Msg) (sections.Section, tea.Cmd) {
 	switch msg := msg.(type) {
 	case sections.GitInfoMsg:
+		log2file(fmt.Sprintf("GitInfoMsg: %v\n", msg))
 		remoteUrl := msg.RemoteUrl
-		org := strings.Split(remoteUrl, "/")[len(strings.Split(remoteUrl, "/"))-4]
+		org := strings.Split(remoteUrl, "/")[3]
 		project := strings.Split(remoteUrl, "/")[len(strings.Split(remoteUrl, "/"))-3]
 		repository := strings.Split(remoteUrl, "/")[len(strings.Split(remoteUrl, "/"))-1]
 		currentbranch := msg.CurrentBranch
@@ -280,7 +281,6 @@ func (m *Model) getSymbol(status string) string {
 
 func getRepository(repository string, azdoclient *AzdoClient) (string, string) {
 	apiURL := fmt.Sprintf("%s/_apis/git/repositories/%s?%s", azdoclient.orgUrl, repository, "api-version=7.1-preview.1")
-	log2file(fmt.Sprintf("apiURL: %v\n", apiURL))
 	req, err := http.NewRequest("GET", apiURL, nil)
 	if err != nil {
 		panic(err)
