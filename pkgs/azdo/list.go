@@ -14,7 +14,9 @@ func (m *Model) SetTaskList(ps pipelineState) {
 			for _, job := range stage.Jobs {
 				itemsList = append(itemsList, listitems.PipelineItem{Title: m.formatStatusView(job.Status, job.Name, "  "), Desc: job.Log})
 				for _, task := range job.Tasks {
-					itemsList = append(itemsList, listitems.PipelineItem{Title: m.formatStatusView(task.Status, task.Name, "    "), Desc: task.Log})
+					if task.Status != "pending" {
+						itemsList = append(itemsList, listitems.PipelineItem{Title: m.formatStatusView(task.Status, task.Name, "    "), Desc: task.Log})
+					}
 				}
 			}
 		}
