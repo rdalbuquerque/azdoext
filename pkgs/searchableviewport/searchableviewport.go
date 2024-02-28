@@ -134,11 +134,12 @@ func (m *Model) handleBrowseActivation() tea.Cmd {
 func (m *Model) handleSearchActivation(msg tea.Msg) tea.Cmd {
 	if m.searchMode {
 		return m.updateTextArea(msg)
+	} else {
+		m.searchMode = true
+		m.viewport.Height--
+		m.ta.Focus()
+		return nil
 	}
-	m.searchMode = true
-	m.viewport.Height--
-	m.ta.Focus()
-	return nil
 }
 
 func (m *Model) handleDeactivations() tea.Cmd {
@@ -146,11 +147,12 @@ func (m *Model) handleDeactivations() tea.Cmd {
 		m.browsingMode = false
 		m.ta.Focus()
 		return nil
+	} else {
+		m.searchMode = false
+		m.viewport.Height++
+		m.viewport.LineDown(1)
+		return nil
 	}
-	m.searchMode = false
-	m.viewport.Height++
-	m.viewport.LineDown(1)
-	return nil
 }
 
 func (m *Model) View() string {
