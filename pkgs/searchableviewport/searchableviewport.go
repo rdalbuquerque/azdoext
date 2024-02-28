@@ -135,7 +135,7 @@ func (m *Model) handleSearchActivation(msg tea.Msg) tea.Cmd {
 	if m.searchMode {
 		return m.updateTextArea(msg)
 	}
-	if m.browsingMode {
+	if !m.searchMode {
 		m.searchMode = true
 		m.viewport.Height--
 		m.ta.Focus()
