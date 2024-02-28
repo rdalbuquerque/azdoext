@@ -57,8 +57,9 @@ func (d ItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 }
 
 type StagedFileItem struct {
-	Name   string
-	Staged bool
+	RawStatus string
+	Name      string
+	Staged    bool
 }
 
 func (i StagedFileItem) FilterValue() string { return "" }
@@ -74,7 +75,7 @@ func (d GitItemDelegate) Render(w io.Writer, m list.Model, index int, listItem l
 		return
 	}
 
-	str := i.Name
+	str := i.RawStatus
 	if i.Staged {
 		str = stagedFileStyle.Render(str)
 	}

@@ -1,73 +1,40 @@
 package sections
 
 import (
+	"azdoext/pkgs/gitexec"
 	"azdoext/pkgs/listitems"
 	"azdoext/pkgs/styles"
-	"os"
-	"time"
+	"errors"
 
 	bubbleshelp "github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	git "github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/plumbing/object"
-	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
 )
 
 type WorktreeSection struct {
 	hidden     bool
 	focused    bool
 	status     list.Model
-	worktree   *git.Worktree
-	repo       *git.Repository
 	customhelp string
+	branch     string
 }
 
 func (ws *WorktreeSection) push() tea.Msg {
-	err := ws.repo.Push(&git.PushOptions{
-		Auth:     &githttp.BasicAuth{Username: "", Password: os.Getenv("AZDO_PERSONAL_ACCESS_TOKEN")},
-		Progress: nil,
-	})
-	if err != nil {
-		panic(err)
-	}
+	gitexec.Push("origin", ws.branch)
 	return GitPushedMsg(true)
 }
 
 func (ws *WorktreeSection) addAllToStage() {
-	if err := ws.worktree.AddGlob("."); err != nil {
-		panic(err)
-	}
-	status, err := ws.worktree.Status()
-	if err != nil {
-		panic(err)
-	}
-	fileItems := []list.Item{}
-	for file, _ := range status {
-		fileItems = append(fileItems, listitems.StagedFileItem{Name: file, Staged: true})
-	}
-	ws.status.SetItems(fileItems)
+	gitexec.AddGlob(".")
+	ws.setStagedFileList()
 }
 
 func NewWorktreeSection() Section {
-	log2file("NewWorktreeSection")
-	r, err := git.PlainOpen(".")
-	if err != nil {
-		panic(err)
-	}
-	log2file("NewWorktreeSection: PlainOpen")
-	w, err := r.Worktree()
-	if err != nil {
-		panic(err)
-	}
-	worktreeSection := &WorktreeSection{
-		repo:     r,
-		worktree: w,
-	}
-	worktreeSection.status = worktreeSection.setStagedFileList()
-	worktreeSection.status.SetShowHelp(false)
+	worktreeSection := &WorktreeSection{}
+	worktreeSection.status = newFileList()
+	worktreeSection.setStagedFileList()
 	statusHelp := bubbleshelp.New()
 	hk := listitems.HelpKeys{}
 	hk.AdditionalShortHelpKeys = func() []key.Binding {
@@ -115,35 +82,19 @@ func (ws *WorktreeSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 		}
 	case BroadcastGitInfoMsg:
 		log2file("BroadcastGitInfoMsg")
-		repo, err := ws.repo.Config()
-		if err != nil {
-			panic(err)
-		}
-		remoteUrl := repo.Remotes["origin"].URLs[0]
-		ref, err := ws.repo.Head()
-		if err != nil {
-			panic(err)
-		}
-		return ws, func() tea.Msg { return GitInfoMsg{CurrentBranch: ref.Name().String(), RemoteUrl: remoteUrl} }
+		gitconfig := gitexec.Config()
+		remoteUrl := gitconfig.Origin
+		curBranch := gitconfig.CurrentBranch
+		ref := "refs/heads/" + curBranch
+		ws.branch = curBranch
+		return ws, func() tea.Msg { return GitInfoMsg{CurrentBranch: ref, RemoteUrl: remoteUrl} }
 	case commitMsg:
 		log2file("commitMsg on WorktreeSection")
 		if ws.noStagedFiles() {
 			ws.addAllToStage()
 		}
 		ws.status.Title = "Pushing..."
-		repo, err := ws.repo.Config()
-		if err != nil {
-			panic(err)
-		}
-		authorName := repo.Author.Name
-		authorEmail := repo.Author.Email
-		ws.worktree.Commit(string(msg), &git.CommitOptions{
-			Author: &object.Signature{
-				Name:  authorName,
-				Email: authorEmail,
-				When:  time.Now(),
-			},
-		})
+		gitexec.Commit(string(msg))
 		return ws, tea.Batch(ws.push, func() tea.Msg { return GitPushingMsg(true) })
 	case GitPushedMsg:
 		ws.status.Title = "Pushed"
@@ -179,43 +130,35 @@ func (ws *WorktreeSection) Blur() {
 	ws.focused = false
 }
 
-func (ws *WorktreeSection) setStagedFileList() list.Model {
-	status, err := ws.worktree.Status()
-	if err != nil {
-		panic(err)
-	}
-	fileItems := []list.Item{}
-	for file, _ := range status {
-		fileItems = append(fileItems, listitems.StagedFileItem{Name: file, Staged: status[file].Staging == git.Added})
-	}
-	stagedFileList := list.New(fileItems, listitems.GitItemDelegate{}, 0, 0)
+func newFileList() list.Model {
+	stagedFileList := list.New([]list.Item{}, listitems.GitItemDelegate{}, 0, 0)
 	stagedFileList.Title = "Git status:"
 	stagedFileList.SetShowTitle(false)
 	stagedFileList.SetShowStatusBar(false)
+	stagedFileList.SetShowHelp(false)
 	return stagedFileList
+}
+
+func (ws *WorktreeSection) setStagedFileList() {
+	status := gitexec.Status()
+	fileItems := []list.Item{}
+	for file, _ := range status {
+		fileItems = append(fileItems, listitems.StagedFileItem{Name: file, RawStatus: status[file].RawStatus, Staged: status[file].Staged})
+	}
+	ws.status.SetItems(fileItems)
 }
 
 func (ws *WorktreeSection) addToStage() {
 	selected := ws.status.SelectedItem()
 	if selected == nil {
-		return
+		panic(errors.New("no item selected"))
 	}
 	item, ok := selected.(listitems.StagedFileItem)
 	if !ok {
-		return
+		panic(errors.New("selected item is not a StagedFileItem"))
 	}
-	if _, err := ws.worktree.Add(item.Name); err != nil {
-		panic(err)
-	}
-	for i := range ws.status.Items() {
-		if ws.status.Items()[i].(listitems.StagedFileItem).Name == item.Name {
-			newItem := listitems.StagedFileItem{
-				Name:   item.Name,
-				Staged: true,
-			}
-			ws.status.Items()[i] = newItem
-		}
-	}
+	gitexec.Add(item.Name)
+	ws.setStagedFileList()
 }
 
 func (ws *WorktreeSection) noStagedFiles() bool {

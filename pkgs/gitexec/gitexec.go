@@ -6,6 +6,7 @@
 package gitexec
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"strings"
@@ -18,9 +19,34 @@ type GitFile struct {
 	Change    string
 }
 
+type GitConfig struct {
+	Origin        string
+	CurrentBranch string
+}
+
+func Config() GitConfig {
+	cmd := exec.Command("git", "config", "--get", "remote.origin.url")
+	origin, err := cmd.CombinedOutput()
+	if err != nil {
+		panic(err)
+	}
+	log2file(fmt.Sprintf("origin: %s", string(origin)))
+	cmd = exec.Command("git", "branch", "--show-current")
+	currentBranch, err := cmd.CombinedOutput()
+	if err != nil {
+		panic(err)
+	}
+	log2file(fmt.Sprintf("currentBranch: %s", string(currentBranch)))
+	return GitConfig{
+		Origin:        strings.TrimSpace(string(origin)),
+		CurrentBranch: strings.TrimSpace(string(currentBranch)),
+	}
+}
+
 func Status() map[string]GitFile {
-	cmd := setupCommand("git", "status", "--porcelain")
+	cmd := exec.Command("git", "status", "--porcelain")
 	out, err := cmd.CombinedOutput()
+	log2file(string(out))
 	if err != nil {
 		panic(err)
 	}
@@ -30,6 +56,9 @@ func Status() map[string]GitFile {
 func parseStatus(status string) map[string]GitFile {
 	files := make(map[string]GitFile)
 	for _, line := range strings.Split(status, "\n") {
+		if len(line) < 4 {
+			continue
+		}
 		files[line[3:]] = GitFile{
 			Name:      line[3:],
 			Staged:    line[0] != ' ',
@@ -99,4 +128,15 @@ func setupCommand(args ...string) *exec.Cmd {
 	cmd.Stderr = stderrFile
 
 	return cmd
+}
+
+func log2file(msg string) {
+	f, err := os.OpenFile("gitexec.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		fmt.Println(err)
+	}
+	defer f.Close()
+	if _, err := f.WriteString(msg + "\n"); err != nil {
+		fmt.Println(err)
+	}
 }
