@@ -1,0 +1,102 @@
+// by the time of writing this, I've tried to use go-git and git2go to manage git repositories.
+// Both of them did not work as expected.
+// git2go needs CGO to be enabled apperentely and go-git had bugs on windows regarding line endings and .gitignore (most likely because of line endings too).
+// So I've decided to use the git command line tool to manage git repositories.
+
+package gitexec
+
+import (
+	"os"
+	"os/exec"
+	"strings"
+)
+
+type GitFile struct {
+	Name      string
+	Staged    bool
+	RawStatus string
+	Change    string
+}
+
+func Status() map[string]GitFile {
+	cmd := setupCommand("git", "status", "--porcelain")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		panic(err)
+	}
+	return parseStatus(string(out))
+}
+
+func parseStatus(status string) map[string]GitFile {
+	files := make(map[string]GitFile)
+	for _, line := range strings.Split(status, "\n") {
+		files[line[3:]] = GitFile{
+			Name:      line[3:],
+			Staged:    line[0] != ' ',
+			RawStatus: line,
+			Change:    line[0:2],
+		}
+	}
+	return files
+}
+
+func AddGlob(glob string) {
+	cmd := setupCommand("git", "add", glob)
+	err := cmd.Run()
+	if err != nil {
+		panic(err)
+	}
+}
+
+func Add(file string) {
+	cmd := setupCommand("git", "add", file)
+	err := cmd.Run()
+	if err != nil {
+		panic(err)
+	}
+}
+
+func Commit(message string) {
+	cmd := setupCommand("git", "commit", "-m", message)
+	err := cmd.Run()
+	if err != nil {
+		panic(err)
+	}
+}
+
+func Push(remote string, branch string) {
+	cmd := setupCommand("git", "push", remote, branch)
+	err := cmd.Run()
+	if err != nil {
+		panic(err)
+	}
+}
+
+func Pull(remote string, branch string) {
+	cmd := setupCommand("git", "pull", remote, branch)
+	err := cmd.Run()
+	if err != nil {
+		panic(err)
+	}
+
+}
+
+func setupCommand(args ...string) *exec.Cmd {
+	cmd := exec.Command(args[0], args[1:]...)
+
+	stdoutFile, err := os.OpenFile("stdout.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		panic(err)
+	}
+	defer stdoutFile.Close()
+	cmd.Stdout = stdoutFile
+
+	stderrFile, err := os.OpenFile("stderr.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		panic(err)
+	}
+	defer stderrFile.Close()
+	cmd.Stderr = stderrFile
+
+	return cmd
+}

@@ -356,6 +356,7 @@ func getRecordStatus(record Record) string {
 
 func (c *AzdoClient) getPipelineRepository(pipelineId int) string {
 	apiURL := fmt.Sprintf("%s/_apis/pipelines/%d?%s", c.orgUrl, pipelineId, c.defaultApiVersion)
+	log2file(fmt.Sprintf("getPipelineRepository url: %s\n", apiURL))
 	req, err := http.NewRequest("GET", apiURL, nil)
 	if err != nil {
 		panic(err)
