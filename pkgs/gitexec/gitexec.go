@@ -86,9 +86,10 @@ func Add(file string) {
 }
 
 func Commit(message string) {
-	cmd := setupCommand("git", "commit", "-m", message)
+	cmd := exec.Command("git", "commit", "-m", message)
 	err := cmd.Run()
 	if err != nil {
+		log2file(fmt.Sprintf("commit error: %s", err))
 		panic(err)
 	}
 
