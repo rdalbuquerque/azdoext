@@ -43,7 +43,7 @@ func Config() GitConfig {
 	}
 }
 
-func Status() map[string]GitFile {
+func Status() []GitFile {
 	cmd := exec.Command("git", "status", "--porcelain")
 	out, err := cmd.CombinedOutput()
 	log2file(string(out))
@@ -53,18 +53,18 @@ func Status() map[string]GitFile {
 	return parseStatus(string(out))
 }
 
-func parseStatus(status string) map[string]GitFile {
-	files := make(map[string]GitFile)
+func parseStatus(status string) []GitFile {
+	files := []GitFile{}
 	for _, line := range strings.Split(status, "\n") {
 		if len(line) < 4 {
 			continue
 		}
-		files[line[3:]] = GitFile{
+		files = append(files, GitFile{
 			Name:      line[3:],
 			Staged:    line[0] != ' ',
 			RawStatus: line,
 			Change:    line[0:2],
-		}
+		})
 	}
 	return files
 }
@@ -79,6 +79,14 @@ func AddGlob(glob string) {
 
 func Add(file string) {
 	cmd := setupCommand("git", "add", file)
+	err := cmd.Run()
+	if err != nil {
+		panic(err)
+	}
+}
+
+func Unstage(file string) {
+	cmd := setupCommand("git", "restore", "--staged", file)
 	err := cmd.Run()
 	if err != nil {
 		panic(err)

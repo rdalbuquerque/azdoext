@@ -62,24 +62,29 @@ func (ws *WorktreeSection) IsFocused() bool {
 }
 
 func (ws *WorktreeSection) Update(msg tea.Msg) (Section, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch msg.String() {
-		case "ctrl+c":
-			return nil, tea.Quit
-		case "ctrl+a":
-			ws.addToStage()
-			status, cmd := ws.status.Update(msg)
-			ws.status = status
-			return ws, cmd
-		default:
-			if ws.focused {
+	if ws.focused {
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch msg.String() {
+			case "ctrl+a":
+				ws.stageFile()
+				status, cmd := ws.status.Update(msg)
+				ws.status = status
+				return ws, cmd
+			case "ctrl+d":
+				ws.unstageFile()
+				status, cmd := ws.status.Update(msg)
+				ws.status = status
+				return ws, cmd
+			default:
 				status, cmd := ws.status.Update(msg)
 				ws.status = status
 				return ws, cmd
 			}
-			return ws, nil
 		}
+		return ws, nil
+	}
+	switch msg := msg.(type) {
 	case BroadcastGitInfoMsg:
 		log2file("BroadcastGitInfoMsg")
 		gitconfig := gitexec.Config()
@@ -142,13 +147,13 @@ func newFileList() list.Model {
 func (ws *WorktreeSection) setStagedFileList() {
 	status := gitexec.Status()
 	fileItems := []list.Item{}
-	for file, _ := range status {
-		fileItems = append(fileItems, listitems.StagedFileItem{Name: file, RawStatus: status[file].RawStatus, Staged: status[file].Staged})
+	for _, file := range status {
+		fileItems = append(fileItems, listitems.StagedFileItem{Name: file.Name, RawStatus: file.RawStatus, Staged: file.Staged})
 	}
 	ws.status.SetItems(fileItems)
 }
 
-func (ws *WorktreeSection) addToStage() {
+func (ws *WorktreeSection) stageFile() {
 	selected := ws.status.SelectedItem()
 	if selected == nil {
 		panic(errors.New("no item selected"))
@@ -158,6 +163,19 @@ func (ws *WorktreeSection) addToStage() {
 		panic(errors.New("selected item is not a StagedFileItem"))
 	}
 	gitexec.Add(item.Name)
+	ws.setStagedFileList()
+}
+
+func (ws *WorktreeSection) unstageFile() {
+	selected := ws.status.SelectedItem()
+	if selected == nil {
+		panic(errors.New("no item selected"))
+	}
+	item, ok := selected.(listitems.StagedFileItem)
+	if !ok {
+		panic(errors.New("selected item is not a StagedFileItem"))
+	}
+	gitexec.Unstage(item.Name)
 	ws.setStagedFileList()
 }
 
