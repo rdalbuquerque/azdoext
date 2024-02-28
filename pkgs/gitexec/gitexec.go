@@ -91,6 +91,7 @@ func Commit(message string) {
 	if err != nil {
 		panic(err)
 	}
+
 }
 
 func Push(remote string, branch string) {
