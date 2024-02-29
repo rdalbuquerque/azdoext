@@ -2,6 +2,7 @@ package sections
 
 import (
 	"azdoext/pkgs/styles"
+	"context"
 	"fmt"
 
 	"github.com/charmbracelet/bubbles/viewport"
@@ -63,7 +64,7 @@ type Help struct {
 	style    lipgloss.Style
 }
 
-func NewHelp() Section {
+func NewHelp(_ context.Context) Section {
 	vp := viewport.New(0, 0)
 
 	renderer, err := glamour.NewTermRenderer(

@@ -3,6 +3,7 @@ package sections
 import (
 	"azdoext/pkgs/listitems"
 	"azdoext/pkgs/styles"
+	"context"
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -22,7 +23,7 @@ const (
 	PipelineOption listitems.OptionName = "Go to pipeline"
 )
 
-func NewChoice() Section {
+func NewChoice(_ context.Context) Section {
 	choices := list.New([]list.Item{
 		listitems.ChoiceItem{Choice: "Open PR"},
 		listitems.ChoiceItem{Choice: "Go to pipeline"},

@@ -2,6 +2,7 @@ package sections
 
 import (
 	"azdoext/pkgs/styles"
+	"context"
 	"fmt"
 
 	"github.com/charmbracelet/bubbles/textarea"
@@ -24,7 +25,7 @@ func (cs *CommitSection) IsFocused() bool {
 	return cs.focused
 }
 
-func NewCommitSection() Section {
+func NewCommitSection(_ context.Context) Section {
 	title := "Git commit:"
 	textarea := textarea.New()
 	return &CommitSection{

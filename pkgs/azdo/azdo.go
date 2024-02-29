@@ -1,6 +1,7 @@
 package azdo
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -21,7 +22,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-type GoToPipelinesMsg bool
+type GoToPipelinesMsg context.Context
 
 type ActiveSection int
 
@@ -77,9 +78,10 @@ type Model struct {
 	DefaultBranch            string
 	RunOrFollowList          list.Model
 	RunOrFollowChoiceEnabled bool
+	ctx                      context.Context
 }
 
-func New() sections.Section {
+func New(ctx context.Context) sections.Section {
 	vp := searchableviewport.New(0, 0)
 	pspinner := spinner.New()
 	pspinner.Spinner = spinner.Dot
@@ -183,12 +185,12 @@ func (m *Model) Update(msg tea.Msg) (sections.Section, tea.Cmd) {
 		return m, nil
 	case PROpenedMsg, GoToPipelinesMsg:
 		m.activeSection = PipelineListSection
-		return m, tea.Batch(m.FetchPipelines(0), m.pipelineSpinner.Tick)
+		return m, tea.Batch(m.FetchPipelines(m.ctx, 0), m.pipelineSpinner.Tick)
 	case PipelinesFetchedMsg:
 		log2file(fmt.Sprintf("PipelinesFetchedMsg: %v\n", msg))
 		m.PipelineList.SetItems(msg)
 		log2file(fmt.Sprintf("PipelineList: %v\n", m.PipelineList.Items()))
-		return m, m.FetchPipelines(1 * time.Second)
+		return m, m.FetchPipelines(m.ctx, 20*time.Second)
 	case PipelineIdMsg:
 		m.PipelineState.IsRunning = true
 		m.activeSection = TaskListSection

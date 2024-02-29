@@ -3,6 +3,7 @@ package pages
 import (
 	"azdoext/pkgs/sections"
 	"azdoext/pkgs/styles"
+	"context"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -40,7 +41,7 @@ func (p *HelpPage) AddSection(section sections.SectionName) {
 	if p.sections == nil {
 		p.sections = make(map[sections.SectionName]sections.Section)
 	}
-	newSection := sectionNewFuncs[section]()
+	newSection := sectionNewFuncs[section](context.Background())
 	newSection.SetDimensions(0, styles.Height)
 	newSection.Show()
 	newSection.Focus()

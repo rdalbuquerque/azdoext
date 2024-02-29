@@ -3,6 +3,7 @@ package pages
 import (
 	"azdoext/pkgs/sections"
 	"azdoext/pkgs/styles"
+	"context"
 	"fmt"
 
 	bubbleshelp "github.com/charmbracelet/bubbles/help"
@@ -46,7 +47,7 @@ func (p *GitPage) AddSection(section sections.SectionName) {
 			p.sections[sec].Blur()
 		}
 	}
-	newSection := sectionNewFuncs[section]()
+	newSection := sectionNewFuncs[section](context.Background())
 	f.WriteString(fmt.Sprintf("adding section [%v] with height [%d]\n", section, 0))
 	newSection.SetDimensions(0, styles.Height)
 	newSection.Show()

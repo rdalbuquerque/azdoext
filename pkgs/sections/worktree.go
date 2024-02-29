@@ -4,6 +4,7 @@ import (
 	"azdoext/pkgs/gitexec"
 	"azdoext/pkgs/listitems"
 	"azdoext/pkgs/styles"
+	"context"
 	"errors"
 
 	bubbleshelp "github.com/charmbracelet/bubbles/help"
@@ -31,7 +32,7 @@ func (ws *WorktreeSection) addAllToStage() {
 	ws.setStagedFileList()
 }
 
-func NewWorktreeSection() Section {
+func NewWorktreeSection(_ context.Context) Section {
 	worktreeSection := &WorktreeSection{}
 	worktreeSection.status = newFileList()
 	worktreeSection.setStagedFileList()

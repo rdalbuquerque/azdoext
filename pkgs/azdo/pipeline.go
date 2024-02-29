@@ -4,6 +4,7 @@ import (
 	"azdoext/pkgs/listitems"
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/base64"
 	"fmt"
 	"io"
@@ -311,9 +312,18 @@ func processLog(text io.ReadCloser) string {
 	return processedText
 }
 
-func (m *Model) FetchPipelines(wait time.Duration) tea.Cmd {
+func (m *Model) FetchPipelines(ctx context.Context, wait time.Duration) tea.Cmd {
 	return func() tea.Msg {
-		time.Sleep(wait)
+		sleepDone := make(chan struct{})
+		go func() {
+			time.Sleep(wait)
+			close(sleepDone)
+		}()
+		select {
+		case <-sleepDone:
+		case <-ctx.Done():
+			return nil
+		}
 		apiURL := fmt.Sprintf("%s/_apis/pipelines?api-version=7.1", m.azdoClient.orgUrl)
 		client := &http.Client{}
 		req, err := http.NewRequest("GET", apiURL, nil)

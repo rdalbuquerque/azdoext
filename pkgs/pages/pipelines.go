@@ -3,6 +3,7 @@ package pages
 import (
 	"azdoext/pkgs/sections"
 	"azdoext/pkgs/styles"
+	"context"
 	"fmt"
 
 	bubbleshelp "github.com/charmbracelet/bubbles/help"
@@ -11,6 +12,7 @@ import (
 )
 
 type PipelinesPage struct {
+	ctx             context.Context
 	current         bool
 	name            PageName
 	sections        map[sections.SectionName]sections.Section
@@ -31,7 +33,7 @@ func (p *PipelinesPage) UnsetCurrentPage() {
 }
 
 func (p *PipelinesPage) AddSection(section sections.SectionName) {
-	newSection := sectionNewFuncs[section]()
+	newSection := sectionNewFuncs[section](p.ctx)
 	newSection.SetDimensions(0, styles.Height)
 	newSection.Show()
 	newSection.Focus()
@@ -39,10 +41,12 @@ func (p *PipelinesPage) AddSection(section sections.SectionName) {
 	p.sections[section] = newSection
 }
 
-func NewAzdoPage() PageInterface {
+func NewAzdoPage(ctx context.Context) PageInterface {
 	hk := helpKeys{}
 	helpstring := bubbleshelp.New().View(hk)
-	p := &PipelinesPage{}
+	p := &PipelinesPage{
+		ctx: ctx,
+	}
 	p.name = Pipelines
 	p.shortHelp = helpstring
 	p.sections = make(map[sections.SectionName]sections.Section)
