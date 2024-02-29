@@ -63,5 +63,9 @@ func (h helpKeys) ShortHelp() []key.Binding {
 			key.WithKeys("ctrl+b"),
 			key.WithHelp("ctrl+b", "previous page"),
 		),
+		key.NewBinding(
+			key.WithKeys(""),
+			key.WithHelp("↑/k ↓/j navigate and", "↵ select on all lists"),
+		),
 	}
 }

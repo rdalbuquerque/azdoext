@@ -38,10 +38,15 @@ func NewWorktreeSection() Section {
 	statusHelp := bubbleshelp.New()
 	hk := listitems.HelpKeys{}
 	hk.AdditionalShortHelpKeys = func() []key.Binding {
-		return []key.Binding{key.NewBinding(
-			key.WithKeys("ctrl+a"),
-			key.WithHelp("ctrl+a", "add to stage"),
+		stageKey := []key.Binding{key.NewBinding(
+			key.WithKeys("ctrl+d"),
+			key.WithHelp("ctrl+d", "unstage"),
 		)}
+		unstageKey := []key.Binding{key.NewBinding(
+			key.WithKeys("ctrl+a"),
+			key.WithHelp("ctrl+a", "stage"),
+		)}
+		return append(unstageKey, stageKey...)
 	}
 	customhelp := statusHelp.View(hk)
 	worktreeSection.customhelp = customhelp
