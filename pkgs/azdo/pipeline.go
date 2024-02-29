@@ -322,6 +322,7 @@ func (m *Model) FetchPipelines(ctx context.Context, wait time.Duration) tea.Cmd 
 		select {
 		case <-sleepDone:
 		case <-ctx.Done():
+			log2file("FetchPipelines cancelled\n")
 			return nil
 		}
 		apiURL := fmt.Sprintf("%s/_apis/pipelines?api-version=7.1", m.azdoClient.orgUrl)
