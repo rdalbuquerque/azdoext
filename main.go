@@ -65,6 +65,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+b":
 			m.removeCurrentPage()
 			return m, nil
+		case "ctrl+r":
+			model := m.restart()
+			m = &model
+			return m, nil
 		}
 	case tea.WindowSizeMsg:
 		m.height = msg.Height
@@ -111,6 +115,10 @@ func (m *model) removeCurrentPage() {
 	m.pageStack.Peek().UnsetCurrentPage()
 	m.pageStack.Pop()
 	m.pageStack.Peek().SetAsCurrentPage()
+}
+
+func (m model) restart() model {
+	return initialModel()
 }
 
 func main() {
