@@ -72,6 +72,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.removeCurrentPage()
 			return m, nil
 		case "ctrl+r":
+			m.cancel()
 			return restart(), nil
 		}
 	case tea.WindowSizeMsg:
