@@ -61,7 +61,7 @@ func parseStatus(status string) []GitFile {
 		}
 		files = append(files, GitFile{
 			Name:      line[3:],
-			Staged:    line[0] != ' ',
+			Staged:    line[0] != ' ' && line[0] != '?',
 			RawStatus: line,
 			Change:    line[0:2],
 		})
@@ -95,8 +95,10 @@ func Unstage(file string) {
 
 func Commit(message string) {
 	cmd := exec.Command("git", "commit", "-m", message)
-	err := cmd.Run()
+	out, err := cmd.CombinedOutput()
+	log2file(string(out))
 	if err != nil {
+		log2file(fmt.Sprintf("commit msg: %s", message))
 		log2file(fmt.Sprintf("commit error: %s", err))
 		panic(err)
 	}
