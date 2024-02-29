@@ -181,7 +181,7 @@ func (m *Model) Update(msg tea.Msg) (sections.Section, tea.Cmd) {
 			m.SetTaskList(ps)
 			m.logViewPort.SetContent(m.TaskList.SelectedItem().(listitems.PipelineItem).Desc.(string))
 			m.logViewPort.GotoBottom()
-			return m, m.azdoClient.getPipelineState(m.pipelineId, 1*time.Second)
+			return m, m.azdoClient.getPipelineState(m.ctx, m.pipelineId, 1*time.Second)
 		}
 		return m, nil
 	case PROpenedMsg, GoToPipelinesMsg:
@@ -196,7 +196,7 @@ func (m *Model) Update(msg tea.Msg) (sections.Section, tea.Cmd) {
 		m.PipelineState.IsRunning = true
 		m.activeSection = TaskListSection
 		m.pipelineId = int(msg)
-		return m, m.azdoClient.getPipelineState(int(msg), 0)
+		return m, m.azdoClient.getPipelineState(m.ctx, int(msg), 0)
 	case spinner.TickMsg:
 		var cmd tea.Cmd
 		m.pipelineSpinner, cmd = m.pipelineSpinner.Update(msg)
