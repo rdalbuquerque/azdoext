@@ -17,7 +17,7 @@ type HelpPage struct {
 func NewHelpPage() PageInterface {
 	p := &HelpPage{}
 	p.name = Help
-	p.AddSection(sections.HelpSection)
+	p.AddSection(context.Background(), sections.HelpSection)
 	return p
 }
 
@@ -37,11 +37,11 @@ func (p *HelpPage) GetPageName() PageName {
 	return p.name
 }
 
-func (p *HelpPage) AddSection(section sections.SectionName) {
+func (p *HelpPage) AddSection(ctx context.Context, section sections.SectionName) {
 	if p.sections == nil {
 		p.sections = make(map[sections.SectionName]sections.Section)
 	}
-	newSection := sectionNewFuncs[section](context.Background())
+	newSection := sectionNewFuncs[section](ctx)
 	newSection.SetDimensions(0, styles.Height)
 	newSection.Show()
 	newSection.Focus()

@@ -32,7 +32,7 @@ func (p *GitPage) UnsetCurrentPage() {
 	p.current = false
 }
 
-func (p *GitPage) AddSection(section sections.SectionName) {
+func (p *GitPage) AddSection(ctx context.Context, section sections.SectionName) {
 	f, err := tea.LogToFile("debugheight.txt", "debug")
 	if err != nil {
 		panic(err)
@@ -47,7 +47,7 @@ func (p *GitPage) AddSection(section sections.SectionName) {
 			p.sections[sec].Blur()
 		}
 	}
-	newSection := sectionNewFuncs[section](context.Background())
+	newSection := sectionNewFuncs[section](ctx)
 	f.WriteString(fmt.Sprintf("adding section [%v] with height [%d]\n", section, 0))
 	newSection.SetDimensions(0, styles.Height)
 	newSection.Show()
@@ -62,8 +62,8 @@ func NewGitPage() PageInterface {
 	gitPage := &GitPage{}
 	gitPage.name = Git
 	gitPage.shortHelp = helpstring
-	gitPage.AddSection(sections.Commit)
-	gitPage.AddSection(sections.Worktree)
+	gitPage.AddSection(context.Background(), sections.Commit)
+	gitPage.AddSection(context.Background(), sections.Worktree)
 	gitPage.sections[sections.Commit].Focus()
 	gitPage.sections[sections.Worktree].Blur()
 	return gitPage
@@ -84,10 +84,10 @@ func (p *GitPage) Update(msg tea.Msg) (PageInterface, tea.Cmd) {
 				return p, nil
 			}
 		case sections.GitPushedMsg:
-			p.AddSection(sections.ChoiceSection)
+			p.AddSection(context.Background(), sections.ChoiceSection)
 		case sections.SubmitChoiceMsg:
 			if msg == "Open PR" {
-				p.AddSection(sections.OpenPR)
+				p.AddSection(context.Background(), sections.OpenPR)
 			}
 		}
 		var cmds []tea.Cmd

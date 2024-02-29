@@ -23,7 +23,7 @@ var (
 
 type PageInterface interface {
 	GetPageName() PageName
-	AddSection(sections.SectionName)
+	AddSection(context.Context, sections.SectionName)
 	SetDimensions(width, height int)
 	Update(tea.Msg) (PageInterface, tea.Cmd)
 	View() string

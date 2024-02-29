@@ -314,6 +314,7 @@ func processLog(text io.ReadCloser) string {
 
 func (m *Model) FetchPipelines(ctx context.Context, wait time.Duration) tea.Cmd {
 	return func() tea.Msg {
+		log2file("\nFetchPipelines started\n")
 		sleepDone := make(chan struct{})
 		go func() {
 			time.Sleep(wait)
