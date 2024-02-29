@@ -94,6 +94,7 @@ func New(ctx context.Context) sections.Section {
 	runOrFollowList := list.New([]list.Item{listitems.PipelineItem{Title: "Run"}, listitems.PipelineItem{Title: "Follow"}}, listitems.ItemDelegate{}, 30, 0)
 	runOrFollowList.Title = "Run new or follow?"
 	return &Model{
+		ctx:             ctx,
 		TaskList:        tl,
 		pipelineSpinner: pspinner,
 		logViewPort:     vp,
