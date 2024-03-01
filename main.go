@@ -45,6 +45,7 @@ func initialModel() model {
 func (m *model) Init() tea.Cmd {
 	curPage := m.pageStack.Peek()
 	if curPage.GetPageName() == pages.Git {
+		log2file("main-init.txt", "debug", "sending git info")
 		_, cmd := m.pageStack.Peek().Update(sections.BroadcastGitInfoMsg(true))
 		return cmd
 	}
