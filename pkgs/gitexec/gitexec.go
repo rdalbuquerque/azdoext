@@ -96,7 +96,6 @@ func Commit(message string) {
 	cmd := exec.Command("git", "commit", "-m", message)
 	err := cmd.Run()
 	if err != nil {
-
 		panic(err)
 	}
 
