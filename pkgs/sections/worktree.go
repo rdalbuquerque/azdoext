@@ -114,9 +114,7 @@ func (ws *WorktreeSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 	case GitPushedMsg:
 		ws.status.Title = "Pushed"
 	}
-	status, cmd := ws.status.Update(msg)
-	ws.status = status
-	return ws, cmd
+	return ws, nil
 }
 
 func (ws *WorktreeSection) View() string {
