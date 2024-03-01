@@ -1,9 +1,6 @@
 package sections
 
 import (
-	"fmt"
-	"os"
-
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -29,14 +26,3 @@ const (
 	OpenPR        SectionName = "openPR"
 	HelpSection   SectionName = "help"
 )
-
-func log2file(msg string) {
-	f, err := os.OpenFile("sections-log.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		fmt.Println(err)
-	}
-	defer f.Close()
-	if _, err := f.WriteString(msg + "\n"); err != nil {
-		fmt.Println(err)
-	}
-}

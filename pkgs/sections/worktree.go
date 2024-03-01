@@ -3,9 +3,11 @@ package sections
 import (
 	"azdoext/pkgs/gitexec"
 	"azdoext/pkgs/listitems"
+	"azdoext/pkgs/logger"
 	"azdoext/pkgs/styles"
 	"context"
 	"errors"
+	"fmt"
 
 	bubbleshelp "github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
@@ -15,6 +17,7 @@ import (
 )
 
 type WorktreeSection struct {
+	logger     *logger.Logger
 	hidden     bool
 	focused    bool
 	status     list.Model
@@ -33,7 +36,9 @@ func (ws *WorktreeSection) addAllToStage() {
 }
 
 func NewWorktreeSection(_ context.Context) Section {
+	logger := logger.NewLogger("worktree.log")
 	worktreeSection := &WorktreeSection{}
+	worktreeSection.logger = logger
 	worktreeSection.status = newFileList()
 	worktreeSection.setStagedFileList()
 	statusHelp := bubbleshelp.New()
@@ -68,7 +73,10 @@ func (ws *WorktreeSection) IsFocused() bool {
 }
 
 func (ws *WorktreeSection) Update(msg tea.Msg) (Section, tea.Cmd) {
+	ws.logger.LogToFile("debug", fmt.Sprintf("WorktreeSection Update with msg %v", msg))
 	if ws.focused {
+
+		ws.logger.LogToFile("debug", "WorktreeSection focused")
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
 			switch msg.String() {
@@ -92,7 +100,7 @@ func (ws *WorktreeSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 	}
 	switch msg := msg.(type) {
 	case BroadcastGitInfoMsg:
-		log2file("BroadcastGitInfoMsg")
+		ws.logger.LogToFile("debug", "BroadcastGitInfoMsg")
 		gitconfig := gitexec.Config()
 		remoteUrl := gitconfig.Origin
 		curBranch := gitconfig.CurrentBranch
@@ -100,7 +108,7 @@ func (ws *WorktreeSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 		ws.branch = curBranch
 		return ws, func() tea.Msg { return GitInfoMsg{CurrentBranch: ref, RemoteUrl: remoteUrl} }
 	case commitMsg:
-		log2file("commitMsg on WorktreeSection")
+
 		if ws.noStagedFiles() {
 			ws.addAllToStage()
 		}
@@ -110,9 +118,7 @@ func (ws *WorktreeSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 	case GitPushedMsg:
 		ws.status.Title = "Pushed"
 	}
-	status, cmd := ws.status.Update(msg)
-	ws.status = status
-	return ws, cmd
+	return ws, nil
 }
 
 func (ws *WorktreeSection) View() string {

@@ -106,7 +106,7 @@ func New(ctx context.Context) sections.Section {
 func (m *Model) Update(msg tea.Msg) (sections.Section, tea.Cmd) {
 	switch msg := msg.(type) {
 	case sections.GitInfoMsg:
-		log2file(fmt.Sprintf("GitInfoMsg: %v\n", msg))
+
 		remoteUrl := msg.RemoteUrl
 		org := strings.Split(remoteUrl, "/")[3]
 		project := strings.Split(remoteUrl, "/")[len(strings.Split(remoteUrl, "/"))-3]
@@ -122,7 +122,7 @@ func (m *Model) Update(msg tea.Msg) (sections.Section, tea.Cmd) {
 			m.done = true
 			return m, tea.Quit
 		case tea.KeyTab:
-			log2file(fmt.Sprintf("keyTab with activeSection: %v\n", m.activeSection))
+
 			if m.activeSection == TaskListSection {
 				m.activeSection = ViewportSection
 			} else {
@@ -130,7 +130,7 @@ func (m *Model) Update(msg tea.Msg) (sections.Section, tea.Cmd) {
 			}
 			return m, nil
 		case tea.KeyEnter:
-			log2file(fmt.Sprintf("m.focused: %v\n", m.focused))
+
 			if m.focused {
 				if m.RunOrFollowChoiceEnabled {
 					m.RunOrFollowChoiceEnabled = false
@@ -144,7 +144,7 @@ func (m *Model) Update(msg tea.Msg) (sections.Section, tea.Cmd) {
 				}
 				if m.activeSection == PipelineListSection {
 					selectedPipeline := m.PipelineList.SelectedItem().(listitems.PipelineItem)
-					log2file(fmt.Sprintf("selectedPipeline: %v\n", selectedPipeline))
+
 					if !slices.Contains(pipelineResults, selectedPipeline.Status) {
 						m.RunOrFollowChoiceEnabled = true
 						return m, nil
@@ -188,9 +188,9 @@ func (m *Model) Update(msg tea.Msg) (sections.Section, tea.Cmd) {
 		m.activeSection = PipelineListSection
 		return m, tea.Batch(m.FetchPipelines(m.ctx, 0), m.pipelineSpinner.Tick)
 	case PipelinesFetchedMsg:
-		log2file(fmt.Sprintf("PipelinesFetchedMsg: %v\n", msg))
+
 		m.PipelineList.SetItems(msg)
-		log2file(fmt.Sprintf("PipelineList: %v\n", m.PipelineList.Items()))
+
 		return m, m.FetchPipelines(m.ctx, 20*time.Second)
 	case PipelineIdMsg:
 		m.PipelineState.IsRunning = true
@@ -251,22 +251,6 @@ func (m *Model) View() string {
 		return lipgloss.JoinHorizontal(lipgloss.Left, taskListView, "  ", logViewportView)
 	}
 	return ""
-}
-
-// log2file logs to file logs.txt
-func log2file(msg string) {
-	timestamp := time.Now().Format("2006-01-02 15:04:05")
-	logMsg := fmt.Sprintf("[%s] %s", timestamp, msg)
-
-	f, err := os.OpenFile("azdo-logs.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		panic(err)
-	}
-	defer f.Close()
-
-	if _, err := f.WriteString(logMsg); err != nil {
-		panic(err)
-	}
 }
 
 func (m *Model) formatStatusView(status, name, indent string) string {

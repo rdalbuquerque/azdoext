@@ -175,7 +175,6 @@ func (c *AzdoClient) getPipelineState(ctx context.Context, runId int, wait time.
 		select {
 		case <-sleepDone:
 		case <-ctx.Done():
-			log2file("FetchPipelines cancelled\n")
 			return nil
 		}
 		apiURL := fmt.Sprintf("%s/_apis/build/builds/%d/timeline?%s", c.orgUrl, runId, "api-version=7.2-preview.2")
@@ -324,7 +323,7 @@ func processLog(text io.ReadCloser) string {
 
 func (m *Model) FetchPipelines(ctx context.Context, wait time.Duration) tea.Cmd {
 	return func() tea.Msg {
-		log2file("\nFetchPipelines started\n")
+
 		sleepDone := make(chan struct{})
 		go func() {
 			time.Sleep(wait)
@@ -333,7 +332,7 @@ func (m *Model) FetchPipelines(ctx context.Context, wait time.Duration) tea.Cmd 
 		select {
 		case <-sleepDone:
 		case <-ctx.Done():
-			log2file("FetchPipelines cancelled\n")
+
 			return nil
 		}
 		apiURL := fmt.Sprintf("%s/_apis/pipelines?api-version=7.1", m.azdoClient.orgUrl)
@@ -378,7 +377,7 @@ func getRecordStatus(record Record) string {
 
 func (c *AzdoClient) getPipelineRepository(pipelineId int) string {
 	apiURL := fmt.Sprintf("%s/_apis/pipelines/%d?%s", c.orgUrl, pipelineId, c.defaultApiVersion)
-	log2file(fmt.Sprintf("getPipelineRepository url: %s\n", apiURL))
+
 	req, err := http.NewRequest("GET", apiURL, nil)
 	if err != nil {
 		panic(err)

@@ -32,8 +32,6 @@ func NewChoice(_ context.Context) Section {
 	choices.SetHeight(styles.ActiveStyle.GetHeight() - 2)
 	choices.SetShowTitle(false)
 	return &Choice{
-		hidden:  false,
-		focused: true,
 		choices: choices,
 	}
 }
@@ -61,6 +59,7 @@ func (c *Choice) Update(msg tea.Msg) (Section, tea.Cmd) {
 			}
 		}
 		choice, cmd := c.choices.Update(msg)
+
 		c.choices = choice
 		return c, cmd
 	}

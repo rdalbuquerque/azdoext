@@ -1,5 +1,6 @@
 main-log.txt
 azdo-logs.txt
 sections-log.txt
-*.txt
+*.log
 .vscode
+worktree.log

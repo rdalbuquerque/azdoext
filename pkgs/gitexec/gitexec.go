@@ -6,8 +6,7 @@
 package gitexec
 
 import (
-	"fmt"
-	"os"
+	"azdoext/pkgs/logger"
 	"os/exec"
 	"strings"
 )
@@ -30,13 +29,13 @@ func Config() GitConfig {
 	if err != nil {
 		panic(err)
 	}
-	log2file(fmt.Sprintf("origin: %s", string(origin)))
+
 	cmd = exec.Command("git", "branch", "--show-current")
 	currentBranch, err := cmd.CombinedOutput()
 	if err != nil {
 		panic(err)
 	}
-	log2file(fmt.Sprintf("currentBranch: %s", string(currentBranch)))
+
 	return GitConfig{
 		Origin:        strings.TrimSpace(string(origin)),
 		CurrentBranch: strings.TrimSpace(string(currentBranch)),
@@ -46,7 +45,6 @@ func Config() GitConfig {
 func Status() []GitFile {
 	cmd := exec.Command("git", "status", "--porcelain")
 	out, err := cmd.CombinedOutput()
-	log2file(string(out))
 	if err != nil {
 		panic(err)
 	}
@@ -70,15 +68,18 @@ func parseStatus(status string) []GitFile {
 }
 
 func AddGlob(glob string) {
-	cmd := setupCommand("git", "add", glob)
-	err := cmd.Run()
+	logger := logger.NewLogger("gitexec.log")
+	logger.LogToFile("debug", "Adding files with glob: "+glob)
+	cmd := exec.Command("git", "add", glob)
+	out, err := cmd.CombinedOutput()
+	logger.LogToFile("debug", string(out))
 	if err != nil {
 		panic(err)
 	}
 }
 
 func Add(file string) {
-	cmd := setupCommand("git", "add", file)
+	cmd := exec.Command("git", "add", file)
 	err := cmd.Run()
 	if err != nil {
 		panic(err)
@@ -86,7 +87,7 @@ func Add(file string) {
 }
 
 func Unstage(file string) {
-	cmd := setupCommand("git", "restore", "--staged", file)
+	cmd := exec.Command("git", "restore", "--staged", file)
 	err := cmd.Run()
 	if err != nil {
 		panic(err)
@@ -94,19 +95,18 @@ func Unstage(file string) {
 }
 
 func Commit(message string) {
+	logger := logger.NewLogger("gitexec.log")
 	cmd := exec.Command("git", "commit", "-m", message)
 	out, err := cmd.CombinedOutput()
-	log2file(string(out))
+	logger.LogToFile("debug", string(out))
 	if err != nil {
-		log2file(fmt.Sprintf("commit msg: %s", message))
-		log2file(fmt.Sprintf("commit error: %s", err))
 		panic(err)
 	}
 
 }
 
 func Push(remote string, branch string) {
-	cmd := setupCommand("git", "push", remote, branch)
+	cmd := exec.Command("git", "push", remote, branch)
 	err := cmd.Run()
 	if err != nil {
 		panic(err)
@@ -114,41 +114,10 @@ func Push(remote string, branch string) {
 }
 
 func Pull(remote string, branch string) {
-	cmd := setupCommand("git", "pull", remote, branch)
+	cmd := exec.Command("git", "pull", remote, branch)
 	err := cmd.Run()
 	if err != nil {
 		panic(err)
 	}
 
-}
-
-func setupCommand(args ...string) *exec.Cmd {
-	cmd := exec.Command(args[0], args[1:]...)
-
-	stdoutFile, err := os.OpenFile("stdout.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		panic(err)
-	}
-	defer stdoutFile.Close()
-	cmd.Stdout = stdoutFile
-
-	stderrFile, err := os.OpenFile("stderr.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		panic(err)
-	}
-	defer stderrFile.Close()
-	cmd.Stderr = stderrFile
-
-	return cmd
-}
-
-func log2file(msg string) {
-	f, err := os.OpenFile("gitexec.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		fmt.Println(err)
-	}
-	defer f.Close()
-	if _, err := f.WriteString(msg + "\n"); err != nil {
-		fmt.Println(err)
-	}
 }
