@@ -6,7 +6,6 @@
 package gitexec
 
 import (
-	"fmt"
 	"os"
 	"os/exec"
 	"strings"
@@ -30,13 +29,13 @@ func Config() GitConfig {
 	if err != nil {
 		panic(err)
 	}
-	log2file(fmt.Sprintf("origin: %s", string(origin)))
+
 	cmd = exec.Command("git", "branch", "--show-current")
 	currentBranch, err := cmd.CombinedOutput()
 	if err != nil {
 		panic(err)
 	}
-	log2file(fmt.Sprintf("currentBranch: %s", string(currentBranch)))
+
 	return GitConfig{
 		Origin:        strings.TrimSpace(string(origin)),
 		CurrentBranch: strings.TrimSpace(string(currentBranch)),
@@ -46,7 +45,7 @@ func Config() GitConfig {
 func Status() []GitFile {
 	cmd := exec.Command("git", "status", "--porcelain")
 	out, err := cmd.CombinedOutput()
-	log2file(string(out))
+
 	if err != nil {
 		panic(err)
 	}
@@ -95,11 +94,9 @@ func Unstage(file string) {
 
 func Commit(message string) {
 	cmd := exec.Command("git", "commit", "-m", message)
-	out, err := cmd.CombinedOutput()
-	log2file(string(out))
+	err := cmd.Run()
 	if err != nil {
-		log2file(fmt.Sprintf("commit msg: %s", message))
-		log2file(fmt.Sprintf("commit error: %s", err))
+
 		panic(err)
 	}
 
@@ -140,15 +137,4 @@ func setupCommand(args ...string) *exec.Cmd {
 	cmd.Stderr = stderrFile
 
 	return cmd
-}
-
-func log2file(msg string) {
-	f, err := os.OpenFile("gitexec.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		fmt.Println(err)
-	}
-	defer f.Close()
-	if _, err := f.WriteString(msg + "\n"); err != nil {
-		fmt.Println(err)
-	}
 }

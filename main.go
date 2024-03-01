@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"azdoext/pkgs/azdo"
+	"azdoext/pkgs/logger"
 	"azdoext/pkgs/pages"
 	"azdoext/pkgs/sections"
 	"azdoext/pkgs/styles"
@@ -13,6 +14,7 @@ import (
 )
 
 type model struct {
+	logger    *logger.Logger
 	ctx       context.Context
 	cancel    context.CancelFunc
 	pages     map[pages.PageName]pages.PageInterface
@@ -23,6 +25,7 @@ type model struct {
 
 func initialModel() model {
 	ctx, cancel := context.WithCancel(context.Background())
+	logger := logger.NewLogger("main.log")
 	helpPage := pages.NewHelpPage()
 	gitPage := pages.NewGitPage()
 	azdoPage := pages.NewAzdoPage(ctx)
@@ -33,6 +36,7 @@ func initialModel() model {
 	}
 	pageStack := pages.Stack{}
 	m := model{
+		logger:    logger,
 		ctx:       ctx,
 		cancel:    cancel,
 		pages:     pagesMap,
@@ -45,7 +49,7 @@ func initialModel() model {
 func (m *model) Init() tea.Cmd {
 	curPage := m.pageStack.Peek()
 	if curPage.GetPageName() == pages.Git {
-		log2file("main-init.txt", "debug", "sending git info")
+		m.logger.LogToFile("debug", "sending git info")
 		_, cmd := m.pageStack.Peek().Update(sections.BroadcastGitInfoMsg(true))
 		return cmd
 	}
@@ -53,12 +57,6 @@ func (m *model) Init() tea.Cmd {
 }
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	f, err := tea.LogToFile("main-update.txt", "debug")
-	if err != nil {
-		panic(err)
-	}
-	defer f.Close()
-
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -74,7 +72,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		case "ctrl+r":
 			m.cancel()
-			return restart(), nil
+			return restart()
 		}
 	case tea.WindowSizeMsg:
 		m.height = msg.Height
@@ -123,10 +121,9 @@ func (m *model) removeCurrentPage() {
 	m.pageStack.Peek().SetAsCurrentPage()
 }
 
-func restart() *model {
+func restart() (*model, tea.Cmd) {
 	model := initialModel()
-	model.Init()
-	return &model
+	return &model, func() tea.Msg { return sections.BroadcastGitInfoMsg(true) }
 }
 
 func main() {

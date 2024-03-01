@@ -3,7 +3,6 @@ package sections
 import (
 	"azdoext/pkgs/styles"
 	"context"
-	"fmt"
 
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -88,7 +87,7 @@ func NewHelp(_ context.Context) Section {
 }
 
 func (h *Help) SetDimensions(width, height int) {
-	log2file(fmt.Sprintf("help SetDimensions width: %v, height: %v", width, height))
+
 	h.viewport.Height = height
 }
 

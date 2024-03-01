@@ -4,7 +4,6 @@ import (
 	"azdoext/pkgs/sections"
 	"azdoext/pkgs/styles"
 	"context"
-	"fmt"
 
 	bubbleshelp "github.com/charmbracelet/bubbles/help"
 
@@ -33,12 +32,6 @@ func (p *GitPage) UnsetCurrentPage() {
 }
 
 func (p *GitPage) AddSection(ctx context.Context, section sections.SectionName) {
-	f, err := tea.LogToFile("debugheight.txt", "debug")
-	if err != nil {
-		panic(err)
-	}
-	defer f.Close()
-
 	if p.sections == nil {
 		p.sections = make(map[sections.SectionName]sections.Section)
 	}
@@ -48,7 +41,6 @@ func (p *GitPage) AddSection(ctx context.Context, section sections.SectionName) 
 		}
 	}
 	newSection := sectionNewFuncs[section](ctx)
-	f.WriteString(fmt.Sprintf("adding section [%v] with height [%d]\n", section, 0))
 	newSection.SetDimensions(0, styles.Height)
 	newSection.Show()
 	newSection.Focus()
@@ -134,14 +126,7 @@ func (p *GitPage) switchSection() {
 }
 
 func (p *GitPage) SetDimensions(width, height int) {
-	f, err := tea.LogToFile("debugheight.txt", "debug")
-	if err != nil {
-		panic(err)
-	}
-	defer f.Close()
-
 	for s := range p.sections {
-		f.WriteString(fmt.Sprintf("setting dimensions for section [%v] with height [%d]\n", s, height))
 		p.sections[s].SetDimensions(width, height)
 	}
 }
