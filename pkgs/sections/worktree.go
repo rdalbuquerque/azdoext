@@ -7,6 +7,7 @@ import (
 	"azdoext/pkgs/styles"
 	"context"
 	"errors"
+	"fmt"
 
 	bubbleshelp "github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
@@ -72,6 +73,7 @@ func (ws *WorktreeSection) IsFocused() bool {
 }
 
 func (ws *WorktreeSection) Update(msg tea.Msg) (Section, tea.Cmd) {
+	ws.logger.LogToFile("debug", fmt.Sprintf("WorktreeSection Update with msg %v", msg))
 	if ws.focused {
 
 		ws.logger.LogToFile("debug", "WorktreeSection focused")
