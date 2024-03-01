@@ -69,8 +69,10 @@ func parseStatus(status string) []GitFile {
 }
 
 func AddGlob(glob string) {
+	logger := logger.NewLogger("gitexec.log")
 	cmd := setupCommand("git", "add", glob)
-	err := cmd.Run()
+	out, err := cmd.CombinedOutput()
+	logger.LogToFile("debug", string(out))
 	if err != nil {
 		panic(err)
 	}
