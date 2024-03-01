@@ -166,7 +166,7 @@ func (m *Model) View() string {
 	}
 	var taView string
 	if m.ta.Focused() {
-		taView = focusedStyle.PaddingLeft(5).Render(m.ta.View())
+		taView = focusedStyle.PaddingLeft(6).Render(m.ta.View())
 	} else {
 		taView = blurredStyle.PaddingLeft(5).Render(m.ta.View())
 	}
