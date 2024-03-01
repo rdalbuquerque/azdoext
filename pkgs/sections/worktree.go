@@ -73,6 +73,7 @@ func (ws *WorktreeSection) IsFocused() bool {
 
 func (ws *WorktreeSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 	if ws.focused {
+		ws.logger.LogToFile("debug", "WorktreeSection focused")
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
 			switch msg.String() {
