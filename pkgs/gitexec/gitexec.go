@@ -7,7 +7,6 @@ package gitexec
 
 import (
 	"azdoext/pkgs/logger"
-	"os"
 	"os/exec"
 	"strings"
 )
@@ -70,7 +69,8 @@ func parseStatus(status string) []GitFile {
 
 func AddGlob(glob string) {
 	logger := logger.NewLogger("gitexec.log")
-	cmd := setupCommand("git", "add", glob)
+	logger.LogToFile("debug", "Adding files with glob: "+glob)
+	cmd := exec.Command("git", "add", glob)
 	out, err := cmd.CombinedOutput()
 	logger.LogToFile("debug", string(out))
 	if err != nil {
@@ -79,7 +79,7 @@ func AddGlob(glob string) {
 }
 
 func Add(file string) {
-	cmd := setupCommand("git", "add", file)
+	cmd := exec.Command("git", "add", file)
 	err := cmd.Run()
 	if err != nil {
 		panic(err)
@@ -87,7 +87,7 @@ func Add(file string) {
 }
 
 func Unstage(file string) {
-	cmd := setupCommand("git", "restore", "--staged", file)
+	cmd := exec.Command("git", "restore", "--staged", file)
 	err := cmd.Run()
 	if err != nil {
 		panic(err)
@@ -106,7 +106,7 @@ func Commit(message string) {
 }
 
 func Push(remote string, branch string) {
-	cmd := setupCommand("git", "push", remote, branch)
+	cmd := exec.Command("git", "push", remote, branch)
 	err := cmd.Run()
 	if err != nil {
 		panic(err)
@@ -114,30 +114,10 @@ func Push(remote string, branch string) {
 }
 
 func Pull(remote string, branch string) {
-	cmd := setupCommand("git", "pull", remote, branch)
+	cmd := exec.Command("git", "pull", remote, branch)
 	err := cmd.Run()
 	if err != nil {
 		panic(err)
 	}
 
-}
-
-func setupCommand(args ...string) *exec.Cmd {
-	cmd := exec.Command(args[0], args[1:]...)
-
-	stdoutFile, err := os.OpenFile("stdout.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		panic(err)
-	}
-	defer stdoutFile.Close()
-	cmd.Stdout = stdoutFile
-
-	stderrFile, err := os.OpenFile("stderr.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		panic(err)
-	}
-	defer stderrFile.Close()
-	cmd.Stderr = stderrFile
-
-	return cmd
 }
