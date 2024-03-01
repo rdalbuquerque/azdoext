@@ -86,9 +86,9 @@ func New(ctx context.Context) sections.Section {
 	pspinner := spinner.New()
 	pspinner.Spinner = spinner.Dot
 	pspinner.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#00a9ff"))
-	tl := list.New([]list.Item{}, listitems.ItemDelegate{}, 30, 0)
+	tl := list.New([]list.Item{}, listitems.ItemDelegate{}, 0, 0)
 	tl.SetShowStatusBar(false)
-	pipelineList := list.New([]list.Item{}, listitems.ItemDelegate{}, 30, 0)
+	pipelineList := list.New([]list.Item{}, listitems.ItemDelegate{}, 0, 0)
 	pipelineList.Title = "Pipelines"
 	pipelineList.SetShowStatusBar(false)
 	runOrFollowList := list.New([]list.Item{listitems.PipelineItem{Title: "Run"}, listitems.PipelineItem{Title: "Follow"}}, listitems.ItemDelegate{}, 30, 0)
