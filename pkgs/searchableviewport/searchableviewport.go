@@ -135,9 +135,12 @@ func (m *Model) handleSearchActivation(msg tea.Msg) tea.Cmd {
 	if m.searchMode {
 		return m.updateTextArea(msg)
 	}
-	m.searchMode = true
-	m.viewport.Height--
-	m.ta.Focus()
+	if !m.searchMode {
+		m.searchMode = true
+		m.viewport.Height--
+		m.ta.Focus()
+		return nil
+	}
 	return nil
 }
 
@@ -147,9 +150,12 @@ func (m *Model) handleDeactivations() tea.Cmd {
 		m.ta.Focus()
 		return nil
 	}
-	m.searchMode = false
-	m.viewport.Height++
-	m.viewport.LineDown(1)
+	if m.searchMode {
+		m.searchMode = false
+		m.viewport.Height++
+		m.viewport.LineDown(1)
+		return nil
+	}
 	return nil
 }
 
@@ -160,9 +166,9 @@ func (m *Model) View() string {
 	}
 	var taView string
 	if m.ta.Focused() {
-		taView = focusedStyle.Render(m.ta.View())
+		taView = focusedStyle.PaddingLeft(5).Render(m.ta.View())
 	} else {
-		taView = blurredStyle.Render(m.ta.View())
+		taView = blurredStyle.PaddingLeft(5).Render(m.ta.View())
 	}
 	renderedViewPort := lipgloss.NewStyle().Width(80).MaxWidth(80).Render(m.viewport.View())
 	if m.searchMode {

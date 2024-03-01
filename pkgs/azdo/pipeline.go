@@ -4,6 +4,7 @@ import (
 	"azdoext/pkgs/listitems"
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/base64"
 	"fmt"
 	"io"
@@ -164,9 +165,19 @@ func (m *Model) RunOrFollowPipeline(id int, runNew bool) tea.Msg {
 
 }
 
-func (c *AzdoClient) getPipelineState(runId int, wait time.Duration) tea.Cmd {
+func (c *AzdoClient) getPipelineState(ctx context.Context, runId int, wait time.Duration) tea.Cmd {
 	return func() tea.Msg {
-		time.Sleep(wait)
+		sleepDone := make(chan struct{})
+		go func() {
+			time.Sleep(wait)
+			close(sleepDone)
+		}()
+		select {
+		case <-sleepDone:
+		case <-ctx.Done():
+			log2file("FetchPipelines cancelled\n")
+			return nil
+		}
 		apiURL := fmt.Sprintf("%s/_apis/build/builds/%d/timeline?%s", c.orgUrl, runId, "api-version=7.2-preview.2")
 		req, err := http.NewRequest("GET", apiURL, nil)
 		if err != nil {
@@ -311,9 +322,20 @@ func processLog(text io.ReadCloser) string {
 	return processedText
 }
 
-func (m *Model) FetchPipelines(wait time.Duration) tea.Cmd {
+func (m *Model) FetchPipelines(ctx context.Context, wait time.Duration) tea.Cmd {
 	return func() tea.Msg {
-		time.Sleep(wait)
+		log2file("\nFetchPipelines started\n")
+		sleepDone := make(chan struct{})
+		go func() {
+			time.Sleep(wait)
+			close(sleepDone)
+		}()
+		select {
+		case <-sleepDone:
+		case <-ctx.Done():
+			log2file("FetchPipelines cancelled\n")
+			return nil
+		}
 		apiURL := fmt.Sprintf("%s/_apis/pipelines?api-version=7.1", m.azdoClient.orgUrl)
 		client := &http.Client{}
 		req, err := http.NewRequest("GET", apiURL, nil)
@@ -356,6 +378,7 @@ func getRecordStatus(record Record) string {
 
 func (c *AzdoClient) getPipelineRepository(pipelineId int) string {
 	apiURL := fmt.Sprintf("%s/_apis/pipelines/%d?%s", c.orgUrl, pipelineId, c.defaultApiVersion)
+	log2file(fmt.Sprintf("getPipelineRepository url: %s\n", apiURL))
 	req, err := http.NewRequest("GET", apiURL, nil)
 	if err != nil {
 		panic(err)

@@ -1,6 +1,7 @@
 package azdo
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -21,7 +22,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-type GoToPipelinesMsg bool
+type GoToPipelinesMsg context.Context
 
 type ActiveSection int
 
@@ -77,9 +78,10 @@ type Model struct {
 	DefaultBranch            string
 	RunOrFollowList          list.Model
 	RunOrFollowChoiceEnabled bool
+	ctx                      context.Context
 }
 
-func New() sections.Section {
+func New(ctx context.Context) sections.Section {
 	vp := searchableviewport.New(0, 0)
 	pspinner := spinner.New()
 	pspinner.Spinner = spinner.Dot
@@ -92,6 +94,7 @@ func New() sections.Section {
 	runOrFollowList := list.New([]list.Item{listitems.PipelineItem{Title: "Run"}, listitems.PipelineItem{Title: "Follow"}}, listitems.ItemDelegate{}, 30, 0)
 	runOrFollowList.Title = "Run new or follow?"
 	return &Model{
+		ctx:             ctx,
 		TaskList:        tl,
 		pipelineSpinner: pspinner,
 		logViewPort:     vp,
@@ -178,22 +181,22 @@ func (m *Model) Update(msg tea.Msg) (sections.Section, tea.Cmd) {
 			m.SetTaskList(ps)
 			m.logViewPort.SetContent(m.TaskList.SelectedItem().(listitems.PipelineItem).Desc.(string))
 			m.logViewPort.GotoBottom()
-			return m, m.azdoClient.getPipelineState(m.pipelineId, 1*time.Second)
+			return m, m.azdoClient.getPipelineState(m.ctx, m.pipelineId, 1*time.Second)
 		}
 		return m, nil
 	case PROpenedMsg, GoToPipelinesMsg:
 		m.activeSection = PipelineListSection
-		return m, tea.Batch(m.FetchPipelines(0), m.pipelineSpinner.Tick)
+		return m, tea.Batch(m.FetchPipelines(m.ctx, 0), m.pipelineSpinner.Tick)
 	case PipelinesFetchedMsg:
 		log2file(fmt.Sprintf("PipelinesFetchedMsg: %v\n", msg))
 		m.PipelineList.SetItems(msg)
 		log2file(fmt.Sprintf("PipelineList: %v\n", m.PipelineList.Items()))
-		return m, m.FetchPipelines(1 * time.Second)
+		return m, m.FetchPipelines(m.ctx, 20*time.Second)
 	case PipelineIdMsg:
 		m.PipelineState.IsRunning = true
 		m.activeSection = TaskListSection
 		m.pipelineId = int(msg)
-		return m, m.azdoClient.getPipelineState(int(msg), 0)
+		return m, m.azdoClient.getPipelineState(m.ctx, int(msg), 0)
 	case spinner.TickMsg:
 		var cmd tea.Cmd
 		m.pipelineSpinner, cmd = m.pipelineSpinner.Update(msg)

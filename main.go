@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 
 	"azdoext/pkgs/azdo"
@@ -12,6 +13,8 @@ import (
 )
 
 type model struct {
+	ctx       context.Context
+	cancel    context.CancelFunc
 	pages     map[pages.PageName]pages.PageInterface
 	pageStack pages.Stack
 	height    int
@@ -19,9 +22,10 @@ type model struct {
 }
 
 func initialModel() model {
+	ctx, cancel := context.WithCancel(context.Background())
 	helpPage := pages.NewHelpPage()
 	gitPage := pages.NewGitPage()
-	azdoPage := pages.NewAzdoPage()
+	azdoPage := pages.NewAzdoPage(ctx)
 	pagesMap := map[pages.PageName]pages.PageInterface{
 		pages.Git:       gitPage,
 		pages.Pipelines: azdoPage,
@@ -29,6 +33,8 @@ func initialModel() model {
 	}
 	pageStack := pages.Stack{}
 	m := model{
+		ctx:       ctx,
+		cancel:    cancel,
 		pages:     pagesMap,
 		pageStack: pageStack,
 	}
@@ -65,6 +71,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+b":
 			m.removeCurrentPage()
 			return m, nil
+		case "ctrl+r":
+			m.cancel()
+			return restart(), nil
 		}
 	case tea.WindowSizeMsg:
 		m.height = msg.Height
@@ -77,7 +86,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case sections.SubmitChoiceMsg:
 		if msg == sections.SubmitChoiceMsg(sections.PipelineOption) {
 			m.addPage(pages.Pipelines)
-			return m, func() tea.Msg { return azdo.GoToPipelinesMsg(true) }
+			return m, func() tea.Msg { return azdo.GoToPipelinesMsg(m.ctx) }
 		}
 	case azdo.PROpenedMsg:
 		m.addPage(pages.Pipelines)
@@ -111,6 +120,12 @@ func (m *model) removeCurrentPage() {
 	m.pageStack.Peek().UnsetCurrentPage()
 	m.pageStack.Pop()
 	m.pageStack.Peek().SetAsCurrentPage()
+}
+
+func restart() *model {
+	model := initialModel()
+	model.Init()
+	return &model
 }
 
 func main() {

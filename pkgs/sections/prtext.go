@@ -2,6 +2,7 @@ package sections
 
 import (
 	"azdoext/pkgs/styles"
+	"context"
 
 	"github.com/charmbracelet/bubbles/textarea"
 	tea "github.com/charmbracelet/bubbletea"
@@ -23,7 +24,7 @@ func (pr *PRSection) IsFocused() bool {
 	return pr.focused
 }
 
-func NewPRSection() Section {
+func NewPRSection(_ context.Context) Section {
 	title := "Open PR:"
 	textarea := textarea.New()
 	textarea.SetHeight(styles.ActiveStyle.GetHeight() - 2)

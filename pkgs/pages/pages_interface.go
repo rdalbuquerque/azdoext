@@ -3,11 +3,12 @@ package pages
 import (
 	"azdoext/pkgs/azdo"
 	"azdoext/pkgs/sections"
+	"context"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-type SectionConstructor func() sections.Section
+type SectionConstructor func(context.Context) sections.Section
 
 var (
 	sectionNewFuncs = map[sections.SectionName]SectionConstructor{
@@ -22,7 +23,7 @@ var (
 
 type PageInterface interface {
 	GetPageName() PageName
-	AddSection(sections.SectionName)
+	AddSection(context.Context, sections.SectionName)
 	SetDimensions(width, height int)
 	Update(tea.Msg) (PageInterface, tea.Cmd)
 	View() string

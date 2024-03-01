@@ -57,8 +57,9 @@ func (d ItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 }
 
 type StagedFileItem struct {
-	Name   string
-	Staged bool
+	RawStatus string
+	Name      string
+	Staged    bool
 }
 
 func (i StagedFileItem) FilterValue() string { return "" }
@@ -74,7 +75,7 @@ func (d GitItemDelegate) Render(w io.Writer, m list.Model, index int, listItem l
 		return
 	}
 
-	str := i.Name
+	str := i.RawStatus
 	if i.Staged {
 		str = stagedFileStyle.Render(str)
 	}
@@ -127,24 +128,9 @@ func (h HelpKeys) FullHelp() [][]key.Binding {
 }
 
 func (h HelpKeys) ShortHelp() []key.Binding {
-	keys := defaultKeys()
-	if h.AdditionalShortHelpKeys == nil {
+	if h.AdditionalShortHelpKeys != nil {
+		keys := h.AdditionalShortHelpKeys()
 		return keys
 	}
-	extra := h.AdditionalShortHelpKeys()
-	keys = append(keys, extra...)
-	return keys
-}
-
-func defaultKeys() []key.Binding {
-	updown := key.NewBinding(
-		key.WithKeys("up", "k", "down", "j"),
-		key.WithHelp("↑/k", "↓/j"),
-	)
-	defaultHelp := []key.Binding{updown}
-	defaultHelp = append(defaultHelp, key.NewBinding(
-		key.WithKeys("enter"),
-		key.WithHelp("↵", "select"),
-	))
-	return defaultHelp
+	return nil
 }
