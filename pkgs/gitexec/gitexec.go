@@ -6,6 +6,7 @@
 package gitexec
 
 import (
+	"azdoext/pkgs/logger"
 	"os"
 	"os/exec"
 	"strings"
@@ -45,7 +46,6 @@ func Config() GitConfig {
 func Status() []GitFile {
 	cmd := exec.Command("git", "status", "--porcelain")
 	out, err := cmd.CombinedOutput()
-
 	if err != nil {
 		panic(err)
 	}
@@ -93,8 +93,10 @@ func Unstage(file string) {
 }
 
 func Commit(message string) {
+	logger := logger.NewLogger("gitexec.log")
 	cmd := exec.Command("git", "commit", "-m", message)
-	err := cmd.Run()
+	out, err := cmd.CombinedOutput()
+	logger.LogToFile("debug", string(out))
 	if err != nil {
 		panic(err)
 	}
