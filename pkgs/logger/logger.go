@@ -3,6 +3,7 @@ package logger
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 )
 
 type Logger struct {
@@ -10,6 +11,15 @@ type Logger struct {
 }
 
 func NewLogger(filename string) *Logger {
+	// if OS is Windows, concatenate LOCALAPPDATA environment variable to filename
+	if os.Getenv("OS") == "Windows_NT" {
+		filename = os.Getenv("LOCALAPPDATA") + "\\azdoext\\" + filename
+	}
+	dir := filepath.Dir(filename)
+	err := os.MkdirAll(dir, os.ModePerm)
+	if err != nil {
+		panic(err)
+	}
 	return &Logger{
 		filename: filename,
 	}

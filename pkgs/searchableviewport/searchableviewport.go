@@ -48,16 +48,17 @@ func New(width, height int) *Model {
 }
 
 func (m *Model) setTextAreaWidth(viewportWidth int) {
-	if viewportWidth > 4 {
+	if viewportWidth < 80 && viewportWidth > 4 {
 		m.ta.SetWidth(viewportWidth - 4)
 	} else {
-		m.ta.SetWidth(1)
+		m.ta.SetWidth(80)
 	}
 }
 
 func (m *Model) SetDimensions(width, height int) {
 	m.viewport.Height = height
 	m.viewport.Width = width
+	m.ta.SetHeight(1)
 	m.setTextAreaWidth(width)
 }
 
@@ -68,6 +69,9 @@ func (m *Model) GotoBottom() {
 func (m *Model) SetContent(content string) {
 	m.originalContent = content
 	m.viewport.SetContent(content)
+	if m.searchMode {
+		m.highlightMatches()
+	}
 }
 
 func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
@@ -96,7 +100,10 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 			return m, tea.Batch(vpcmd, tacmd)
 		}
 	case viewportContentMsg:
-		m.viewport.SetContent(string(msg))
+		m.SetContent(string(msg))
+		if m.searchMode {
+			m.highlightMatches()
+		}
 		return m, nil
 	}
 	return m, nil
@@ -166,11 +173,11 @@ func (m *Model) View() string {
 	}
 	var taView string
 	if m.ta.Focused() {
-		taView = focusedStyle.PaddingLeft(6).Render(m.ta.View())
+		taView = focusedStyle.Render(m.ta.View())
 	} else {
-		taView = blurredStyle.PaddingLeft(5).Render(m.ta.View())
+		taView = blurredStyle.Render(m.ta.View())
 	}
-	renderedViewPort := lipgloss.NewStyle().Width(80).MaxWidth(80).Render(m.viewport.View())
+	renderedViewPort := m.viewport.View()
 	if m.searchMode {
 		return lipgloss.JoinVertical(lipgloss.Top, lipgloss.JoinHorizontal(lipgloss.Left, taView, searchCounter), renderedViewPort)
 	}

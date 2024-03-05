@@ -1,5 +1,7 @@
 package azdo
 
+import "azdoext/pkgs/styles"
+
 func (m *Model) Hide() {
 	m.hidden = true
 }
@@ -26,8 +28,9 @@ func (m *Model) IsHidden() bool {
 }
 
 func (m *Model) SetDimensions(width, height int) {
-	m.TaskList.SetHeight(height + 1)
-	m.logViewPort.SetDimensions(100, height)
+	m.TaskList.SetHeight(height)
+	m.logViewPort.SetDimensions(styles.Width-styles.DefaultSectionWidth, height)
+
 	m.PipelineList.SetHeight(height)
 	m.RunOrFollowList.SetHeight(height)
 }

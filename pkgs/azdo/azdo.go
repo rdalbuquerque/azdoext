@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"azdoext/pkgs/listitems"
+	"azdoext/pkgs/logger"
 	"azdoext/pkgs/searchableviewport"
 	"azdoext/pkgs/sections"
 	"azdoext/pkgs/styles"
@@ -58,10 +59,13 @@ type repositoryStruct struct {
 }
 
 type Model struct {
+	monitoredPipelineRunId   int
+	repositoryPipelines      []pipeline
+	lastPipelineStateMsgTime time.Time
+	pipelineFetchingEnabled  bool
 	hidden                   bool
 	focused                  bool
 	TaskList                 list.Model
-	pipelineId               int
 	PipelineState            pipelineState
 	pipelineSpinner          spinner.Model
 	done                     bool
@@ -79,9 +83,11 @@ type Model struct {
 	RunOrFollowList          list.Model
 	RunOrFollowChoiceEnabled bool
 	ctx                      context.Context
+	logger                   *logger.Logger
 }
 
 func New(ctx context.Context) sections.Section {
+	logger := logger.NewLogger("azdo.log")
 	vp := searchableviewport.New(0, 0)
 	pspinner := spinner.New()
 	pspinner.Spinner = spinner.Dot
@@ -91,9 +97,10 @@ func New(ctx context.Context) sections.Section {
 	pipelineList := list.New([]list.Item{}, listitems.ItemDelegate{}, 0, 0)
 	pipelineList.Title = "Pipelines"
 	pipelineList.SetShowStatusBar(false)
-	runOrFollowList := list.New([]list.Item{listitems.PipelineItem{Title: "Run"}, listitems.PipelineItem{Title: "Follow"}}, listitems.ItemDelegate{}, 30, 0)
+	runOrFollowList := list.New([]list.Item{listitems.PipelineItem{Title: "Run"}, listitems.PipelineItem{Title: "Follow"}}, listitems.ItemDelegate{}, 0, 0)
 	runOrFollowList.Title = "Run new or follow?"
 	return &Model{
+		logger:          logger,
 		ctx:             ctx,
 		TaskList:        tl,
 		pipelineSpinner: pspinner,
@@ -115,6 +122,7 @@ func (m *Model) Update(msg tea.Msg) (sections.Section, tea.Cmd) {
 		azdoclient := NewAzdoClient(org, project, os.Getenv("AZDO_PERSONAL_ACCESS_TOKEN"))
 		repositoryId, defaultBranch := getRepository(repository, azdoclient)
 		m.organization, m.project, m.repository, m.repositoryId, m.CurrentBranch, m.DefaultBranch, m.azdoClient = org, project, repository, repositoryId, currentbranch, defaultBranch, azdoclient
+		m.setRepositoryPipelines()
 		return m, nil
 	case tea.KeyMsg:
 		switch msg.Type {
@@ -130,7 +138,6 @@ func (m *Model) Update(msg tea.Msg) (sections.Section, tea.Cmd) {
 			}
 			return m, nil
 		case tea.KeyEnter:
-
 			if m.focused {
 				if m.RunOrFollowChoiceEnabled {
 					m.RunOrFollowChoiceEnabled = false
@@ -174,28 +181,44 @@ func (m *Model) Update(msg tea.Msg) (sections.Section, tea.Cmd) {
 		description := titleAndDescription[1]
 		return m, func() tea.Msg { return m.OpenPR(m.CurrentBranch, m.DefaultBranch, title, description) }
 	case PipelineStateMsg:
+		m.lastPipelineStateMsgTime = time.Now()
 		ps := pipelineState(msg)
 		m.PipelineState = ps
 		if ps.IsRunning {
 			m.PipelineState = pipelineState(msg)
 			m.SetTaskList(ps)
-			m.logViewPort.SetContent(m.TaskList.SelectedItem().(listitems.PipelineItem).Desc.(string))
-			m.logViewPort.GotoBottom()
-			return m, m.azdoClient.getPipelineState(m.ctx, m.pipelineId, 1*time.Second)
+			selectedItem, ok := m.TaskList.SelectedItem().(listitems.PipelineItem)
+			if !ok {
+				m.logger.LogToFile("error", fmt.Sprintf("no selected item in task list: %v", m.TaskList.SelectedItem()))
+				return m, m.azdoClient.getPipelineState(m.ctx, m.monitoredPipelineRunId, 1*time.Second)
+			}
+			m.logViewPort.SetContent(selectedItem.Desc.(string))
+			if m.activeSection == TaskListSection {
+				m.logViewPort.GotoBottom()
+			}
+			return m, m.azdoClient.getPipelineState(m.ctx, m.monitoredPipelineRunId, 1*time.Second)
 		}
 		return m, nil
 	case PROpenedMsg, GoToPipelinesMsg:
+
+		if m.pipelineFetchingEnabled {
+			return m, nil
+		}
+		m.pipelineFetchingEnabled = true
+		m.logger.LogToFile("debug", "fetching pipeline loop")
 		m.activeSection = PipelineListSection
 		return m, tea.Batch(m.FetchPipelines(m.ctx, 0), m.pipelineSpinner.Tick)
 	case PipelinesFetchedMsg:
-
 		m.PipelineList.SetItems(msg)
-
-		return m, m.FetchPipelines(m.ctx, 20*time.Second)
-	case PipelineIdMsg:
-		m.PipelineState.IsRunning = true
+		return m, m.FetchPipelines(m.ctx, 1*time.Second)
+	case PipelineRunIdMsg:
+		if m.PipelineState.IsRunning && m.monitoredPipelineRunId == int(msg) {
+			m.activeSection = TaskListSection
+			return m, nil
+		}
+		m.monitoredPipelineRunId = int(msg)
+		m.PipelineState.IsRunning = false
 		m.activeSection = TaskListSection
-		m.pipelineId = int(msg)
 		return m, m.azdoClient.getPipelineState(m.ctx, int(msg), 0)
 	case spinner.TickMsg:
 		var cmd tea.Cmd

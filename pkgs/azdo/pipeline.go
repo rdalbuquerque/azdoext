@@ -2,6 +2,7 @@ package azdo
 
 import (
 	"azdoext/pkgs/listitems"
+	"azdoext/pkgs/logger"
 	"bufio"
 	"bytes"
 	"context"
@@ -9,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"runtime/debug"
 	"slices"
 	"sort"
 	"strings"
@@ -23,6 +25,7 @@ import (
 var pipelineResults = []string{"succeeded", "failed", "partiallySucceeded", "canceled", "noRuns"}
 
 type AzdoClient struct {
+	logger            *logger.Logger
 	authHeader        map[string][]string
 	orgUrl            string
 	defaultApiVersion string
@@ -30,7 +33,12 @@ type AzdoClient struct {
 
 type PipelineStateMsg pipelineState
 type PipelinesFetchedMsg []list.Item
-type PipelineIdMsg int
+type PipelineRunIdMsg int
+
+type pipeline struct {
+	id   int
+	name string
+}
 
 type pipelineState struct {
 	IsRunning bool
@@ -77,11 +85,13 @@ type LogInfo struct {
 }
 
 func NewAzdoClient(org, project, pat string) *AzdoClient {
+	logger := logger.NewLogger("azdo.client.log")
 	authHeader := map[string][]string{
 		"Authorization": {"Basic " + base64.StdEncoding.EncodeToString([]byte(":"+pat))},
 		"Content-Type":  {"application/json"},
 	}
 	return &AzdoClient{
+		logger:            logger,
 		authHeader:        authHeader,
 		orgUrl:            fmt.Sprintf("https://dev.azure.com/%s/%s", org, project),
 		defaultApiVersion: "api-version=7.1",
@@ -93,20 +103,24 @@ func (m *Model) getPipelineStatus(pipelineId int) (string, int) {
 	req, err := http.NewRequest("GET", apiURL, nil)
 	req.Header = m.azdoClient.authHeader
 	if err != nil {
+		m.logger.LogToFile("error", fmt.Sprintf("error generating request:\n%v\n", err))
 		panic(err)
 	}
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		panic(err)
+		m.logger.LogToFile("error", fmt.Sprintf("error doing request:\n%v\n", err))
 	}
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
+		m.logger.LogToFile("error", fmt.Sprintf("error reading response body:\n%v\n", err))
 		panic(err)
 	}
 	var r map[string]interface{}
 	err = json.Unmarshal(body, &r)
 	if err != nil {
+		m.logger.LogToFile("error", fmt.Sprintf("error unmarshalling body:\n%v\n", err))
+		m.logger.LogToFile("error", fmt.Sprintf("error unmarshalling body: body:\n%s\n", string(body)))
 		panic(err)
 	}
 	runCount := int(r["count"].(float64))
@@ -124,7 +138,7 @@ func (m *Model) getPipelineStatus(pipelineId int) (string, int) {
 func (m *Model) RunOrFollowPipeline(id int, runNew bool) tea.Msg {
 	apiURL := fmt.Sprintf("%s/_apis/pipelines/%d/runs?%s", m.azdoClient.orgUrl, id, "api-version=7.1-preview.1")
 	if status, runId := m.getPipelineStatus(id); !slices.Contains(pipelineResults, status) && !runNew {
-		return PipelineIdMsg(runId)
+		return PipelineRunIdMsg(runId)
 	}
 
 	runParameters := map[string]interface{}{
@@ -139,6 +153,7 @@ func (m *Model) RunOrFollowPipeline(id int, runNew bool) tea.Msg {
 	runParametersJson, _ := json.Marshal(runParameters)
 	req, err := http.NewRequest("POST", apiURL, bytes.NewBuffer(runParametersJson))
 	if err != nil {
+		m.logger.LogToFile("error", fmt.Sprintf("error generating request:\n%v\n", err))
 		panic(err)
 	}
 
@@ -147,21 +162,24 @@ func (m *Model) RunOrFollowPipeline(id int, runNew bool) tea.Msg {
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
+		m.logger.LogToFile("error", fmt.Sprintf("error doing request:\n%v\n", err))
 		panic(err)
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
+		m.logger.LogToFile("error", fmt.Sprintf("error reading response:\n%v\n", err))
 		panic(err)
 	}
 	var r map[string]interface{}
 	err = json.Unmarshal(body, &r)
 	if err != nil {
+		m.logger.LogToFile("error", fmt.Sprintf("error unmarshalling response:\n%v\n", err))
 		panic(err)
 	}
 	pipelineId := int(r["id"].(float64))
-	return PipelineIdMsg(pipelineId)
+	return PipelineRunIdMsg(pipelineId)
 
 }
 
@@ -177,9 +195,10 @@ func (c *AzdoClient) getPipelineState(ctx context.Context, runId int, wait time.
 		case <-ctx.Done():
 			return nil
 		}
-		apiURL := fmt.Sprintf("%s/_apis/build/builds/%d/timeline?%s", c.orgUrl, runId, "api-version=7.2-preview.2")
+		apiURL := fmt.Sprintf("%s/_apis/build/builds/%d/timeline?%s", c.orgUrl, runId, "api-version=7.1")
 		req, err := http.NewRequest("GET", apiURL, nil)
 		if err != nil {
+			c.logger.LogToFile("error", fmt.Sprintf("error generating request:\n%v\n", err))
 			panic(err)
 		}
 
@@ -188,17 +207,20 @@ func (c *AzdoClient) getPipelineState(ctx context.Context, runId int, wait time.
 
 		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
-			panic(err)
+			c.logger.LogToFile("error", fmt.Sprintf("error doing request:\n%v\n", err))
+			c.logger.LogToFile("err", string(debug.Stack()))
 		}
 		defer resp.Body.Close()
 
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
+			c.logger.LogToFile("error", fmt.Sprintf("error reading response:\n%v\n", err))
 			panic(err)
 		}
 		var r map[string]interface{}
 		err = json.Unmarshal(body, &r)
 		if err != nil {
+			c.logger.LogToFile("error", fmt.Sprintf("error unmarshalling response:\n%v\n", err))
 			panic(err)
 		}
 
@@ -206,9 +228,11 @@ func (c *AzdoClient) getPipelineState(ctx context.Context, runId int, wait time.
 		// map r['records'] to records
 		recordsByte, err := json.Marshal(r["records"])
 		if err != nil {
+			c.logger.LogToFile("error", fmt.Sprintf("error marshalling records:\n%v\n", err))
 			panic(err)
 		}
 		if err := json.Unmarshal(recordsByte, &records); err != nil {
+			c.logger.LogToFile("error", fmt.Sprintf("error unmarshalling records:\n%v\n", err))
 			panic(err)
 		}
 		ps := c.fillPipelineStatus(records)
@@ -281,16 +305,16 @@ func (c *AzdoClient) getTaskLog(task *Record) string {
 	}
 	req, err := http.NewRequest("GET", task.Log.Url, nil)
 	if err != nil {
+		c.logger.LogToFile("error", fmt.Sprintf("error generating request:\n%v\n", err))
 		panic(err)
 	}
 
 	// Add authorization header
 	req.Header = c.authHeader
-	// set header to get utf-8 response
-	req.Header.Add("Accept-Charset", "utf-8")
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
+		c.logger.LogToFile("error", fmt.Sprintf("error doing request:\n%v\n", err))
 		panic(err)
 	}
 	defer resp.Body.Close()
@@ -308,9 +332,9 @@ func processLog(text io.ReadCloser) string {
 		parts := strings.SplitN(line, " ", 2)
 		var newLine string
 		if len(parts) > 1 {
-			newLine = fmt.Sprintf("%*d | %s", maxDigits, lineNum, parts[1])
+			newLine = fmt.Sprintf("%*d ~ %s", maxDigits, lineNum, parts[1])
 		} else {
-			newLine = fmt.Sprintf("%*d | %s", maxDigits, lineNum, line)
+			newLine = fmt.Sprintf("%*d ~ %s", maxDigits, lineNum, line)
 		}
 		processedText += newLine + "\n"
 		lineNum++
@@ -335,29 +359,10 @@ func (m *Model) FetchPipelines(ctx context.Context, wait time.Duration) tea.Cmd 
 
 			return nil
 		}
-		apiURL := fmt.Sprintf("%s/_apis/pipelines?api-version=7.1", m.azdoClient.orgUrl)
-		client := &http.Client{}
-		req, err := http.NewRequest("GET", apiURL, nil)
-		if err != nil {
-			panic(err)
-		}
-		req.Header = m.azdoClient.authHeader
-		resp, err := client.Do(req)
-		if err != nil {
-			panic(err)
-		}
-		defer resp.Body.Close()
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			panic(err)
-		}
-		var result map[string]interface{}
-		json.Unmarshal(body, &result)
 		pipelineList := []list.Item{}
-		for _, pipeline := range result["value"].([]interface{}) {
-			pipelineObj := pipeline.(map[string]interface{})
-			pipelineName := pipelineObj["name"].(string)
-			pipelineId := int(pipelineObj["id"].(float64))
+		for _, pipeline := range m.repositoryPipelines {
+			pipelineName := pipeline.name
+			pipelineId := pipeline.id
 			status, _ := m.getPipelineStatus(pipelineId)
 			symbol := m.getSymbol(status)
 			if m.azdoClient.getPipelineRepository(pipelineId) == m.repositoryId {
@@ -372,7 +377,45 @@ func getRecordStatus(record Record) string {
 	if record.Result != "" {
 		return record.Result
 	}
+	if record.StartTime.IsZero() {
+		return "pending"
+	}
 	return record.State
+}
+
+func (m *Model) setRepositoryPipelines() {
+	apiURL := fmt.Sprintf("%s/_apis/pipelines?%s", m.azdoClient.orgUrl, m.azdoClient.defaultApiVersion)
+	client := &http.Client{}
+	req, err := http.NewRequest("GET", apiURL, nil)
+	if err != nil {
+		m.logger.LogToFile("error", fmt.Sprintf("error fetching pipelines:\n%v\n", err))
+		panic(err)
+	}
+	req.Header = m.azdoClient.authHeader
+	resp, err := client.Do(req)
+	if err != nil {
+		m.logger.LogToFile("error", fmt.Sprintf("error fetching pipelines:\n%v\n", err))
+		panic(err)
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		m.logger.LogToFile("error", fmt.Sprintf("error fetching pipelines:\n%v\n", err))
+		panic(err)
+	}
+	var result map[string]interface{}
+	json.Unmarshal(body, &result)
+	m.logger.LogToFile("info", fmt.Sprintf("body: %s\n", string(body)))
+	pipelineList := []pipeline{}
+	for _, p := range result["value"].([]interface{}) {
+		pipelineObj := p.(map[string]interface{})
+		pipelineName := pipelineObj["name"].(string)
+		pipelineId := int(pipelineObj["id"].(float64))
+		if m.azdoClient.getPipelineRepository(pipelineId) == m.repositoryId {
+			pipelineList = append(pipelineList, pipeline{id: pipelineId, name: pipelineName})
+		}
+	}
+	m.repositoryPipelines = pipelineList
 }
 
 func (c *AzdoClient) getPipelineRepository(pipelineId int) string {
@@ -380,21 +423,25 @@ func (c *AzdoClient) getPipelineRepository(pipelineId int) string {
 
 	req, err := http.NewRequest("GET", apiURL, nil)
 	if err != nil {
+		c.logger.LogToFile("error", fmt.Sprintf("error getting pipeline repo:\n%v\n", err))
 		panic(err)
 	}
 	req.Header = c.authHeader
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
+		c.logger.LogToFile("error", fmt.Sprintf("error getting pipeline repo:\n%v\n", err))
 		panic(err)
 	}
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
+		c.logger.LogToFile("error", fmt.Sprintf("error getting pipeline repo:\n%v\n", err))
 		panic(err)
 	}
 	var r map[string]interface{}
 	err = json.Unmarshal(body, &r)
 	if err != nil {
+		c.logger.LogToFile("error", fmt.Sprintf("error getting pipeline repo:\n%v\n", err))
 		panic(err)
 	}
 	return r["configuration"].(map[string]interface{})["repository"].(map[string]interface{})["id"].(string)

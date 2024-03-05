@@ -75,6 +75,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return restart()
 		}
 	case tea.WindowSizeMsg:
+
 		m.height = msg.Height
 		m.width = msg.Width
 		for _, p := range m.pages {
