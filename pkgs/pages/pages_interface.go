@@ -1,7 +1,6 @@
 package pages
 
 import (
-	"azdoext/pkgs/azdo"
 	"azdoext/pkgs/sections"
 	"context"
 
@@ -12,12 +11,15 @@ type SectionConstructor func(context.Context) sections.Section
 
 var (
 	sectionNewFuncs = map[sections.SectionName]SectionConstructor{
-		sections.Commit:        sections.NewCommitSection,
-		sections.Worktree:      sections.NewWorktreeSection,
-		sections.ChoiceSection: sections.NewChoice,
-		sections.AzdoSection:   azdo.New,
-		sections.OpenPR:        sections.NewPRSection,
-		sections.HelpSection:   sections.NewHelp,
+		sections.PrOrPipelineChoice:   sections.NewChoice,
+		sections.PipelineActionChoice: sections.NewChoice,
+		sections.Commit:               sections.NewCommitSection,
+		sections.Worktree:             sections.NewWorktreeSection,
+		sections.OpenPR:               sections.NewPRSection,
+		sections.HelpSection:          sections.NewHelp,
+		sections.PipelineTasks:        sections.NewPipelineTasks,
+		sections.PipelineList:         sections.NewPipelineList,
+		sections.LogViewport:          sections.NewLogViewport,
 	}
 )
 

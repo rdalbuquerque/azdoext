@@ -1,11 +1,13 @@
 package pages
 
 import (
+	"azdoext/pkgs/listitems"
 	"azdoext/pkgs/sections"
 	"azdoext/pkgs/styles"
 	"context"
 
 	bubbleshelp "github.com/charmbracelet/bubbles/help"
+	"github.com/charmbracelet/bubbles/list"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -56,8 +58,12 @@ func NewGitPage() PageInterface {
 	gitPage.shortHelp = helpstring
 	gitPage.AddSection(context.Background(), sections.Commit)
 	gitPage.AddSection(context.Background(), sections.Worktree)
+	gitPage.AddSection(context.Background(), sections.PrOrPipelineChoice)
+	gitPage.AddSection(context.Background(), sections.OpenPR)
 	gitPage.sections[sections.Commit].Focus()
 	gitPage.sections[sections.Worktree].Blur()
+	gitPage.sections[sections.PrOrPipelineChoice].Hide()
+	gitPage.sections[sections.OpenPR].Hide()
 	return gitPage
 }
 
@@ -68,6 +74,7 @@ func (p *GitPage) GetPageName() PageName {
 func (p *GitPage) Update(msg tea.Msg) (PageInterface, tea.Cmd) {
 	// process any msg only if this page is the current page
 	if p.current {
+		var cmds []tea.Cmd
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
 			switch msg.String() {
@@ -76,13 +83,19 @@ func (p *GitPage) Update(msg tea.Msg) (PageInterface, tea.Cmd) {
 				return p, nil
 			}
 		case sections.GitPushedMsg:
-			p.AddSection(context.Background(), sections.ChoiceSection)
+			p.SetFocus(sections.PrOrPipelineChoice)
+			options := []list.Item{
+				listitems.ChoiceItem{Option: sections.Options.OpenPR},
+				listitems.ChoiceItem{Option: sections.Options.GoToPipelines},
+			}
+			sec, cmd := p.sections[sections.PrOrPipelineChoice].Update(sections.OptionsMsg(options))
+			cmds = append(cmds, cmd)
+			p.sections[sections.PrOrPipelineChoice] = sec
 		case sections.SubmitChoiceMsg:
-			if msg == "Open PR" {
-				p.AddSection(context.Background(), sections.OpenPR)
+			if string(msg) == string(sections.Options.OpenPR) {
+				p.SetFocus(sections.OpenPR)
 			}
 		}
-		var cmds []tea.Cmd
 		for _, section := range p.orderedSections {
 			sec, cmd := p.sections[section].Update(msg)
 			p.sections[section] = sec
@@ -91,6 +104,16 @@ func (p *GitPage) Update(msg tea.Msg) (PageInterface, tea.Cmd) {
 		return p, tea.Batch(cmds...)
 	}
 	return p, nil
+}
+
+func (p *GitPage) SetFocus(section sections.SectionName) {
+	for _, sec := range p.orderedSections {
+		if sec == section {
+			p.sections[sec].Focus()
+		} else {
+			p.sections[sec].Blur()
+		}
+	}
 }
 
 func (p *GitPage) View() string {

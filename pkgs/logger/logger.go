@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 type Logger struct {
@@ -31,5 +32,6 @@ func (l *Logger) LogToFile(identifier, msg string) {
 		panic(err)
 	}
 	defer f.Close()
-	f.WriteString(fmt.Sprintf("[%s] %s\n", identifier, msg))
+	timestamp := time.Now().Format("2006-01-02 15:04:05")
+	f.WriteString(fmt.Sprintf("%s | %s | %s\n", timestamp, identifier, msg))
 }

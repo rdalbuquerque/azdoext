@@ -43,78 +43,6 @@ stages:
         echo 'Run a one-line script'
 
       displayName: 'Run a multi-line script'
-    - script: |
-        echo Add other tasks to build, test, and deploy your project.
-        echo See https://aka.ms/yaml
-        sleep 5
-        echo 'Run a one-line script'
-        sleep 5
-        echo 'Run a one-line script'
-        sleep 5
-        echo 'Run a one-line script'
-        sleep 5
-        echo 'Run a one-line script'
-        sleep 5
-        echo 'Run a one-line script'
-        echo 'Run a one-line script'
-        sleep 5
-        echo 'Run a one-line script'
-        echo 'Run a one-line script'
-        sleep 5
-        echo 'Run a one-line script'
-        echo 'Run a one-line script'
-        sleep 5
-        echo 'Run a one-line script'
-
-      displayName: 'Run a multi-line script'
-    - script: |
-        echo Add other tasks to build, test, and deploy your project.
-        echo See https://aka.ms/yaml
-        sleep 5
-        echo 'Run a one-line script'
-        sleep 5
-        echo 'Run a one-line script'
-        sleep 5
-        echo 'Run a one-line script'
-        sleep 5
-        echo 'Run a one-line script'
-        sleep 5
-        echo 'Run a one-line script'
-        echo 'Run a one-line script'
-        sleep 5
-        echo 'Run a one-line script'
-        echo 'Run a one-line script'
-        sleep 5
-        echo 'Run a one-line script'
-        echo 'Run a one-line script'
-        sleep 5
-        echo 'Run a one-line script'
-
-      displayName: 'Run a multi-line script'
-    - script: |
-        echo Add other tasks to build, test, and deploy your project.
-        echo See https://aka.ms/yaml
-        sleep 5
-        echo 'Run a one-line script'
-        sleep 5
-        echo 'Run a one-line script'
-        sleep 5
-        echo 'Run a one-line script'
-        sleep 5
-        echo 'Run a one-line script'
-        sleep 5
-        echo 'Run a one-line script'
-        echo 'Run a one-line script'
-        sleep 5
-        echo 'Run a one-line script'
-        echo 'Run a one-line script'
-        sleep 5
-        echo 'Run a one-line script'
-        echo 'Run a one-line script'
-        sleep 5
-        echo 'Run a one-line script'
-
-      displayName: 'Run a multi-line script'
 
 - stage: "stage2"
   jobs:
@@ -141,54 +69,15 @@ stages:
         echo 'Run a one-line script'
 
       displayName: 'Run a multi-line script'
-    - script: |
-        echo Add other tasks to build, test, and deploy your project.
-        echo See https://aka.ms/yaml
-        sleep 5
-        echo 'Run a one-line script'
-        sleep 5
-        echo 'Run a one-line script'
-        sleep 5
-        echo 'Run a one-line script'
-        sleep 5
-        echo 'Run a one-line script'
-        sleep 5
-        echo 'Run a one-line script'
-        echo 'Run a one-line script'
-        sleep 5
-        echo 'Run a one-line script'
-        echo 'Run a one-line script'
-        sleep 5
-        echo 'Run a one-line script'
-        echo 'Run a one-line script'
-        sleep 5
-        echo 'Run a one-line script'
 
-      displayName: 'Run a multi-line script'
-    - script: |
-        echo Add other tasks to build, test, and deploy your project.
-        echo See https://aka.ms/yaml
-        sleep 5
-        echo 'Run a one-line script'
-        sleep 5
-        echo 'Run a one-line script'
-        sleep 5
-        echo 'Run a one-line script'
-        sleep 5
-        echo 'Run a one-line script'
-        sleep 5
-        echo 'Run a one-line script'
-        echo 'Run a one-line script'
-        sleep 5
-        echo 'Run a one-line script'
-        echo 'Run a one-line script'
-        sleep 5
-        echo 'Run a one-line script'
-        echo 'Run a one-line script'
-        sleep 5
-        echo 'Run a one-line script'
+  - job: "job3"
+    steps:
+    - script: echo Hello, world!
+      displayName: 'Run a one-line script'
 
-      displayName: 'Run a multi-line script'
+    - script: echo s"skipped"
+      condition: eq(variables.not_skip, true)
+
     - script: |
         echo Add other tasks to build, test, and deploy your project.
         echo See https://aka.ms/yaml
@@ -199,15 +88,6 @@ stages:
         sleep 5
         echo 'Run a one-line script'
         sleep 5
-        echo 'Run a one-line script'
-        sleep 5
-        echo 'Run a one-line script'
-        echo 'Run a one-line script'
-        sleep 5
-        echo 'Run a one-line script'
-        echo 'Run a one-line script'
-        sleep 5
-        echo 'Run a one-line script'
         echo 'Run a one-line script'
         sleep 5
         echo 'Run a one-line script'

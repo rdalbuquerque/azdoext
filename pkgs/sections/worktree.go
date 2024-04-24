@@ -104,7 +104,6 @@ func (ws *WorktreeSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 		ws.branch = curBranch
 		return ws, func() tea.Msg { return GitInfoMsg{CurrentBranch: ref, RemoteUrl: remoteUrl} }
 	case commitMsg:
-
 		if ws.noStagedFiles() {
 			ws.addAllToStage()
 		}
@@ -114,6 +113,7 @@ func (ws *WorktreeSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 	case GitPushedMsg:
 		ws.status.Title = "Pushed"
 	}
+
 	return ws, nil
 }
 

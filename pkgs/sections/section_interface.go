@@ -19,10 +19,14 @@ type Section interface {
 type SectionName string
 
 const (
-	Commit        SectionName = "commit"
-	Worktree      SectionName = "worktree"
-	ChoiceSection SectionName = "choice"
-	AzdoSection   SectionName = "azdoSection"
-	OpenPR        SectionName = "openPR"
-	HelpSection   SectionName = "help"
+	PrOrPipelineChoice   SectionName = "prOrPipelineChoice"
+	PipelineActionChoice SectionName = "pipelineActionChoice"
+	Commit               SectionName = "commit"
+	Worktree             SectionName = "worktree"
+	AzdoSection          SectionName = "azdoSection"
+	OpenPR               SectionName = "openPR"
+	HelpSection          SectionName = "help"
+	PipelineTasks        SectionName = "pipelineTasks"
+	LogViewport          SectionName = "logviewport"
+	PipelineList         SectionName = "pipelineList"
 )

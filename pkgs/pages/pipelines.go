@@ -99,4 +99,5 @@ func (p *PipelinesPage) SetDimensions(width, height int) {
 	for _, section := range p.sections {
 		section.SetDimensions(width, height)
 	}
+
 }

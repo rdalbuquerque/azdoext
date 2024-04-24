@@ -8,9 +8,11 @@ import (
 type PageName string
 
 const (
-	Git       PageName = "git"
-	Pipelines PageName = "pipelines"
-	Help      PageName = "help"
+	Git          PageName = "git"
+	Pipelines    PageName = "pipelines"
+	Help         PageName = "help"
+	PipelineRun  PageName = "pipelineRun"
+	PipelineList PageName = "pipelineList"
 )
 
 type Stack []PageInterface
