@@ -40,3 +40,9 @@ OBS: Currently, only PRs to the default branch are supported.
 On pipelines page, you will see all pipelines related to you current repository and their last run status.\
 When you press enter you will be presented with a choice, go to the pipeline instance tasks or run new.\
 While on the pipeline instance section you can go to logs, browse and hit '/' to search for a specific string.\
+
+## Demo
+
+
+https://github.com/rdalbuquerque/azdoext/assets/23347635/d5e7357c-fe93-4d36-90e1-746354c17a16
+
