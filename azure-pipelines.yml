@@ -9,26 +9,11 @@ variables:
 pool:
   vmImage: ubuntu-latest
 
-steps:
-- script: echo Hello, world!
-  displayName: 'Run a one-line script'
+stages:
+- stage: "stage1"
+  jobs:
+  - job: "job1"
+    steps:
+    - script: echo Hello, world!
+      displayName: 'Run a one-line script'
 
-- script: echo s"skipped"
-  condition: eq(variables.not_skip, true)
-
-- script: |
-    echo Add other tasks to build, test, and deploy your project.
-    echo See https://aka.ms/yaml
-    sleep 5
-    echo 'Run a one-line script'
-    sleep 5
-    echo 'Run a one-line script'
-    sleep 5
-    echo 'Run a one-line script'
-    sleep 5
-    echo 'Run a one-line script'
-    sleep 5
-    echo 'Run a one-line script'
-    exit 1
-
-  displayName: 'Run a multi-line script'

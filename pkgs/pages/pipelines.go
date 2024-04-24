@@ -4,7 +4,6 @@ import (
 	"azdoext/pkgs/sections"
 	"azdoext/pkgs/styles"
 	"context"
-	"fmt"
 
 	bubbleshelp "github.com/charmbracelet/bubbles/help"
 	tea "github.com/charmbracelet/bubbletea"
@@ -57,13 +56,6 @@ func (p *PipelinesPage) GetPageName() PageName {
 }
 
 func (p *PipelinesPage) Update(msg tea.Msg) (PageInterface, tea.Cmd) {
-	f, err := tea.LogToFile("pipelines-update.txt", "debug")
-	if err != nil {
-		panic(err)
-	}
-	defer f.Close()
-	f.WriteString(fmt.Sprintf("handling msg: %v\n", msg))
-
 	switch msg := msg.(type) {
 	// only handle key messages if this page is the current page
 	case tea.KeyMsg:
@@ -107,4 +99,5 @@ func (p *PipelinesPage) SetDimensions(width, height int) {
 	for _, section := range p.sections {
 		section.SetDimensions(width, height)
 	}
+
 }

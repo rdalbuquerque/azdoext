@@ -3,7 +3,6 @@ package sections
 import (
 	"azdoext/pkgs/styles"
 	"context"
-	"fmt"
 
 	"github.com/charmbracelet/bubbles/textarea"
 	tea "github.com/charmbracelet/bubbletea"
@@ -43,10 +42,12 @@ func (cs *CommitSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 	if cs.focused {
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
-			switch msg.String() {
-			case "ctrl+s":
-				cs.textarea.Blur()
-				return cs, func() tea.Msg { return commitMsg(cs.textarea.Value()) }
+			if cs.focused {
+				switch msg.String() {
+				case "ctrl+s":
+					cs.textarea.Blur()
+					return cs, func() tea.Msg { return commitMsg(cs.textarea.Value()) }
+				}
 			}
 		}
 		ta, cmd := cs.textarea.Update(msg)
@@ -57,15 +58,8 @@ func (cs *CommitSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 }
 
 func (cs *CommitSection) View() string {
-	f, err := tea.LogToFile("commitsection-view.txt", "debug")
-	if err != nil {
-		panic(err)
-	}
-	defer f.Close()
-
 	if !cs.hidden {
 		if cs.focused {
-			f.WriteString(fmt.Sprintf("Active Style Height: %v | cs.textarea height: %v\n", styles.ActiveStyle.GetHeight(), cs.textarea.Height()))
 			return styles.ActiveStyle.Render(lipgloss.JoinVertical(lipgloss.Center, cs.title, cs.textarea.View()))
 		}
 		return styles.InactiveStyle.Render(lipgloss.JoinVertical(lipgloss.Center, cs.title, cs.textarea.View()))
