@@ -9,7 +9,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"sort"
 	"time"
 
@@ -18,7 +17,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/google/uuid"
-	"github.com/microsoft/azure-devops-go-api/azuredevops/v7"
 	"github.com/microsoft/azure-devops-go-api/azuredevops/v7/build"
 )
 
@@ -26,6 +24,10 @@ type PipelineRunIdMsg struct {
 	RunId        int
 	PipelineName string
 	ProjectId    string
+}
+
+type RecordSelectedMsg struct {
+	RecordId string
 }
 
 type PipelineRunStateMsg []list.Item
@@ -47,6 +49,7 @@ type PipelineTasksSection struct {
 func NewPipelineTasks(ctx context.Context, secid SectionName, buildclient azdo.BuildClientInterface) Section {
 	logger := logger.NewLogger("pipelinetasks.log")
 	tasklist := list.New([]list.Item{}, listitems.PipelineRecordItemDelegate{}, 40, 0)
+	tasklist.Styles.TitleBar = lipgloss.NewStyle()
 	tasklist.SetShowStatusBar(false)
 	tasklist.SetShowHelp(false)
 	tasklist.SetShowPagination(false)
@@ -95,31 +98,28 @@ func (p *PipelineTasksSection) Blur() {
 	p.focused = false
 }
 
-func (p *PipelineTasksSection) View() string {
-	tasklistView := lipgloss.JoinVertical(lipgloss.Top, p.tasklist.View(), p.tasklist.Paginator.View())
-	if p.focused {
-		return styles.ActiveStyle.Render(tasklistView)
+func (p *PipelineTasksSection) followView() string {
+	if p.followRun {
+		return "follow: on"
 	}
-	return styles.InactiveStyle.Render(tasklistView)
+	return "follow: off"
+}
+
+func (p *PipelineTasksSection) View() string {
+	tasklistWidth := p.tasklist.Width()
+	followViewStyle := lipgloss.NewStyle().PaddingLeft(tasklistWidth - p.tasklist.Paginator.TotalPages - len(p.followView()))
+	bottomView := lipgloss.JoinHorizontal(lipgloss.Bottom, p.tasklist.Paginator.View(), followViewStyle.Render(p.followView()))
+	tasklistView := lipgloss.JoinVertical(lipgloss.Top, p.tasklist.View(), bottomView)
+	if p.focused {
+		return styles.ActiveStyle.MaxWidth(tasklistWidth).Render(tasklistView)
+	}
+	return styles.InactiveStyle.MaxWidth(tasklistWidth).Render(tasklistView)
 }
 
 func (p *PipelineTasksSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 	var cmds []tea.Cmd
 	switch msg := msg.(type) {
-	case GitInfoMsg:
-		azdoInfo := utils.ExtractAzdoInfo(msg.RemoteUrl)
-		azdoconn := azuredevops.NewPatConnection(azdoInfo.OrgUrl, os.Getenv("AZDO_PERSONAL_ACCESS_TOKEN"))
-		buildclient, err := build.NewClient(p.ctx, azdoconn)
-		if err != nil {
-			if errors.Is(err, context.Canceled) {
-				return p, nil
-			}
-			panic(err)
-		}
-		p.buildclient, p.project = buildclient, azdoInfo.Project
-		return p, nil
 	case PipelineRunStateMsg:
-		p.logger.LogToFile("info", "received run state")
 		setitemscmd := p.tasklist.SetItems(msg)
 		tasks, listupdatecmd := p.tasklist.Update(msg)
 		p.tasklist = tasks
@@ -129,16 +129,45 @@ func (p *PipelineTasksSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 		if msg.RunId == p.monitoredRunId {
 			return p, nil
 		}
-		p.tasklist.Title = msg.PipelineName
-		p.logger.LogToFile("info", fmt.Sprintf("received run id: %d", msg.RunId))
+		p.tasklist.SetItems([]list.Item{})
+		p.tasklist.Title = fmt.Sprintf(msg.PipelineName)
 		p.monitoredRunId = msg.RunId
 		return p, tea.Batch(p.getRunState(p.ctx, msg.RunId, 0), p.spinner.Tick)
+	case utils.LogMsg:
+		if len(msg.BuildResult) > 0 {
+			symbol := *p.getSymbol(msg.BuildResult)
+			newTitle := fmt.Sprintf("%s %s", p.tasklist.Title, symbol)
+			p.tasklist.Title = newTitle
+			return p, nil
+		}
+		if !p.followRun {
+			return p, nil
+		}
+		currentIndex := p.tasklist.Index()
+		var recordIndex int
+		for i, record := range p.tasklist.Items() {
+			if record.(listitems.PipelineRecordItem).RecordId == string(msg.StepRecordId) {
+				recordIndex = i
+				break
+			}
+		}
+		// If the record is not found, do not change the selection
+		if recordIndex == 0 {
+			recordIndex = currentIndex
+		}
+		p.tasklist.Select(recordIndex)
+		return p, nil
 	case spinner.TickMsg:
 		spinner, cmd := p.spinner.Update(msg)
 		p.spinner = spinner
 		*p.spinnerView = spinner.View()
 		return p, cmd
 	case tea.KeyMsg:
+		switch msg.String() {
+		case "f":
+			p.followRun = !p.followRun
+			return p, nil
+		}
 		if p.focused {
 			tasks, cmd := p.tasklist.Update(msg)
 			cmds = append(cmds, cmd)
@@ -147,10 +176,8 @@ func (p *PipelineTasksSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 			if selectedRecord, ok := p.tasklist.SelectedItem().(listitems.PipelineRecordItem); ok {
 				cmds = append(cmds,
 					func() tea.Msg {
-						return LogIdMsg{
-							LogId:       selectedRecord.LogId,
-							RecordState: selectedRecord.State,
-							BuildId:     p.monitoredRunId,
+						return RecordSelectedMsg{
+							RecordId: selectedRecord.RecordId,
 						}
 					})
 			}
@@ -161,11 +188,12 @@ func (p *PipelineTasksSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 
 func (p *PipelineTasksSection) getRunState(ctx context.Context, runId int, wait time.Duration) tea.Cmd {
 	return func() tea.Msg {
-		p.logger.LogToFile("info", fmt.Sprintf("fetching builds of project %s and run id %d...", p.project, runId))
 		err := utils.SleepWithContext(ctx, wait)
 		if err != nil {
-			p.logger.LogToFile("error", fmt.Sprintf("error while waiting: %s", err))
-			return nil
+			if errors.Is(err, context.Canceled) {
+				return nil
+			}
+			panic(err)
 		}
 		records, err := p.buildclient.GetBuildTimelineRecords(ctx, build.GetBuildTimelineArgs{
 			BuildId: &runId,
@@ -189,7 +217,7 @@ func (p *PipelineTasksSection) getRunState(ctx context.Context, runId int, wait 
 }
 
 func sortRecords(records []list.Item) []list.Item {
-	sort.Slice(records, func(i, j int) bool {
+	sort.SliceStable(records, func(i, j int) bool {
 		if records[i].(listitems.PipelineRecordItem).StartTime.Equal(records[j].(listitems.PipelineRecordItem).StartTime) {
 			// If start times are equal, ensure that "Job" comes after "Stage"
 			if records[i].(listitems.PipelineRecordItem).Type == "Stage" && records[j].(listitems.PipelineRecordItem).Type == "Job" {
@@ -269,7 +297,7 @@ func (p *PipelineTasksSection) buildPipelineRecordItem(node *recordNode) listite
 		State:     *node.Record.State,
 		Result:    getResult(node),
 		Symbol:    p.getSymbol(utils.StatusOrResult(node.Record.State, node.Record.Result)),
-		LogId:     getLogId(node),
+		RecordId:  node.Record.Id.String(),
 	}
 }
 
@@ -299,5 +327,6 @@ func (p *PipelineTasksSection) getSymbol(status string) *string {
 
 func (p *PipelineTasksSection) SetDimensions(width, height int) {
 	// here we decrease height by 1 to make room for the paginator view
+	p.tasklist.SetWidth(width)
 	p.tasklist.SetHeight(height - 1)
 }

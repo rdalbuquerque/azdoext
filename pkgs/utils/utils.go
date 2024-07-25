@@ -74,7 +74,23 @@ type Result interface {
 
 func StatusOrResult[S Status, R Result](status *S, result *R) string {
 	if result != nil {
-		return string(*result)
+		if *result != "" {
+			return string(*result)
+		}
 	}
 	return string(*status)
+}
+
+type TimelineRecordId string
+
+type StepRecordId string
+
+type Logs map[StepRecordId]string
+
+type LogMsg struct {
+	TimelineRecordId
+	StepRecordId
+	BuildStatus string
+	BuildResult string
+	NewContent  string
 }

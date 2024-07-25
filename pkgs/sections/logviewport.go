@@ -8,26 +8,11 @@ import (
 	"azdoext/pkgs/styles"
 	"azdoext/pkgs/utils"
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/microsoft/azure-devops-go-api/azuredevops/v7"
-	"github.com/microsoft/azure-devops-go-api/azuredevops/v7/build"
 )
-
-type RecordLog struct {
-	Content         string
-	LastRecordState build.TimelineRecordState
-}
-
-// msg with task id so log can be fetched
-type LogIdMsg struct {
-	BuildId     int
-	LogId       *int
-	RecordState build.TimelineRecordState
-}
 
 type LogViewportSection struct {
 	logviewport       *searchableviewport.Model
@@ -40,9 +25,14 @@ type LogViewportSection struct {
 	currentStep       utils.StepRecordId
 	sectionIdentifier SectionName
 
-
 	// this map stores task logs with log id and log content
-	buildLogs map[int]RecordLog
+	buildLogs utils.Logs
+
+	// channel to receive logs
+	logsChan chan utils.LogMsg
+
+	// websocket connection to get live logs
+	wsConn *azdosignalr.SignalRConn
 }
 
 func NewLogViewport(ctx context.Context, secid SectionName, azdoconfig azdo.Config) Section {
@@ -106,60 +96,64 @@ func (p *LogViewportSection) View() string {
 func (p *LogViewportSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 	switch msg := msg.(type) {
 	case PipelineRunIdMsg:
-		p.logviewport.SetContent("")
+		p.buildLogs = make(utils.Logs)
+		go p.wsConn.StartReceivingLoop(p.logsChan)
+		p.wsConn.SendMessage("builddetailhub", "WatchBuild", []interface{}{p.project, msg.RunId})
+		return p, waitForLogs(p.logsChan)
+	case utils.LogMsg:
+		p.logger.LogToFile("INFO", fmt.Sprintf("msg from timeline record: %s and step record: %s msg: %s", msg.TimelineRecordId, msg.StepRecordId, msg.NewContent))
+		currentLog, ok := p.buildLogs[msg.StepRecordId]
+		maxDigits := len(fmt.Sprintf("%d", 100000))
+		if !ok {
+			p.buildLogs[msg.StepRecordId] = fmt.Sprintf("%*d %s", maxDigits, 1, msg.NewContent+"\n")
+			return p, waitForLogs(p.logsChan)
+		}
+		currentLog += fmt.Sprintf("%*d %s", maxDigits, len(strings.Split(currentLog, "\n"))+1, msg.NewContent+"\n")
+		p.buildLogs[msg.StepRecordId] = currentLog
+		if p.currentStep == msg.StepRecordId {
+			p.logviewport.SetContent(currentLog)
+		}
+		if p.followRun {
+			p.currentStep = msg.StepRecordId
+			p.logviewport.SetContent(currentLog)
+			p.logviewport.GotoBottom()
+		}
+		if msg.BuildStatus == "completed" {
+			err := p.wsConn.Conn.Close()
+			if err != nil {
+				p.logger.LogToFile("ERROR", fmt.Sprintf("error closing connection: %v", err))
+			}
+			return p, nil
+		}
+		return p, waitForLogs(p.logsChan)
+	case RecordSelectedMsg:
+		p.logviewport.SetContent(p.buildLogs[utils.StepRecordId(msg.RecordId)])
+		p.logviewport.GotoBottom()
+		p.currentStep = utils.StepRecordId(msg.RecordId)
 		return p, nil
 	case tea.KeyMsg:
+		p.logger.LogToFile("INFO", fmt.Sprintf("key pressed: %v", msg.String()))
+		if msg.String() == "f" {
+			p.followRun = !p.followRun
+			return p, nil
+		}
 		if p.focused {
+			p.logger.LogToFile("INFO", fmt.Sprintf("key pressed: %v", msg.String()))
 			vp, cmd := p.logviewport.Update(msg)
 			p.logviewport = vp
 			return p, cmd
 		}
-	case LogIdMsg:
-		p.logger.LogToFile("INFO", "received LogIdMsg")
-		if msg.LogId == nil {
-			return p, nil
-		}
-		p.logger.LogToFile("INFO", fmt.Sprintf("log id: %v", *msg.LogId))
-		content, err := p.GetLog(msg)
-		if err != nil {
-			p.logger.LogToFile("ERROR", err.Error())
-			return p, nil
-		}
-		p.buildLogs[*msg.LogId] = RecordLog{
-			Content:         content,
-			LastRecordState: msg.RecordState,
-		}
-		p.logviewport.SetContent(content)
-		return p, nil
-	case GitInfoMsg:
-		p.logger.LogToFile("INFO", "received git info")
-		azdoInfo := utils.ExtractAzdoInfo(msg.RemoteUrl)
-		azdoconn := azuredevops.NewPatConnection(azdoInfo.OrgUrl, os.Getenv("AZDO_PERSONAL_ACCESS_TOKEN"))
-		buildclient, err := build.NewClient(p.ctx, azdoconn)
-		if err != nil {
-			if errors.Is(err, context.Canceled) {
-				return p, nil
-			}
-			panic(err)
-		}
-		p.buildclient, p.project = buildclient, azdoInfo.Project
-		return p, nil
 	}
 	return p, nil
 }
 
-func (p *LogViewportSection) GetLog(msg LogIdMsg) (string, error) {
-	logId := *msg.LogId
-	if p.shouldGetLog(logId) {
-		logReader, err := p.buildclient.GetBuildLog(p.ctx, build.GetBuildLogArgs{
-			Project: &p.project,
-			BuildId: &msg.BuildId,
-			LogId:   &logId,
-		})
-		if err != nil {
-			return "", fmt.Errorf("error fetching log: %v", err)
-		}
+func waitForLogs(logsChan chan utils.LogMsg) tea.Cmd {
+	return func() tea.Msg {
+		return <-logsChan
+	}
+}
 
 func (p *LogViewportSection) SetDimensions(width, height int) {
-	p.logviewport.SetDimensions(styles.Width, height)
+	p.logger.LogToFile("INFO", fmt.Sprintf("setting dimensions for LogViewportSection: width: %d, height: %d", width, height))
+	p.logviewport.SetDimensions(width, height)
 }

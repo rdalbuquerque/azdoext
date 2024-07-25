@@ -6,6 +6,7 @@ import (
 	"azdoext/pkgs/sections"
 	"azdoext/pkgs/styles"
 	"context"
+	"fmt"
 
 	bubbleshelp "github.com/charmbracelet/bubbles/help"
 	tea "github.com/charmbracelet/bubbletea"
@@ -19,6 +20,7 @@ type PipelineRunPage struct {
 	sections        map[sections.SectionName]sections.Section
 	orderedSections []sections.SectionName
 	shorthelp       string
+	logger          *logger.Logger
 }
 
 func (p *PipelineRunPage) IsCurrentPage() bool {
@@ -61,6 +63,7 @@ func NewPipelineRunPage(ctx context.Context, buildclient azdo.BuildClientInterfa
 		ctx:       ctx,
 		name:      PipelineRun,
 		shorthelp: helpstring,
+		logger:    logger,
 	}
 	pipetaskssec := sections.NewPipelineTasks(ctx, sections.PipelineTasks, buildclient)
 	pipelineRunPage.AddSection(pipetaskssec)
@@ -76,9 +79,9 @@ func (p *PipelineRunPage) GetPageName() PageName {
 }
 
 func (p *PipelineRunPage) SetDimensions(width, height int) {
-	for s := range p.sections {
-		p.sections[s].SetDimensions(width, height)
-	}
+	p.logger.LogToFile("info", fmt.Sprintf("setting dimensions for PipelineRunPage: task section width: %d, logviewport width: %d, height: %d", float32(width)*0.7, float32(width)*0.3, height))
+	p.sections[sections.PipelineTasks].SetDimensions(int(float32(width)*0.2), height)
+	p.sections[sections.LogViewport].SetDimensions(int(float32(width)*0.8), height)
 }
 
 func (p *PipelineRunPage) updateSections(msg tea.Msg) (map[sections.SectionName]sections.Section, []tea.Cmd) {
