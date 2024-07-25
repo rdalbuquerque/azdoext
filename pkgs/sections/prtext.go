@@ -1,36 +1,35 @@
 package sections
 
 import (
+	"azdoext/pkgs/azdo"
 	"azdoext/pkgs/logger"
 	"azdoext/pkgs/styles"
 	"azdoext/pkgs/utils"
 	"context"
-	"errors"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/textarea"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/google/uuid"
-	"github.com/microsoft/azure-devops-go-api/azuredevops/v7"
 	"github.com/microsoft/azure-devops-go-api/azuredevops/v7/git"
 )
 
 type GitPRCreatedMsg bool
 
 type PRSection struct {
-	logger        *logger.Logger
-	hidden        bool
-	focused       bool
-	title         string
-	textarea      textarea.Model
-	project       string
-	repositoryId  uuid.UUID
-	currentBranch string
-	defaultBranch string
-	gitclient     git.Client
+	logger            *logger.Logger
+	hidden            bool
+	focused           bool
+	title             string
+	textarea          textarea.Model
+	project           string
+	repositoryId      uuid.UUID
+	currentBranch     string
+	defaultBranch     string
+	gitclient         azdo.GitClientInterface
+	sectionIdentifier SectionName
 }
 
 func (pr *PRSection) IsHidden() bool {
@@ -41,7 +40,7 @@ func (pr *PRSection) IsFocused() bool {
 	return pr.focused
 }
 
-func NewPRSection(_ context.Context) Section {
+func NewPRSection(secid SectionName, gitclient azdo.GitClientInterface, azdoconfig azdo.Config) Section {
 	logger := logger.NewLogger("pr.log")
 	title := "Open PR:"
 	textarea := textarea.New()
@@ -55,10 +54,20 @@ func NewPRSection(_ context.Context) Section {
 		}
 	})
 	return &PRSection{
-		logger:   logger,
-		title:    title,
-		textarea: textarea,
+		logger:            logger,
+		title:             title,
+		textarea:          textarea,
+		sectionIdentifier: secid,
+		project:           azdoconfig.ProjectId,
+		repositoryId:      azdoconfig.RepositoryId,
+		currentBranch:     azdoconfig.CurrentBranch,
+		defaultBranch:     azdoconfig.DefaultBranch,
+		gitclient:         gitclient,
 	}
+}
+
+func (pr *PRSection) GetSectionIdentifier() SectionName {
+	return pr.sectionIdentifier
 }
 
 func (pr *PRSection) SetDimensions(width, height int) {
@@ -68,22 +77,6 @@ func (pr *PRSection) SetDimensions(width, height int) {
 
 func (pr *PRSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 	switch msg := msg.(type) {
-	case GitInfoMsg:
-		azdoInfo := utils.ExtractAzdoInfo(msg.RemoteUrl)
-		azdoconn := azuredevops.NewPatConnection(azdoInfo.OrgUrl, os.Getenv("AZDO_PERSONAL_ACCESS_TOKEN"))
-		gitclient, err := git.NewClient(context.Background(), azdoconn)
-		if err != nil {
-			if errors.Is(err, context.Canceled) {
-				return pr, nil
-			}
-			panic(err)
-		}
-		defaultBranch := utils.GetRepositoryDefaultBranch(context.Background(), azdoconn, azdoInfo.Project, azdoInfo.RepositoryName)
-		pr.logger.LogToFile("info", "default branch: "+defaultBranch)
-		repositoryId := utils.GetRepositoryId(context.Background(), azdoconn, azdoInfo.Project, azdoInfo.RepositoryName)
-		pr.logger.LogToFile("info", "repository id: "+repositoryId.String())
-		pr.gitclient, pr.project, pr.currentBranch, pr.defaultBranch, pr.repositoryId = gitclient, azdoInfo.Project, msg.CurrentBranch, defaultBranch, repositoryId
-		return pr, nil
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+s":
@@ -110,7 +103,7 @@ func (pr *PRSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 }
 
 func (pr *PRSection) openPR(currentBranch, defaultBranch, title, description string) tea.Msg {
-	_, err := pr.gitclient.CreatePullRequest(context.Background(), git.CreatePullRequestArgs{
+	err := pr.gitclient.CreatePullRequest(context.Background(), git.CreatePullRequestArgs{
 		RepositoryId: utils.Ptr(pr.repositoryId.String()),
 		Project:      &pr.project,
 		GitPullRequestToCreate: &git.GitPullRequest{

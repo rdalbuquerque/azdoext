@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"azdoext/pkgs/azdo"
+	"azdoext/pkgs/gitexec"
 	"azdoext/pkgs/listitems"
 	"azdoext/pkgs/logger"
 	"azdoext/pkgs/pages"
@@ -27,14 +29,8 @@ func initialModel() model {
 	ctx, cancel := context.WithCancel(context.Background())
 	logger := logger.NewLogger("main.log")
 	helpPage := pages.NewHelpPage()
-	gitPage := pages.NewGitPage()
-	pipelineListPage := pages.NewPipelineListPage(ctx)
-	pipelineRun := pages.NewPipelineRunPage(ctx)
 	pagesMap := map[pages.PageName]pages.PageInterface{
-		pages.Git:          gitPage,
-		pages.Help:         helpPage,
-		pages.PipelineList: pipelineListPage,
-		pages.PipelineRun:  pipelineRun,
+		pages.Help: helpPage,
 	}
 	pageStack := pages.Stack{}
 	m := model{
@@ -48,12 +44,32 @@ func initialModel() model {
 	return m
 }
 
+type azdoConfigMsg azdo.Config
+
+func getAzdoConfig() tea.Cmd {
+	return func() tea.Msg {
+		gitconf := gitexec.Config()
+		azdoconfig := azdo.GetAzdoConfig(gitconf.Origin, gitconf.CurrentBranch)
+		return azdoConfigMsg(azdoconfig)
+	}
+}
+
 func (m *model) Init() tea.Cmd {
-	return nil
+	return getAzdoConfig()
 }
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case azdoConfigMsg:
+		buildclient := azdo.NewBuildClient(m.ctx, msg.OrgUrl, msg.ProjectId, msg.PAT)
+		gitclient := azdo.NewGitClient(m.ctx, msg.OrgUrl, msg.ProjectId, msg.PAT)
+		gitpage := pages.NewGitPage(m.ctx, gitclient, azdo.Config(msg))
+		pipelistpage := pages.NewPipelineListPage(m.ctx, buildclient, azdo.Config(msg))
+		pipelinetaskpage := pages.NewPipelineRunPage(m.ctx, buildclient, azdo.Config(msg))
+		m.pages[pages.Git] = gitpage
+		m.pages[pages.PipelineList] = pipelistpage
+		m.pages[pages.PipelineRun] = pipelinetaskpage
+		return m, nil
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c":
@@ -90,7 +106,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.addPage(pages.PipelineList)
 
 	case sections.PipelineRunIdMsg:
-		m.logger.LogToFile("info", fmt.Sprintf("received run id: %d", msg))
+		m.logger.LogToFile("info", fmt.Sprintf("received run id: %d", msg.RunId))
 		m.addPage(pages.PipelineRun)
 	}
 	// update all pages

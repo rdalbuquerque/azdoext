@@ -1,6 +1,7 @@
 package sections
 
 import (
+	"azdoext/pkgs/azdo"
 	"azdoext/pkgs/listitems"
 	"azdoext/pkgs/logger"
 	"azdoext/pkgs/styles"
@@ -16,7 +17,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/google/uuid"
-	"github.com/microsoft/azure-devops-go-api/azuredevops/v7"
 	"github.com/microsoft/azure-devops-go-api/azuredevops/v7/build"
 )
 
@@ -34,10 +34,11 @@ type PipelineListSection struct {
 	ctx                     context.Context
 	spinner                 spinner.Model
 	spinnerView             *string
-	buildclient             build.Client
+	buildclient             azdo.BuildClientInterface
+	sectionIdentifier       SectionName
 }
 
-func NewPipelineList(ctx context.Context) Section {
+func NewPipelineList(ctx context.Context, secid SectionName, buildclient azdo.BuildClientInterface, azdoconfig azdo.Config) Section {
 	logger := logger.NewLogger("pipelinelist.log")
 	pipelinelist := list.New([]list.Item{}, listitems.ItemDelegate{}, 40, 0)
 	pipelinelist.Title = "Pipelines"
@@ -47,12 +48,20 @@ func NewPipelineList(ctx context.Context) Section {
 	spner.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#00a9ff"))
 
 	return &PipelineListSection{
-		logger:       logger,
-		pipelinelist: pipelinelist,
-		ctx:          ctx,
-		spinner:      spner,
-		spinnerView:  utils.Ptr(spner.View()),
+		logger:            logger,
+		pipelinelist:      pipelinelist,
+		ctx:               ctx,
+		spinner:           spner,
+		spinnerView:       utils.Ptr(spner.View()),
+		buildclient:       buildclient,
+		project:           azdoconfig.ProjectId,
+		repositoryId:      azdoconfig.RepositoryId,
+		sectionIdentifier: secid,
 	}
+}
+
+func (p *PipelineListSection) GetSectionIdentifier() SectionName {
+	return p.sectionIdentifier
 }
 
 func (p *PipelineListSection) IsHidden() bool {
@@ -112,19 +121,6 @@ func (p *PipelineListSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 			p.logger.LogToFile("error", "selected item is not a pipeline item")
 			return p, nil
 		}
-	case GitInfoMsg:
-		azdoInfo := utils.ExtractAzdoInfo(msg.RemoteUrl)
-		azdoconn := azuredevops.NewPatConnection(azdoInfo.OrgUrl, os.Getenv("AZDO_PERSONAL_ACCESS_TOKEN"))
-		buildclient, err := build.NewClient(p.ctx, azdoconn)
-		if err != nil {
-			if errors.Is(err, context.Canceled) {
-				return p, nil
-			}
-			panic(err)
-		}
-		repoId := utils.GetRepositoryId(p.ctx, azdoconn, azdoInfo.Project, azdoInfo.RepositoryName)
-		p.buildclient, p.project, p.repositoryId = buildclient, azdoInfo.Project, repoId
-		return p, nil
 	case GitPushedMsg:
 		if p.pipelineFetchingEnabled {
 			return p, nil
@@ -147,7 +143,7 @@ func (p *PipelineListSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 }
 
 func (p *PipelineListSection) runPipeline(ctx context.Context, pipeline listitems.PipelineItem, project string) int {
-	run, err := p.buildclient.QueueBuild(ctx, build.QueueBuildArgs{
+	runId, err := p.buildclient.QueueBuild(ctx, build.QueueBuildArgs{
 		Project: &project,
 		Build: &build.Build{
 			Definition: &build.DefinitionReference{
@@ -159,7 +155,7 @@ func (p *PipelineListSection) runPipeline(ctx context.Context, pipeline listitem
 		p.logger.LogToFile("error", fmt.Sprintf("error while running pipeline: %s", err))
 		return 0
 	}
-	return *run.Id
+	return runId
 }
 
 func (p *PipelineListSection) SetDimensions(width, height int) {
@@ -175,19 +171,18 @@ func (p *PipelineListSection) fetchBuilds(ctx context.Context, wait time.Duratio
 			return buildsFetchedMsg(p.pipelinelist.Items())
 		}
 		definitions, err := p.buildclient.GetDefinitions(ctx, build.GetDefinitionsArgs{
-			Project:        &p.project,
 			RepositoryId:   utils.Ptr(p.repositoryId.String()),
 			RepositoryType: utils.Ptr("TfsGit"),
 		})
 		if err != nil {
-			p.logger.LogToFile("error", fmt.Sprintf("error while getting definitions: %s", err))
-			return buildsFetchedMsg(p.pipelinelist.Items())
-		}
-		if len(definitions.Value) == 0 {
-			p.logger.LogToFile("info", fmt.Sprintf("no pipelines found from repository id: %s and project: %s", p.repositoryId, p.project))
+			if errors.Is(err, azdo.ErrNoBuildsFound{}) {
+				// TODO: handle no builds found on error page
+				os.Exit(0)
+			}
+			panic(err)
 		}
 		pipelineList := []list.Item{}
-		for _, definition := range definitions.Value {
+		for _, definition := range definitions {
 			status, runId := p.getBuildStatus(*definition.Id)
 			pipelineList = append(pipelineList, listitems.PipelineItem{Name: *definition.Name, Status: status, Symbol: p.getSymbol(status), RunId: runId, Id: *definition.Id})
 		}
@@ -198,7 +193,6 @@ func (p *PipelineListSection) fetchBuilds(ctx context.Context, wait time.Duratio
 func (p *PipelineListSection) getBuildStatus(pipelineId int) (string, int) {
 	builds, err := p.buildclient.GetBuilds(p.ctx, build.GetBuildsArgs{
 		Definitions: &[]int{pipelineId},
-		Project:     &p.project,
 		Top:         utils.Ptr(1),
 		QueryOrder:  &build.BuildQueryOrderValues.QueueTimeDescending,
 	})
@@ -206,16 +200,15 @@ func (p *PipelineListSection) getBuildStatus(pipelineId int) (string, int) {
 		if errors.Is(err, context.Canceled) {
 			return "", 0
 		}
+		if errors.Is(err, azdo.ErrNoBuildsFound{}) {
+			return "noRuns", 0
+		}
 		panic(err)
 	}
-	buildsValue := (*builds).Value
-	if len(buildsValue) == 0 {
-		return "noRuns", 0
-	}
-	buildValue := buildsValue[0]
+	buildValue := builds[0]
 	status := buildValue.Status
 	result := buildValue.Result
-	return utils.StatusOrResult(status, result), *buildsValue[0].Id
+	return utils.StatusOrResult(status, result), *buildValue.Id
 }
 
 func (p *PipelineListSection) getSymbol(status string) *string {

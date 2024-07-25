@@ -3,7 +3,6 @@ package pages
 import (
 	"azdoext/pkgs/sections"
 	"azdoext/pkgs/styles"
-	"context"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -17,7 +16,8 @@ type HelpPage struct {
 func NewHelpPage() PageInterface {
 	p := &HelpPage{}
 	p.name = Help
-	p.AddSection(context.Background(), sections.HelpSection)
+	helpsec := sections.NewHelpSection(sections.Help)
+	p.AddSection(helpsec)
 	return p
 }
 
@@ -37,30 +37,29 @@ func (p *HelpPage) GetPageName() PageName {
 	return p.name
 }
 
-func (p *HelpPage) AddSection(ctx context.Context, section sections.SectionName) {
+func (p *HelpPage) AddSection(section sections.Section) {
 	if p.sections == nil {
 		p.sections = make(map[sections.SectionName]sections.Section)
 	}
-	newSection := sectionNewFuncs[section](ctx)
-	newSection.SetDimensions(0, styles.Height)
-	newSection.Show()
-	newSection.Focus()
-	p.sections[section] = newSection
+	section.SetDimensions(0, styles.Height)
+	section.Show()
+	section.Focus()
+	p.sections[section.GetSectionIdentifier()] = section
 }
 
 func (p *HelpPage) View() string {
-	return p.sections[sections.HelpSection].View()
+	return p.sections[sections.Help].View()
 }
 
 func (p *HelpPage) Update(msg tea.Msg) (PageInterface, tea.Cmd) {
 	if p.current {
-		sec, cmd := p.sections[sections.HelpSection].Update(msg)
-		p.sections[sections.HelpSection] = sec
+		sec, cmd := p.sections[sections.Help].Update(msg)
+		p.sections[sections.Help] = sec
 		return p, cmd
 	}
 	return p, nil
 }
 
 func (p *HelpPage) SetDimensions(width, height int) {
-	p.sections[sections.HelpSection].SetDimensions(width, height)
+	p.sections[sections.Help].SetDimensions(width, height)
 }

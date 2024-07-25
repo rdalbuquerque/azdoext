@@ -4,3 +4,4 @@ sections-log.txt
 *.log
 .vscode
 worktree.log
+.env

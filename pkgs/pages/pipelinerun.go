@@ -1,6 +1,8 @@
 package pages
 
 import (
+	"azdoext/pkgs/azdo"
+	"azdoext/pkgs/logger"
 	"azdoext/pkgs/sections"
 	"azdoext/pkgs/styles"
 	"context"
@@ -31,7 +33,11 @@ func (p *PipelineRunPage) UnsetCurrentPage() {
 	p.current = false
 }
 
-func (p *PipelineRunPage) AddSection(ctx context.Context, section sections.SectionName) {
+func (p *PipelineRunPage) AddSection(section sections.Section) {
+	secid := section.GetSectionIdentifier()
+	if secid == "" {
+		panic("section identifier is empty")
+	}
 	if p.sections == nil {
 		p.sections = make(map[sections.SectionName]sections.Section)
 	}
@@ -40,15 +46,15 @@ func (p *PipelineRunPage) AddSection(ctx context.Context, section sections.Secti
 			p.sections[sec].Blur()
 		}
 	}
-	newSection := sectionNewFuncs[section](ctx)
-	newSection.SetDimensions(0, styles.Height)
-	newSection.Show()
-	newSection.Focus()
-	p.orderedSections = append(p.orderedSections, section)
-	p.sections[section] = newSection
+	section.SetDimensions(0, styles.Height)
+	section.Show()
+	section.Focus()
+	p.orderedSections = append(p.orderedSections, secid)
+	p.sections[secid] = section
 }
 
-func NewPipelineRunPage(ctx context.Context) PageInterface {
+func NewPipelineRunPage(ctx context.Context, buildclient azdo.BuildClientInterface, azdoconfig azdo.Config) PageInterface {
+	logger := logger.NewLogger("pipelinerun.log")
 	hk := helpKeys{}
 	helpstring := bubbleshelp.New().View(hk)
 	pipelineRunPage := &PipelineRunPage{
@@ -56,8 +62,10 @@ func NewPipelineRunPage(ctx context.Context) PageInterface {
 		name:      PipelineRun,
 		shorthelp: helpstring,
 	}
-	pipelineRunPage.AddSection(ctx, sections.PipelineTasks)
-	pipelineRunPage.AddSection(ctx, sections.LogViewport)
+	pipetaskssec := sections.NewPipelineTasks(ctx, sections.PipelineTasks, buildclient)
+	pipelineRunPage.AddSection(pipetaskssec)
+	logvpsec := sections.NewLogViewport(ctx, sections.LogViewport, azdoconfig)
+	pipelineRunPage.AddSection(logvpsec)
 	pipelineRunPage.sections[sections.LogViewport].Blur()
 	pipelineRunPage.sections[sections.PipelineTasks].Focus()
 	return pipelineRunPage

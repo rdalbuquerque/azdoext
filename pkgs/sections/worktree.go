@@ -5,7 +5,6 @@ import (
 	"azdoext/pkgs/listitems"
 	"azdoext/pkgs/logger"
 	"azdoext/pkgs/styles"
-	"context"
 	"errors"
 
 	bubbleshelp "github.com/charmbracelet/bubbles/help"
@@ -16,12 +15,13 @@ import (
 )
 
 type WorktreeSection struct {
-	logger     *logger.Logger
-	hidden     bool
-	focused    bool
-	status     list.Model
-	customhelp string
-	branch     string
+	logger            *logger.Logger
+	hidden            bool
+	focused           bool
+	status            list.Model
+	customhelp        string
+	branch            string
+	sectionIdentifier SectionName
 }
 
 func (ws *WorktreeSection) push() tea.Msg {
@@ -34,7 +34,7 @@ func (ws *WorktreeSection) addAllToStage() {
 	ws.setStagedFileList()
 }
 
-func NewWorktreeSection(_ context.Context) Section {
+func NewWorktreeSection(secid SectionName) Section {
 	logger := logger.NewLogger("worktree.log")
 	worktreeSection := &WorktreeSection{}
 	worktreeSection.logger = logger
@@ -55,7 +55,12 @@ func NewWorktreeSection(_ context.Context) Section {
 	}
 	customhelp := statusHelp.View(hk)
 	worktreeSection.customhelp = customhelp
+	worktreeSection.sectionIdentifier = secid
 	return worktreeSection
+}
+
+func (ws *WorktreeSection) GetSectionIdentifier() SectionName {
+	return ws.sectionIdentifier
 }
 
 func (ws *WorktreeSection) SetDimensions(width, height int) {

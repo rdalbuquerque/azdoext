@@ -2,7 +2,6 @@ package sections
 
 import (
 	"azdoext/pkgs/styles"
-	"context"
 
 	"github.com/charmbracelet/bubbles/textarea"
 	tea "github.com/charmbracelet/bubbletea"
@@ -10,10 +9,11 @@ import (
 )
 
 type CommitSection struct {
-	hidden   bool
-	focused  bool
-	title    string
-	textarea textarea.Model
+	hidden            bool
+	focused           bool
+	title             string
+	textarea          textarea.Model
+	sectionIdentifier SectionName
 }
 
 func (cs *CommitSection) IsHidden() bool {
@@ -24,13 +24,18 @@ func (cs *CommitSection) IsFocused() bool {
 	return cs.focused
 }
 
-func NewCommitSection(_ context.Context) Section {
+func NewCommitSection(secid SectionName) Section {
 	title := "Git commit:"
 	textarea := textarea.New()
 	return &CommitSection{
-		title:    title,
-		textarea: textarea,
+		title:             title,
+		textarea:          textarea,
+		sectionIdentifier: secid,
 	}
+}
+
+func (cs *CommitSection) GetSectionIdentifier() SectionName {
+	return cs.sectionIdentifier
 }
 
 func (cs *CommitSection) SetDimensions(width, height int) {

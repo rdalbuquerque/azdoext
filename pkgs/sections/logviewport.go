@@ -1,16 +1,15 @@
 package sections
 
 import (
+	"azdoext/pkgs/azdo"
+	"azdoext/pkgs/azdosignalr"
 	"azdoext/pkgs/logger"
 	"azdoext/pkgs/searchableviewport"
 	"azdoext/pkgs/styles"
 	"azdoext/pkgs/utils"
-	"bufio"
 	"context"
 	"errors"
 	"fmt"
-	"io"
-	"os"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -31,28 +30,45 @@ type LogIdMsg struct {
 }
 
 type LogViewportSection struct {
-	logviewport *searchableviewport.Model
-	logger      *logger.Logger
-	hidden      bool
-	focused     bool
-	project     string
-	buildclient build.Client
-	ctx         context.Context
+	logviewport       *searchableviewport.Model
+	logger            *logger.Logger
+	hidden            bool
+	focused           bool
+	project           string
+	ctx               context.Context
+	followRun         bool
+	currentStep       utils.StepRecordId
+	sectionIdentifier SectionName
+
 
 	// this map stores task logs with log id and log content
 	buildLogs map[int]RecordLog
 }
 
-func NewLogViewport(ctx context.Context) Section {
+func NewLogViewport(ctx context.Context, secid SectionName, azdoconfig azdo.Config) Section {
 	logger := logger.NewLogger("logviewport.log")
 	logger.LogToFile("INFO", "logviewport section initialized")
 	vp := searchableviewport.New(0, 0)
-	return &LogViewportSection{
-		logger:      logger,
-		logviewport: vp,
-		ctx:         ctx,
-		buildLogs:   make(map[int]RecordLog),
+
+	wsConn, err := azdosignalr.NewSignalRConn(azdoconfig.OrgName, azdoconfig.ProjectId)
+	if err != nil {
+		panic(fmt.Errorf("signalr connection failed: %v", err))
 	}
+
+	logsChan := make(chan utils.LogMsg, 100)
+	return &LogViewportSection{
+		logger:            logger,
+		logviewport:       vp,
+		ctx:               ctx,
+		wsConn:            wsConn,
+		logsChan:          logsChan,
+		sectionIdentifier: secid,
+		project:           azdoconfig.ProjectId,
+	}
+}
+
+func (p *LogViewportSection) GetSectionIdentifier() SectionName {
+	return p.sectionIdentifier
 }
 
 func (p *LogViewportSection) IsHidden() bool {
@@ -143,43 +159,6 @@ func (p *LogViewportSection) GetLog(msg LogIdMsg) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("error fetching log: %v", err)
 		}
-
-		return formatLog(logReader), nil
-	}
-	return p.buildLogs[logId].Content, nil
-}
-
-func formatLog(log io.ReadCloser) string {
-	scanner := bufio.NewScanner(log)
-	var formattedLog string
-	lineNum := 1
-	maxDigits := len(fmt.Sprintf("%d", 100000))
-	for scanner.Scan() {
-		line := scanner.Text()
-		parts := strings.SplitN(line, " ", 2)
-		var newLine string
-		if len(parts) > 1 {
-			newLine = fmt.Sprintf("%*d %s", maxDigits, lineNum, parts[1])
-		} else {
-			newLine = fmt.Sprintf("%*d %s", maxDigits, lineNum, line)
-		}
-		formattedLog += newLine + "\n"
-		lineNum++
-	}
-	if err := scanner.Err(); err != nil {
-		panic(err)
-	}
-	return formattedLog
-}
-
-func (p *LogViewportSection) shouldGetLog(logId int) bool {
-	task, ok := p.buildLogs[logId]
-	if !ok {
-		return true
-	}
-	taskCompleted := task.LastRecordState == build.TimelineRecordStateValues.Completed
-	return !taskCompleted
-}
 
 func (p *LogViewportSection) SetDimensions(width, height int) {
 	p.logviewport.SetDimensions(styles.Width, height)

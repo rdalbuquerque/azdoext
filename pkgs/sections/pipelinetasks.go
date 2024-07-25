@@ -1,6 +1,7 @@
 package sections
 
 import (
+	"azdoext/pkgs/azdo"
 	"azdoext/pkgs/listitems"
 	"azdoext/pkgs/logger"
 	"azdoext/pkgs/styles"
@@ -24,24 +25,26 @@ import (
 type PipelineRunIdMsg struct {
 	RunId        int
 	PipelineName string
+	ProjectId    string
 }
 
 type PipelineRunStateMsg []list.Item
 
 type PipelineTasksSection struct {
-	spinnerView    *string
-	monitoredRunId int
-	project        string
-	logger         *logger.Logger
-	tasklist       list.Model
-	hidden         bool
-	focused        bool
-	ctx            context.Context
-	spinner        spinner.Model
-	buildclient    build.Client
+	spinnerView       *string
+	monitoredRunId    int
+	logger            *logger.Logger
+	tasklist          list.Model
+	hidden            bool
+	focused           bool
+	ctx               context.Context
+	spinner           spinner.Model
+	buildclient       azdo.BuildClientInterface
+	followRun         bool
+	sectionIdentifier SectionName
 }
 
-func NewPipelineTasks(ctx context.Context) Section {
+func NewPipelineTasks(ctx context.Context, secid SectionName, buildclient azdo.BuildClientInterface) Section {
 	logger := logger.NewLogger("pipelinetasks.log")
 	tasklist := list.New([]list.Item{}, listitems.PipelineRecordItemDelegate{}, 40, 0)
 	tasklist.SetShowStatusBar(false)
@@ -53,12 +56,18 @@ func NewPipelineTasks(ctx context.Context) Section {
 	spner.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#00a9ff"))
 
 	return &PipelineTasksSection{
-		logger:      logger,
-		tasklist:    tasklist,
-		ctx:         ctx,
-		spinner:     spner,
-		spinnerView: utils.Ptr(spner.View()),
+		logger:            logger,
+		tasklist:          tasklist,
+		ctx:               ctx,
+		spinner:           spner,
+		spinnerView:       utils.Ptr(spner.View()),
+		buildclient:       buildclient,
+		sectionIdentifier: secid,
 	}
+}
+
+func (p *PipelineTasksSection) GetSectionIdentifier() SectionName {
+	return p.sectionIdentifier
 }
 
 func (p *PipelineTasksSection) IsHidden() bool {
@@ -158,8 +167,7 @@ func (p *PipelineTasksSection) getRunState(ctx context.Context, runId int, wait 
 			p.logger.LogToFile("error", fmt.Sprintf("error while waiting: %s", err))
 			return nil
 		}
-		timeline, err := p.buildclient.GetBuildTimeline(ctx, build.GetBuildTimelineArgs{
-			Project: &p.project,
+		records, err := p.buildclient.GetBuildTimelineRecords(ctx, build.GetBuildTimelineArgs{
 			BuildId: &runId,
 		})
 		if err != nil {
@@ -169,8 +177,6 @@ func (p *PipelineTasksSection) getRunState(ctx context.Context, runId int, wait 
 			p.logger.LogToFile("error", fmt.Sprintf("error while fetching build timeline: %s", err))
 			return nil
 		}
-		records := *timeline.Records
-		p.logger.LogToFile("info", fmt.Sprintf("fetched %d records", len(records)))
 		if len(records) == 0 {
 			return nil
 		}

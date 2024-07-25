@@ -1,6 +1,7 @@
 package pages
 
 import (
+	"azdoext/pkgs/azdo"
 	"azdoext/pkgs/listitems"
 	"azdoext/pkgs/logger"
 	"azdoext/pkgs/sections"
@@ -41,8 +42,9 @@ func (p *PipelineListPage) hasSection(section sections.SectionName) bool {
 	return ok
 }
 
-func (p *PipelineListPage) AddSection(ctx context.Context, section sections.SectionName) {
-	if !p.hasSection(section) {
+func (p *PipelineListPage) AddSection(section sections.Section) {
+	secid := section.GetSectionIdentifier()
+	if !p.hasSection(secid) {
 		if p.sections == nil {
 			p.sections = make(map[sections.SectionName]sections.Section)
 		}
@@ -51,25 +53,29 @@ func (p *PipelineListPage) AddSection(ctx context.Context, section sections.Sect
 				p.sections[sec].Blur()
 			}
 		}
-		newSection := sectionNewFuncs[section](ctx)
-		newSection.SetDimensions(0, styles.Height)
-		newSection.Show()
-		newSection.Focus()
-		p.orderedSections = append(p.orderedSections, section)
-		p.sections[section] = newSection
+		section.SetDimensions(0, styles.Height)
+		section.Show()
+		section.Focus()
+		p.orderedSections = append(p.orderedSections, secid)
+		p.sections[secid] = section
 	}
 }
 
-func NewPipelineListPage(ctx context.Context) PageInterface {
+func NewPipelineListPage(ctx context.Context, buildclient azdo.BuildClientInterface, azdoconfig azdo.Config) PageInterface {
 	hk := helpKeys{}
 	helpstring := bubbleshelp.New().View(hk)
 	logger := logger.NewLogger("pipelinelistpage.log")
-	return &PipelineListPage{
+
+	pipelistpage := &PipelineListPage{
 		logger:    logger,
 		ctx:       ctx,
 		name:      PipelineList,
 		shorthelp: helpstring,
 	}
+
+	pipelistsec := sections.NewPipelineList(ctx, sections.PipelineList, buildclient, azdoconfig)
+	pipelistpage.AddSection(pipelistsec)
+	return pipelistpage
 }
 
 func (p *PipelineListPage) GetPageName() PageName {
@@ -112,11 +118,10 @@ func (p *PipelineListPage) Update(msg tea.Msg) (PageInterface, tea.Cmd) {
 		if choiseSec, ok := p.sections[sections.PipelineActionChoice]; !ok || !choiseSec.IsFocused() {
 			return p, nil
 		}
-	case sections.GitInfoMsg:
-		p.AddSection(p.ctx, sections.PipelineList)
 	case sections.PipelineSelectedMsg:
 		p.selectedPipeline = listitems.PipelineItem(msg)
-		p.AddSection(p.ctx, sections.PipelineActionChoice)
+		pipeactionsec := sections.NewChoice(sections.PipelineActionChoice)
+		p.AddSection(pipeactionsec)
 		options := []list.Item{
 			listitems.ChoiceItem{Option: sections.Options.GoToTasks},
 			listitems.ChoiceItem{Option: sections.Options.RunPipeline},

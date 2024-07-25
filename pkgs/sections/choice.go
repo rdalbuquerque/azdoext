@@ -4,7 +4,6 @@ import (
 	"azdoext/pkgs/listitems"
 	"azdoext/pkgs/logger"
 	"azdoext/pkgs/styles"
-	"context"
 	"fmt"
 
 	"github.com/charmbracelet/bubbles/list"
@@ -15,13 +14,14 @@ import (
 type OptionsMsg []list.Item
 
 type Choice struct {
-	logger  *logger.Logger
-	hidden  bool
-	focused bool
-	choice  list.Model
+	logger            *logger.Logger
+	hidden            bool
+	focused           bool
+	choice            list.Model
+	sectionIdentifier SectionName
 }
 
-func NewChoice(_ context.Context) Section {
+func NewChoice(secid SectionName) Section {
 	logger := logger.NewLogger("choice.log")
 
 	choice := list.New([]list.Item{}, listitems.ChoiceItemDelegate{}, 0, 0)
@@ -29,9 +29,14 @@ func NewChoice(_ context.Context) Section {
 	choice.SetHeight(styles.ActiveStyle.GetHeight() - 2)
 	choice.SetShowTitle(false)
 	return &Choice{
-		logger: logger,
-		choice: choice,
+		logger:            logger,
+		choice:            choice,
+		sectionIdentifier: secid,
 	}
+}
+
+func (c *Choice) GetSectionIdentifier() SectionName {
+	return c.sectionIdentifier
 }
 
 func (c *Choice) SetDimensions(width, height int) {
