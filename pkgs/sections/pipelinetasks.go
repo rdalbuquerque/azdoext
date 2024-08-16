@@ -48,8 +48,7 @@ type PipelineTasksSection struct {
 
 func NewPipelineTasks(ctx context.Context, secid SectionName, buildclient azdo.BuildClientInterface) Section {
 	logger := logger.NewLogger("pipelinetasks.log")
-	tasklist := list.New([]list.Item{}, listitems.PipelineRecordItemDelegate{}, 40, 0)
-	tasklist.Styles.TitleBar = lipgloss.NewStyle()
+	tasklist := list.New([]list.Item{}, listitems.PipelineRecordItemDelegate{}, 0, 0)
 	tasklist.SetShowStatusBar(false)
 	tasklist.SetShowHelp(false)
 	tasklist.SetShowPagination(false)
@@ -326,7 +325,7 @@ func (p *PipelineTasksSection) getSymbol(status string) *string {
 }
 
 func (p *PipelineTasksSection) SetDimensions(width, height int) {
+	p.tasklist.SetWidth(styles.DefaultSectionWidth)
 	// here we decrease height by 1 to make room for the paginator view
-	p.tasklist.SetWidth(width)
 	p.tasklist.SetHeight(height - 1)
 }

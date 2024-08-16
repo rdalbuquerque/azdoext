@@ -84,8 +84,9 @@ func NewHelpSection(secid SectionName) Section {
 	vp.SetContent(str)
 
 	return &HelpSection{
-		viewport: vp,
-		style:    styles.ActiveStyle.Copy(),
+		sectionIdentifier: "help",
+		viewport:          vp,
+		style:             styles.ActiveStyle.Copy(),
 	}
 }
 

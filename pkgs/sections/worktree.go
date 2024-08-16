@@ -34,9 +34,10 @@ func (ws *WorktreeSection) addAllToStage() {
 	ws.setStagedFileList()
 }
 
-func NewWorktreeSection(secid SectionName) Section {
+func NewWorktreeSection(secid SectionName, currentBranch string) Section {
 	logger := logger.NewLogger("worktree.log")
 	worktreeSection := &WorktreeSection{}
+	worktreeSection.branch = currentBranch
 	worktreeSection.logger = logger
 	worktreeSection.status = newFileList()
 	worktreeSection.setStagedFileList()
@@ -100,14 +101,6 @@ func (ws *WorktreeSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 		return ws, nil
 	}
 	switch msg := msg.(type) {
-	case BroadcastGitInfoMsg:
-		ws.logger.LogToFile("debug", "BroadcastGitInfoMsg")
-		gitconfig := gitexec.Config()
-		remoteUrl := gitconfig.Origin
-		curBranch := gitconfig.CurrentBranch
-		ref := "refs/heads/" + curBranch
-		ws.branch = curBranch
-		return ws, func() tea.Msg { return GitInfoMsg{CurrentBranch: ref, RemoteUrl: remoteUrl} }
 	case commitMsg:
 		if ws.noStagedFiles() {
 			ws.addAllToStage()
@@ -203,8 +196,3 @@ func (ws *WorktreeSection) noStagedFiles() bool {
 
 type GitPushedMsg bool
 type GitPushingMsg bool
-type BroadcastGitInfoMsg bool
-type GitInfoMsg struct {
-	CurrentBranch string
-	RemoteUrl     string
-}

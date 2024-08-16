@@ -3,9 +3,11 @@ package pages
 import (
 	"azdoext/pkgs/azdo"
 	"azdoext/pkgs/listitems"
+	"azdoext/pkgs/logger"
 	"azdoext/pkgs/sections"
 	"azdoext/pkgs/styles"
 	"context"
+	"fmt"
 
 	bubbleshelp "github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/list"
@@ -15,6 +17,7 @@ import (
 )
 
 type GitPage struct {
+	logger          *logger.Logger
 	current         bool
 	name            PageName
 	sections        map[sections.SectionName]sections.Section
@@ -55,14 +58,17 @@ func (p *GitPage) AddSection(section sections.Section) {
 }
 
 func NewGitPage(ctx context.Context, gitclient azdo.GitClientInterface, azdoconfig azdo.Config) PageInterface {
+	logger := logger.NewLogger("gitpage.log")
 	hk := helpKeys{}
 	helpstring := bubbleshelp.New().View(hk)
-	gitPage := &GitPage{}
+	gitPage := &GitPage{
+		logger: logger,
+	}
 	gitPage.name = Git
 	gitPage.shortHelp = helpstring
 	commitsec := sections.NewCommitSection(sections.Commit)
 	gitPage.AddSection(commitsec)
-	worktreesec := sections.NewWorktreeSection(sections.Worktree)
+	worktreesec := sections.NewWorktreeSection(sections.Worktree, azdoconfig.CurrentBranch)
 	gitPage.AddSection(worktreesec)
 	commitActionChoiceSec := sections.NewChoice(sections.PrOrPipelineChoice)
 	gitPage.AddSection(commitActionChoiceSec)
@@ -80,6 +86,7 @@ func (p *GitPage) GetPageName() PageName {
 }
 
 func (p *GitPage) Update(msg tea.Msg) (PageInterface, tea.Cmd) {
+	p.logger.LogToFile("debug", fmt.Sprintf("gitpage received msg: %v", msg))
 	// process any msg only if this page is the current page
 	if p.current {
 		var cmds []tea.Cmd
@@ -87,6 +94,7 @@ func (p *GitPage) Update(msg tea.Msg) (PageInterface, tea.Cmd) {
 		case tea.KeyMsg:
 			switch msg.String() {
 			case "tab":
+				p.logger.LogToFile("debug", "got tab")
 				p.switchSection()
 				return p, nil
 			}

@@ -6,7 +6,6 @@ import (
 	"azdoext/pkgs/sections"
 	"azdoext/pkgs/styles"
 	"context"
-	"fmt"
 
 	bubbleshelp "github.com/charmbracelet/bubbles/help"
 	tea "github.com/charmbracelet/bubbletea"
@@ -79,9 +78,8 @@ func (p *PipelineRunPage) GetPageName() PageName {
 }
 
 func (p *PipelineRunPage) SetDimensions(width, height int) {
-	p.logger.LogToFile("info", fmt.Sprintf("setting dimensions for PipelineRunPage: task section width: %d, logviewport width: %d, height: %d", float32(width)*0.7, float32(width)*0.3, height))
-	p.sections[sections.PipelineTasks].SetDimensions(int(float32(width)*0.2), height)
-	p.sections[sections.LogViewport].SetDimensions(int(float32(width)*0.8), height)
+	p.sections[sections.PipelineTasks].SetDimensions(40, height)
+	p.sections[sections.LogViewport].SetDimensions(width-40, height)
 }
 
 func (p *PipelineRunPage) updateSections(msg tea.Msg) (map[sections.SectionName]sections.Section, []tea.Cmd) {

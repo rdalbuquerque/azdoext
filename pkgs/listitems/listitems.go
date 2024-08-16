@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	itemStyle         = lipgloss.NewStyle().PaddingLeft(1)
+	itemStyle         = lipgloss.NewStyle().PaddingLeft(2)
 	selectedItemStyle = lipgloss.NewStyle().PaddingLeft(0).Foreground(lipgloss.Color("170"))
 	stagedFileStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("#00ff00"))
 )
@@ -52,7 +52,7 @@ func (d ItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 	fn := itemStyle.Render
 	if index == m.Index() {
 		fn = func(s ...string) string {
-			return selectedItemStyle.Render("|" + strings.Join(s, " "))
+			return selectedItemStyle.Render("> " + strings.Join(s, " "))
 		}
 	}
 
@@ -85,7 +85,7 @@ func (d GitItemDelegate) Render(w io.Writer, m list.Model, index int, listItem l
 	fn := itemStyle.Render
 	if index == m.Index() {
 		fn = func(s ...string) string {
-			return selectedItemStyle.Render("| " + strings.Join(s, " "))
+			return selectedItemStyle.Render("> " + strings.Join(s, " "))
 		}
 	}
 
@@ -115,7 +115,7 @@ func (d ChoiceItemDelegate) Render(w io.Writer, m list.Model, index int, listIte
 	fn := itemStyle.Render
 	if index == m.Index() {
 		fn = func(s ...string) string {
-			return selectedItemStyle.Render("| " + strings.Join(s, " "))
+			return selectedItemStyle.Render("> " + strings.Join(s, " "))
 		}
 	}
 
@@ -161,7 +161,7 @@ func (p PipelineRecordItemDelegate) Render(w io.Writer, m list.Model, index int,
 	fn := itemStyle.Render
 	if index == m.Index() {
 		fn = func(s ...string) string {
-			return selectedItemStyle.Render("|" + strings.Join(s, " "))
+			return selectedItemStyle.Render("> " + strings.Join(s, " "))
 		}
 	}
 

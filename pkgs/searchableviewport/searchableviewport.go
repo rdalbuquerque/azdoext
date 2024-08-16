@@ -79,8 +79,6 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "q", "ctrl+c":
-			return m, tea.Quit
 		case "/", "alt+ctrl+_":
 			return m, m.handleSearchActivation(msg)
 		case "esc":

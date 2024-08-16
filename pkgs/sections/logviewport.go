@@ -24,6 +24,7 @@ type LogViewportSection struct {
 	followRun         bool
 	currentStep       utils.StepRecordId
 	sectionIdentifier SectionName
+	azdoConfig        azdo.Config
 
 	// this map stores task logs with log id and log content
 	buildLogs utils.Logs
@@ -45,15 +46,16 @@ func NewLogViewport(ctx context.Context, secid SectionName, azdoconfig azdo.Conf
 		panic(fmt.Errorf("signalr connection failed: %v", err))
 	}
 
+	logger.LogToFile("INFO", "azdoconfig: "+fmt.Sprintf("%+v", azdoconfig))
 	logsChan := make(chan utils.LogMsg, 100)
 	return &LogViewportSection{
 		logger:            logger,
 		logviewport:       vp,
 		ctx:               ctx,
-		wsConn:            wsConn,
 		logsChan:          logsChan,
 		sectionIdentifier: secid,
-		project:           azdoconfig.ProjectId,
+		azdoConfig:        azdoconfig,
+		wsConn:            wsConn,
 	}
 }
 
@@ -98,7 +100,7 @@ func (p *LogViewportSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 	case PipelineRunIdMsg:
 		p.buildLogs = make(utils.Logs)
 		go p.wsConn.StartReceivingLoop(p.logsChan)
-		p.wsConn.SendMessage("builddetailhub", "WatchBuild", []interface{}{p.project, msg.RunId})
+		p.wsConn.SendMessage("builddetailhub", "WatchBuild", []interface{}{p.azdoConfig.ProjectId, msg.RunId})
 		return p, waitForLogs(p.logsChan)
 	case utils.LogMsg:
 		p.logger.LogToFile("INFO", fmt.Sprintf("msg from timeline record: %s and step record: %s msg: %s", msg.TimelineRecordId, msg.StepRecordId, msg.NewContent))

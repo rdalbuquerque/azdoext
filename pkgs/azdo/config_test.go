@@ -11,6 +11,15 @@ func TestGetOrgUrl(t *testing.T) {
 	}
 }
 
+func TestGetOrgName(t *testing.T) {
+	remoteUrl := "https://dev.azure.com/MyOrg/MyProject/_git/MyRepo"
+	want := "MyOrg"
+	got := getOrgName(remoteUrl)
+	if got != want {
+		t.Errorf("getOrgName(%q) = %q; want %q", remoteUrl, got, want)
+	}
+}
+
 func TestGetProjectName(t *testing.T) {
 	remoteUrl := "https://dev.azure.com/MyOrg/MyProject/_git/MyRepo"
 	want := "MyProject"

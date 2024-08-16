@@ -40,7 +40,7 @@ func initialModel() model {
 		pages:     pagesMap,
 		pageStack: pageStack,
 	}
-	m.addPage(pages.Git)
+	m.pageStack.Push(helpPage)
 	return m
 }
 
@@ -69,6 +69,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.pages[pages.Git] = gitpage
 		m.pages[pages.PipelineList] = pipelistpage
 		m.pages[pages.PipelineRun] = pipelinetaskpage
+		m.addPage(pages.Git)
 		return m, nil
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -94,7 +95,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			styles.SetDimensions(m.width, msg.Height-3)
 			p.SetDimensions(0, msg.Height-3)
 		}
-		return m, func() tea.Msg { return sections.BroadcastGitInfoMsg(true) }
+		return m, nil
 	case sections.SubmitChoiceMsg:
 		m.logger.LogToFile("debug", fmt.Sprintf("choice received: %s", msg))
 		switch listitems.OptionName(msg) {
@@ -150,7 +151,7 @@ func (m *model) removeCurrentPage() {
 
 func restart() (*model, tea.Cmd) {
 	model := initialModel()
-	return &model, func() tea.Msg { return sections.BroadcastGitInfoMsg(true) }
+	return &model, model.Init()
 }
 
 func main() {

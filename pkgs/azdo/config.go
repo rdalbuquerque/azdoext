@@ -3,7 +3,11 @@ package azdo
 import (
 	"azdoext/pkgs/utils"
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"strings"
 
@@ -28,18 +32,124 @@ type Config struct {
 
 func GetAzdoConfig(remoteUrl string, currentBranch string) Config {
 	orgurl := getOrgUrl(remoteUrl)
+	orgname := getOrgName(remoteUrl)
 	conn := azuredevops.NewPatConnection(orgurl, os.Getenv("AZDO_PERSONAL_ACCESS_TOKEN"))
 	azdopat := os.Getenv("AZDO_PERSONAL_ACCESS_TOKEN")
 	projectname := getProjectName(remoteUrl)
 	reponame := getRepositoryName(remoteUrl)
 	return Config{
+		AccoundId:      getAccountId(orgname, azdopat),
 		OrgUrl:         orgurl,
+		OrgName:        orgname,
 		ProjectName:    projectname,
 		RepositoryName: reponame,
 		ProjectId:      getProjectId(conn, projectname),
 		RepositoryId:   getRepositoryId(conn, projectname, reponame),
 		PAT:            azdopat,
+		CurrentBranch:  currentBranch,
+		DefaultBranch:  getDefaultBranch(conn, projectname, reponame),
 	}
+}
+
+func getDefaultBranch(conn *azuredevops.Connection, projectname, reponame string) string {
+	client, err := git.NewClient(context.Background(), conn)
+	if err != nil {
+		panic(fmt.Errorf("failed to get git client: %v", err))
+	}
+	repo, err := client.GetRepository(context.Background(), git.GetRepositoryArgs{
+		Project:      utils.Ptr(projectname),
+		RepositoryId: utils.Ptr(reponame),
+	})
+	if err != nil {
+		panic(fmt.Errorf("failed to get repository: %v", err))
+	}
+	if repo.DefaultBranch == nil {
+		panic("default branch not found")
+	}
+	return *repo.DefaultBranch
+}
+
+func getUserId(authHeader string) string {
+	url := "https://app.vssps.visualstudio.com/_apis/profile/profiles/me?api-version=7.1"
+	method := "GET"
+
+	client := &http.Client{}
+	req, err := http.NewRequest(method, url, nil)
+
+	if err != nil {
+		panic(err)
+	}
+	req.Header.Add("Authorization", authHeader)
+
+	res, err := client.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer res.Body.Close()
+
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		panic(err)
+	}
+	var currentUser struct {
+		Id string `json:"id"`
+	}
+	json.Unmarshal(body, &currentUser)
+	return currentUser.Id
+}
+
+type accounts struct {
+	Count int       `json:"count"`
+	Value []account `json:"value"`
+}
+
+type account struct {
+	AccountId   string `json:"accountId"`
+	AccountUri  string `json:"accountUri"`
+	AccountName string `json:"accountName"`
+}
+
+func getAccountId(orgName, pat string) string {
+	authHeader := fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString([]byte(":"+pat)))
+	userid := getUserId(authHeader)
+	if userid == "" {
+		panic("user id not found")
+	}
+	url := fmt.Sprintf("https://app.vssps.visualstudio.com/_apis/accounts?memberId=%s&api-version=7.1", userid)
+	method := "GET"
+
+	client := &http.Client{}
+	req, err := http.NewRequest(method, url, nil)
+
+	if err != nil {
+		panic(err)
+	}
+	req.Header.Add("Authorization", authHeader)
+
+	res, err := client.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer res.Body.Close()
+
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		panic(err)
+	}
+	var accounts accounts
+	json.Unmarshal(body, &accounts)
+	for _, account := range accounts.Value {
+		if account.AccountName == orgName {
+			return account.AccountId
+		}
+	}
+	panic("account not found")
+}
+
+func getOrgName(remoteUrl string) string {
+	remoteurl_parts := strings.Split(remoteUrl, "/")
+	orgname := remoteurl_parts[3]
+	return orgname
 }
 
 func getOrgUrl(remoteUrl string) string {
