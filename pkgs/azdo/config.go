@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 
@@ -160,13 +161,19 @@ func getOrgUrl(remoteUrl string) string {
 
 func getProjectName(remoteUrl string) string {
 	remoteurl_parts := strings.Split(remoteUrl, "/")
-	projectname := remoteurl_parts[4]
+	projectname, err := url.QueryUnescape(remoteurl_parts[4])
+	if err != nil {
+		panic(fmt.Errorf("failed to unescape project name: %v", err))
+	}
 	return projectname
 }
 
 func getRepositoryName(remoteUrl string) string {
 	remoteurl_parts := strings.Split(remoteUrl, "/")
-	reponame := remoteurl_parts[6]
+	reponame, err := url.QueryUnescape(remoteurl_parts[6])
+	if err != nil {
+		panic(fmt.Errorf("failed to unescape repository name: %v", err))
+	}
 	return reponame
 }
 

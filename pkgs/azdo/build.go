@@ -2,6 +2,7 @@ package azdo
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/microsoft/azure-devops-go-api/azuredevops/v7"
@@ -60,6 +61,9 @@ func (b BuildClient) GetDefinitions(ctx context.Context, args build.GetDefinitio
 	args.Project = &b.projectid
 	defs, err := b.Client.GetDefinitions(ctx, args)
 	if err != nil {
+		if errors.Is(err, context.Canceled) {
+			return nil, nil
+		}
 		return nil, fmt.Errorf("failed to get build definitions: %w", err)
 	}
 	definitions := defs.Value

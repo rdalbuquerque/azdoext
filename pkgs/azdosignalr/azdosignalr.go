@@ -55,7 +55,7 @@ type negotiateResponse struct {
 }
 
 // NewSignalRConn initializes and returns a new websocket connection with Azure Devops SignalR endpoint
-func NewSignalRConn(organization, projectID string) (*SignalRConn, error) {
+func NewSignalRConn(organization, accountID, projectID string) (*SignalRConn, error) {
 	logger := logger.NewLogger("azdosignalr.log")
 	authHeader := fetchAuthHeader()
 	connectionToken, err := fetchConnectionToken(authHeader, organization, projectID)
@@ -63,7 +63,7 @@ func NewSignalRConn(organization, projectID string) (*SignalRConn, error) {
 		return nil, fmt.Errorf("error fetching connection token: %w", err)
 	}
 
-	contextToken := os.Getenv("ACCOUNT_ID")
+	contextToken := accountID
 	queryParams := url.Values{}
 	queryParams.Add("transport", "webSockets")
 	queryParams.Add("contextToken", contextToken)

@@ -12,7 +12,9 @@ import (
 	"azdoext/pkgs/sections"
 	"azdoext/pkgs/styles"
 
+	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 type model struct {
@@ -23,10 +25,15 @@ type model struct {
 	pageStack pages.Stack
 	height    int
 	width     int
+	spinner   spinner.Model
 }
 
 func initialModel() model {
 	ctx, cancel := context.WithCancel(context.Background())
+	spnr := spinner.New()
+	spnr.Spinner = spinner.Dot
+	spnr.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#00a9ff"))
+
 	logger := logger.NewLogger("main.log")
 	helpPage := pages.NewHelpPage()
 	pagesMap := map[pages.PageName]pages.PageInterface{
@@ -39,8 +46,8 @@ func initialModel() model {
 		cancel:    cancel,
 		pages:     pagesMap,
 		pageStack: pageStack,
+		spinner:   spnr,
 	}
-	m.pageStack.Push(helpPage)
 	return m
 }
 
@@ -55,11 +62,16 @@ func getAzdoConfig() tea.Cmd {
 }
 
 func (m *model) Init() tea.Cmd {
-	return getAzdoConfig()
+	return tea.Batch(getAzdoConfig(), m.spinner.Tick)
 }
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmds []tea.Cmd
 	switch msg := msg.(type) {
+	case spinner.TickMsg:
+		spnr, cmd := m.spinner.Update(msg)
+		cmds = append(cmds, cmd)
+		m.spinner = spnr
 	case azdoConfigMsg:
 		buildclient := azdo.NewBuildClient(m.ctx, msg.OrgUrl, msg.ProjectId, msg.PAT)
 		gitclient := azdo.NewGitClient(m.ctx, msg.OrgUrl, msg.ProjectId, msg.PAT)
@@ -112,7 +124,6 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 	// update all pages
 	updatedPages := make(map[pages.PageName]pages.PageInterface)
-	var cmds []tea.Cmd
 	for _, p := range m.pages {
 		updatedPage, cmd := p.Update(msg)
 		updatedPages[updatedPage.GetPageName()] = updatedPage
@@ -123,6 +134,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *model) View() string {
+	if len(m.pageStack) == 0 {
+		return fmt.Sprintf("%s Loading...", m.spinner.View())
+	}
 	return m.pageStack.Peek().View()
 }
 

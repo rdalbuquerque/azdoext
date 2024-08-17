@@ -60,10 +60,18 @@ func NewPRSection(secid SectionName, gitclient azdo.GitClientInterface, azdoconf
 		sectionIdentifier: secid,
 		project:           azdoconfig.ProjectId,
 		repositoryId:      azdoconfig.RepositoryId,
-		currentBranch:     azdoconfig.CurrentBranch,
+		currentBranch:     formatBranchName(azdoconfig.CurrentBranch),
 		defaultBranch:     azdoconfig.DefaultBranch,
 		gitclient:         gitclient,
 	}
+}
+
+// formatBranchName adds refs/heads/ prefix to the branch name if it is not already present
+func formatBranchName(branch string) string {
+	if strings.HasPrefix(branch, "refs/heads/") {
+		return branch
+	}
+	return "refs/heads/" + branch
 }
 
 func (pr *PRSection) GetSectionIdentifier() SectionName {
@@ -103,6 +111,7 @@ func (pr *PRSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 }
 
 func (pr *PRSection) openPR(currentBranch, defaultBranch, title, description string) tea.Msg {
+	pr.logger.LogToFile("info", fmt.Sprintf("creating PR with title: %s and description: %s, from %s to %s", title, description, currentBranch, defaultBranch))
 	err := pr.gitclient.CreatePullRequest(context.Background(), git.CreatePullRequestArgs{
 		RepositoryId: utils.Ptr(pr.repositoryId.String()),
 		Project:      &pr.project,

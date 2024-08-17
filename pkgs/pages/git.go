@@ -7,7 +7,6 @@ import (
 	"azdoext/pkgs/sections"
 	"azdoext/pkgs/styles"
 	"context"
-	"fmt"
 
 	bubbleshelp "github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/list"
@@ -86,7 +85,6 @@ func (p *GitPage) GetPageName() PageName {
 }
 
 func (p *GitPage) Update(msg tea.Msg) (PageInterface, tea.Cmd) {
-	p.logger.LogToFile("debug", fmt.Sprintf("gitpage received msg: %v", msg))
 	// process any msg only if this page is the current page
 	if p.current {
 		var cmds []tea.Cmd

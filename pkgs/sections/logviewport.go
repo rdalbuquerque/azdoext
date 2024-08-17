@@ -19,7 +19,6 @@ type LogViewportSection struct {
 	logger            *logger.Logger
 	hidden            bool
 	focused           bool
-	project           string
 	ctx               context.Context
 	followRun         bool
 	currentStep       utils.StepRecordId
@@ -41,7 +40,7 @@ func NewLogViewport(ctx context.Context, secid SectionName, azdoconfig azdo.Conf
 	logger.LogToFile("INFO", "logviewport section initialized")
 	vp := searchableviewport.New(0, 0)
 
-	wsConn, err := azdosignalr.NewSignalRConn(azdoconfig.OrgName, azdoconfig.ProjectId)
+	wsConn, err := azdosignalr.NewSignalRConn(azdoconfig.OrgName, azdoconfig.AccoundId, azdoconfig.ProjectId)
 	if err != nil {
 		panic(fmt.Errorf("signalr connection failed: %v", err))
 	}

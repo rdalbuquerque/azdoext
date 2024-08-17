@@ -9,7 +9,7 @@ import (
 )
 
 func TestStartReceivingLoop(t *testing.T) {
-	signalrConn, err := NewSignalRConn("rdalbuquerque", "explore-bubbletea")
+	signalrConn, err := NewSignalRConn("rdalbuquerque", "accountIDPlaceholder", "explore-bubbletea")
 	if err != nil {
 		t.Errorf("NewSignalRClient() failed: %v", err)
 	}
@@ -45,7 +45,7 @@ func TestStartReceivingLoop(t *testing.T) {
 }
 
 func TestSendMessage(t *testing.T) {
-	signalrConn, err := NewSignalRConn("rdalbuquerque", "explore-bubbletea")
+	signalrConn, err := NewSignalRConn("rdalbuquerque", "accountIDPlaceholder", "explore-bubbletea")
 	if err != nil {
 		t.Errorf("NewSignalRClient() failed: %v", err)
 	}
@@ -59,7 +59,7 @@ func TestSendMessage(t *testing.T) {
 
 func TestSendBuildSelection(t *testing.T) {
 	project := "160c770b-e289-4b64-9b14-af7475a1b744"
-	signalrConn, err := NewSignalRConn("rdalbuquerque", project)
+	signalrConn, err := NewSignalRConn("rdalbuquerque", "accountIDPlaceholder", project)
 	if err != nil {
 		t.Errorf("NewSignalRClient() failed: %v", err)
 	}
