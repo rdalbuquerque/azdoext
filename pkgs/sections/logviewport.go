@@ -102,7 +102,6 @@ func (p *LogViewportSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 		p.wsConn.SendMessage("builddetailhub", "WatchBuild", []interface{}{p.azdoConfig.ProjectId, msg.RunId})
 		return p, waitForLogs(p.logsChan)
 	case utils.LogMsg:
-		p.logger.LogToFile("INFO", fmt.Sprintf("msg from timeline record: %s and step record: %s msg: %s", msg.TimelineRecordId, msg.StepRecordId, msg.NewContent))
 		currentLog, ok := p.buildLogs[msg.StepRecordId]
 		maxDigits := len(fmt.Sprintf("%d", 100000))
 		if !ok {
@@ -128,18 +127,17 @@ func (p *LogViewportSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 		}
 		return p, waitForLogs(p.logsChan)
 	case RecordSelectedMsg:
-		p.logviewport.SetContent(p.buildLogs[utils.StepRecordId(msg.RecordId)])
+		wrappedContent := p.buildLogs[utils.StepRecordId(msg.RecordId)]
+		p.logviewport.SetContent(wrappedContent)
 		p.logviewport.GotoBottom()
 		p.currentStep = utils.StepRecordId(msg.RecordId)
 		return p, nil
 	case tea.KeyMsg:
-		p.logger.LogToFile("INFO", fmt.Sprintf("key pressed: %v", msg.String()))
 		if msg.String() == "f" {
 			p.followRun = !p.followRun
 			return p, nil
 		}
 		if p.focused {
-			p.logger.LogToFile("INFO", fmt.Sprintf("key pressed: %v", msg.String()))
 			vp, cmd := p.logviewport.Update(msg)
 			p.logviewport = vp
 			return p, cmd
@@ -155,6 +153,9 @@ func waitForLogs(logsChan chan utils.LogMsg) tea.Cmd {
 }
 
 func (p *LogViewportSection) SetDimensions(width, height int) {
+	if width == 0 {
+		width = styles.Width - styles.DefaultSectionWidth
+	}
 	p.logger.LogToFile("INFO", fmt.Sprintf("setting dimensions for LogViewportSection: width: %d, height: %d", width, height))
 	p.logviewport.SetDimensions(width, height)
 }

@@ -16,7 +16,7 @@ var (
 	DefaultSectionHeightDiff = 1
 
 	noRuns             = lipgloss.NewStyle().SetString("■").Foreground(lipgloss.Color("#808080"))
-	pending            = lipgloss.NewStyle().SetString("⊛").Foreground(lipgloss.Color("#ffbf00"))
+	pending            = lipgloss.NewStyle().SetString("⊛").Foreground(lipgloss.Color("#ffffff"))
 	succeeded          = lipgloss.NewStyle().SetString("✔").Foreground(lipgloss.Color("#00ff00"))
 	failed             = lipgloss.NewStyle().SetString("✖").Foreground(lipgloss.Color("#ff0000"))
 	skipped            = lipgloss.NewStyle().SetString("➤").Foreground(lipgloss.Color("#ffffff"))

@@ -18,7 +18,7 @@ type searchResult struct {
 }
 
 type Model struct {
-	viewport           viewport.Model
+	Viewport           viewport.Model
 	searchResults      []searchResult
 	searchMode         bool
 	ta                 textarea.Model
@@ -42,7 +42,7 @@ func New(width, height int) *Model {
 	ta.ShowLineNumbers = false
 	ta.Prompt = "/"
 	return &Model{
-		viewport: vp,
+		Viewport: vp,
 		ta:       ta,
 	}
 }
@@ -56,19 +56,19 @@ func (m *Model) setTextAreaWidth(viewportWidth int) {
 }
 
 func (m *Model) SetDimensions(width, height int) {
-	m.viewport.Height = height
-	m.viewport.Width = width
+	m.Viewport.Height = height
+	m.Viewport.Width = width
 	m.ta.SetHeight(1)
 	m.setTextAreaWidth(width)
 }
 
 func (m *Model) GotoBottom() {
-	m.viewport.GotoBottom()
+	m.Viewport.GotoBottom()
 }
 
 func (m *Model) SetContent(content string) {
 	m.originalContent = content
-	m.viewport.SetContent(content)
+	m.Viewport.SetContent(content)
 	if m.searchMode {
 		m.highlightMatches()
 	}
@@ -90,7 +90,7 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 		default:
 			tacmd := m.updateTextArea(msg)
 			if m.searchMode {
-				m.viewport.SetContent(m.originalContent)
+				m.Viewport.SetContent(m.originalContent)
 				m.highlightMatches()
 				return m, tacmd
 			}
@@ -115,7 +115,7 @@ func (m *Model) updateTextArea(msg tea.Msg) tea.Cmd {
 
 func (m *Model) updateViewPort(msg tea.Msg) tea.Cmd {
 	var cmd tea.Cmd
-	m.viewport, cmd = m.viewport.Update(msg)
+	m.Viewport, cmd = m.Viewport.Update(msg)
 	return cmd
 }
 
@@ -142,7 +142,7 @@ func (m *Model) handleSearchActivation(msg tea.Msg) tea.Cmd {
 	}
 	if !m.searchMode {
 		m.searchMode = true
-		m.viewport.Height--
+		m.Viewport.Height--
 		m.ta.Focus()
 		return nil
 	}
@@ -157,8 +157,8 @@ func (m *Model) handleDeactivations() tea.Cmd {
 	}
 	if m.searchMode {
 		m.searchMode = false
-		m.viewport.Height++
-		m.viewport.LineDown(1)
+		m.Viewport.Height++
+		m.Viewport.LineDown(1)
 		return nil
 	}
 	return nil
@@ -175,7 +175,7 @@ func (m *Model) View() string {
 	} else {
 		taView = blurredStyle.Render(m.ta.View())
 	}
-	renderedViewPort := m.viewport.View()
+	renderedViewPort := m.Viewport.View()
 	if m.searchMode {
 		return lipgloss.JoinVertical(lipgloss.Top, lipgloss.JoinHorizontal(lipgloss.Left, taView, searchCounter), renderedViewPort)
 	}
@@ -202,7 +202,7 @@ func (m *Model) findAndHighlightMatches(searchQuery string) {
 	for i, line := range lines {
 		processedLines = append(processedLines, m.processLineForMatches(i, line, searchQuery))
 	}
-	m.viewport.SetContent(strings.Join(processedLines, "\n"))
+	m.Viewport.SetContent(strings.Join(processedLines, "\n"))
 }
 
 func (m *Model) processLineForMatches(lineIndex int, line, searchQuery string) string {
@@ -267,17 +267,17 @@ func (m *Model) scrollToCurrentResult() {
 
 func (m *Model) scrollViewportToLine(line int) {
 	// Check if the resultLine is currently visible
-	topLine := m.viewport.YOffset
-	bottomLine := topLine + m.viewport.Height - 1 // -1 because it's zero-based index
+	topLine := m.Viewport.YOffset
+	bottomLine := topLine + m.Viewport.Height - 1 // -1 because it's zero-based index
 	for line < topLine || line > bottomLine {
 		if line < topLine {
-			m.viewport.ViewUp()
+			m.Viewport.ViewUp()
 		} else {
-			m.viewport.ViewDown()
+			m.Viewport.ViewDown()
 		}
 
 		// Update topLine and bottomLine after scrolling
-		topLine = m.viewport.YOffset
-		bottomLine = topLine + m.viewport.Height - 1
+		topLine = m.Viewport.YOffset
+		bottomLine = topLine + m.Viewport.Height - 1
 	}
 }

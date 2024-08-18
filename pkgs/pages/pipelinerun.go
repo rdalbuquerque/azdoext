@@ -13,13 +13,14 @@ import (
 )
 
 type PipelineRunPage struct {
-	current         bool
-	name            PageName
-	ctx             context.Context
-	sections        map[sections.SectionName]sections.Section
-	orderedSections []sections.SectionName
-	shorthelp       string
-	logger          *logger.Logger
+	current          bool
+	name             PageName
+	ctx              context.Context
+	sections         map[sections.SectionName]sections.Section
+	orderedSections  []sections.SectionName
+	shorthelp        string
+	logger           *logger.Logger
+	sectionMaximized bool
 }
 
 func (p *PipelineRunPage) IsCurrentPage() bool {
@@ -78,8 +79,14 @@ func (p *PipelineRunPage) GetPageName() PageName {
 }
 
 func (p *PipelineRunPage) SetDimensions(width, height int) {
-	p.sections[sections.PipelineTasks].SetDimensions(40, height)
-	p.sections[sections.LogViewport].SetDimensions(width-40, height)
+	if width == 0 {
+		p.sections[sections.PipelineTasks].SetDimensions(styles.DefaultSectionWidth, height)
+		p.sections[sections.LogViewport].SetDimensions(styles.Width-styles.DefaultSectionWidth, height)
+		return
+	}
+	for _, section := range p.orderedSections {
+		p.sections[section].SetDimensions(width, height)
+	}
 }
 
 func (p *PipelineRunPage) updateSections(msg tea.Msg) (map[sections.SectionName]sections.Section, []tea.Cmd) {
@@ -98,6 +105,15 @@ func (p *PipelineRunPage) Update(msg tea.Msg) (PageInterface, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
+		case "alt+m":
+			if !p.sectionMaximized {
+				p.maximizeCurrentSection()
+				p.sectionMaximized = true
+				return p, nil
+			}
+			p.restoreSectionDimensions()
+			p.sectionMaximized = false
+			return p, nil
 		case "tab":
 			p.switchSection()
 			return p, nil
@@ -107,6 +123,26 @@ func (p *PipelineRunPage) Update(msg tea.Msg) (PageInterface, tea.Cmd) {
 	cmds = append(cmds, sectioncmds...)
 	p.sections = sections
 	return p, tea.Batch(cmds...)
+}
+
+func (p *PipelineRunPage) maximizeCurrentSection() {
+	if p.sections[sections.PipelineTasks].IsFocused() {
+		p.sections[sections.PipelineTasks].SetDimensions(styles.Width, styles.Height)
+		p.sections[sections.LogViewport].Hide()
+	} else {
+		p.sections[sections.LogViewport].SetDimensions(styles.Width, styles.Height)
+		p.sections[sections.PipelineTasks].Hide()
+	}
+}
+
+func (p *PipelineRunPage) restoreSectionDimensions() {
+	if p.sections[sections.PipelineTasks].IsFocused() {
+		p.sections[sections.PipelineTasks].SetDimensions(styles.DefaultSectionWidth, styles.Height)
+		p.sections[sections.LogViewport].Show()
+	} else {
+		p.sections[sections.LogViewport].SetDimensions(styles.Width-styles.DefaultSectionWidth, styles.Height)
+		p.sections[sections.PipelineTasks].Show()
+	}
 }
 
 func (p *PipelineRunPage) View() string {
