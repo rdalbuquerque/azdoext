@@ -20,7 +20,7 @@ type PipelineRunPage struct {
 	orderedSections  []sections.SectionName
 	shorthelp        string
 	logger           *logger.Logger
-	sectionMaximized bool
+	sectionMaximized *bool
 }
 
 func (p *PipelineRunPage) IsCurrentPage() bool {
@@ -106,14 +106,17 @@ func (p *PipelineRunPage) Update(msg tea.Msg) (PageInterface, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "alt+m":
-			if !p.sectionMaximized {
-				p.maximizeCurrentSection()
-				p.sectionMaximized = true
-				return p, nil
+			if p.sectionMaximized == nil {
+				p.sectionMaximized = new(bool)
 			}
-			p.restoreSectionDimensions()
-			p.sectionMaximized = false
-			return p, nil
+			if *p.sectionMaximized {
+				p.restoreSectionDimensions()
+				*p.sectionMaximized = false
+			} else {
+				p.maximizeCurrentSection()
+				*p.sectionMaximized = true
+			}
+			return p, toggleMaximize()
 		case "tab":
 			p.switchSection()
 			return p, nil
@@ -125,13 +128,21 @@ func (p *PipelineRunPage) Update(msg tea.Msg) (PageInterface, tea.Cmd) {
 	return p, tea.Batch(cmds...)
 }
 
-func (p *PipelineRunPage) maximizeCurrentSection() {
+func toggleMaximize() tea.Cmd {
+	return func() tea.Msg {
+		return sections.ToggleMaximizeMsg{}
+	}
+}
+
+func (p *PipelineRunPage) maximizeCurrentSection() sections.SectionName {
 	if p.sections[sections.PipelineTasks].IsFocused() {
 		p.sections[sections.PipelineTasks].SetDimensions(styles.Width, styles.Height)
 		p.sections[sections.LogViewport].Hide()
+		return sections.PipelineTasks
 	} else {
 		p.sections[sections.LogViewport].SetDimensions(styles.Width, styles.Height)
 		p.sections[sections.PipelineTasks].Hide()
+		return sections.LogViewport
 	}
 }
 

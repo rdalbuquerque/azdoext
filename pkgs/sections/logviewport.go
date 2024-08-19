@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/muesli/reflow/wordwrap"
 )
 
 type LogViewportSection struct {
@@ -96,6 +97,10 @@ func (p *LogViewportSection) View() string {
 
 func (p *LogViewportSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 	switch msg := msg.(type) {
+	case ToggleMaximizeMsg:
+		wrappedContent := wordwrap.String(p.buildLogs[p.currentStep], p.logviewport.Viewport.Width)
+		p.logviewport.SetContent(wrappedContent)
+		return p, nil
 	case PipelineRunIdMsg:
 		p.buildLogs = make(utils.Logs)
 		go p.wsConn.StartReceivingLoop(p.logsChan)
@@ -111,11 +116,11 @@ func (p *LogViewportSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 		currentLog += fmt.Sprintf("%*d %s", maxDigits, len(strings.Split(currentLog, "\n"))+1, msg.NewContent+"\n")
 		p.buildLogs[msg.StepRecordId] = currentLog
 		if p.currentStep == msg.StepRecordId {
-			p.logviewport.SetContent(currentLog)
+			p.logviewport.SetContent(wordwrap.String(currentLog, p.logviewport.Viewport.Width))
 		}
 		if p.followRun {
 			p.currentStep = msg.StepRecordId
-			p.logviewport.SetContent(currentLog)
+			p.logviewport.SetContent(wordwrap.String(currentLog, p.logviewport.Viewport.Width))
 			p.logviewport.GotoBottom()
 		}
 		if msg.BuildStatus == "completed" {
@@ -127,7 +132,7 @@ func (p *LogViewportSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 		}
 		return p, waitForLogs(p.logsChan)
 	case RecordSelectedMsg:
-		wrappedContent := p.buildLogs[utils.StepRecordId(msg.RecordId)]
+		wrappedContent := wordwrap.String(p.buildLogs[utils.StepRecordId(msg.RecordId)], p.logviewport.Viewport.Width)
 		p.logviewport.SetContent(wrappedContent)
 		p.logviewport.GotoBottom()
 		p.currentStep = utils.StepRecordId(msg.RecordId)
@@ -159,3 +164,5 @@ func (p *LogViewportSection) SetDimensions(width, height int) {
 	p.logger.LogToFile("INFO", fmt.Sprintf("setting dimensions for LogViewportSection: width: %d, height: %d", width, height))
 	p.logviewport.SetDimensions(width, height)
 }
+
+type ToggleMaximizeMsg struct{}
