@@ -28,11 +28,18 @@ type model struct {
 	spinner   spinner.Model
 }
 
+var azdoextLogo = `
+   __    ____  ____  _____  ____  _  _  ____ 
+  /__\  (_   )(  _ \(  _  )( ___)( \/ )(_  _)
+ /(__)\  / /_  )(_) ))(_)(  )__)  )  (   )(  
+(__)(__)(____)(____/(_____)(____)(_/\_) (__)
+`
+
 func initialModel() model {
 	ctx, cancel := context.WithCancel(context.Background())
 	spnr := spinner.New()
-	spnr.Spinner = spinner.Dot
-	spnr.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#00a9ff"))
+	spnr.Spinner = spinner.Line
+	spnr.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#00a9ff")).Blink(true)
 
 	logger := logger.NewLogger("main.log")
 	helpPage := pages.NewHelpPage()
@@ -135,7 +142,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *model) View() string {
 	if len(m.pageStack) == 0 {
-		return fmt.Sprintf("%s Loading...", m.spinner.View())
+		return lipgloss.JoinVertical(lipgloss.Top, azdoextLogo, fmt.Sprintf("%s Loading...", m.spinner.View()))
 	}
 	return m.pageStack.Peek().View()
 }

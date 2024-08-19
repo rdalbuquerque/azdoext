@@ -1,9 +1,13 @@
 package styles
 
-import "github.com/charmbracelet/lipgloss"
+import (
+	"github.com/charmbracelet/bubbles/help"
+	"github.com/charmbracelet/lipgloss"
+)
 
 var (
-	ActiveStyle = lipgloss.NewStyle().
+	ShortHelpStyle = help.New().Styles.ShortKey
+	ActiveStyle    = lipgloss.NewStyle().
 			Border(lipgloss.NormalBorder(), true, false, true, false).
 			BorderForeground(lipgloss.Color("#00ff00"))
 

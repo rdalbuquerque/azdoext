@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/reflow/wordwrap"
 )
 
@@ -21,6 +22,7 @@ type LogViewportSection struct {
 	hidden            bool
 	focused           bool
 	ctx               context.Context
+	StyledHelpText    string
 	followRun         bool
 	currentStep       utils.StepRecordId
 	sectionIdentifier SectionName
@@ -41,6 +43,8 @@ func NewLogViewport(ctx context.Context, secid SectionName, azdoconfig azdo.Conf
 	logger.LogToFile("INFO", "logviewport section initialized")
 	vp := searchableviewport.New(0, 0)
 
+	styledHelpText := styles.ShortHelpStyle.Render("/ find • alt+m maximize")
+
 	wsConn, err := azdosignalr.NewSignalRConn(azdoconfig.OrgName, azdoconfig.AccoundId, azdoconfig.ProjectId)
 	if err != nil {
 		panic(fmt.Errorf("signalr connection failed: %v", err))
@@ -56,6 +60,7 @@ func NewLogViewport(ctx context.Context, secid SectionName, azdoconfig azdo.Conf
 		sectionIdentifier: secid,
 		azdoConfig:        azdoconfig,
 		wsConn:            wsConn,
+		StyledHelpText:    styledHelpText,
 	}
 }
 
@@ -89,10 +94,12 @@ func (p *LogViewportSection) Blur() {
 }
 
 func (p *LogViewportSection) View() string {
+	helpPlacement := lipgloss.NewStyle().PaddingLeft(p.logviewport.Viewport.Width - len(p.StyledHelpText) + 18)
+	logsAndHelp := lipgloss.JoinVertical(lipgloss.Top, p.logviewport.View(), helpPlacement.Render(p.StyledHelpText))
 	if p.focused {
-		return styles.ActiveStyle.Render(p.logviewport.View())
+		return styles.ActiveStyle.Render(logsAndHelp)
 	}
-	return styles.InactiveStyle.Render(p.logviewport.View())
+	return styles.InactiveStyle.Render(logsAndHelp)
 }
 
 func (p *LogViewportSection) Update(msg tea.Msg) (Section, tea.Cmd) {
@@ -162,7 +169,8 @@ func (p *LogViewportSection) SetDimensions(width, height int) {
 		width = styles.Width - styles.DefaultSectionWidth
 	}
 	p.logger.LogToFile("INFO", fmt.Sprintf("setting dimensions for LogViewportSection: width: %d, height: %d", width, height))
-	p.logviewport.SetDimensions(width, height)
+	// height - 1 to make space for the help text
+	p.logviewport.SetDimensions(width, height-1)
 }
 
 type ToggleMaximizeMsg struct{}
