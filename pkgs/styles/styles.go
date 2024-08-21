@@ -21,13 +21,13 @@ var (
 	DefaultSectionWidth      = 40
 	DefaultSectionHeightDiff = 1
 
-	noRuns             = lipgloss.NewStyle().SetString("■").Foreground(lipgloss.Color("#808080"))
-	pending            = lipgloss.NewStyle().SetString("⊛").Foreground(lipgloss.Color("#ffffff"))
-	succeeded          = lipgloss.NewStyle().SetString("✔").Foreground(lipgloss.Color("#00ff00"))
-	failed             = lipgloss.NewStyle().SetString("✖").Foreground(lipgloss.Color("#ff0000"))
-	skipped            = lipgloss.NewStyle().SetString("➤").Foreground(lipgloss.Color("#ffffff"))
-	partiallySucceeded = lipgloss.NewStyle().SetString("⚠").Foreground(lipgloss.Color("#ffbf00"))
-	canceled           = lipgloss.NewStyle().SetString("⊝").Foreground(lipgloss.Color("#ffbf00"))
+	noRuns             = lipgloss.NewStyle().SetString("■").Foreground(lipgloss.Color("8"))             // Gray
+	pending            = lipgloss.NewStyle().SetString("•").Foreground(lipgloss.Color("39"))            // Blue
+	succeeded          = lipgloss.NewStyle().SetString("✔").Foreground(lipgloss.Color("10"))            // Green
+	failed             = lipgloss.NewStyle().SetString("✖").Foreground(lipgloss.Color("9"))             // Red
+	skipped            = lipgloss.NewStyle().SetString("➤").Foreground(lipgloss.Color("15"))            // White
+	partiallySucceeded = lipgloss.NewStyle().Bold(true).SetString("!").Foreground(lipgloss.Color("11")) // Yellow
+	canceled           = lipgloss.NewStyle().Bold(true).SetString("-").Foreground(lipgloss.Color("15")) // White
 	SymbolMap          = map[string]lipgloss.Style{
 		"pending":            pending,
 		"succeeded":          succeeded,

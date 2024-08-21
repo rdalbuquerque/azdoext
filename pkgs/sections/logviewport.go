@@ -120,9 +120,7 @@ func (p *LogViewportSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 			p.buildLogs[msg.StepRecordId] = fmt.Sprintf("%*d %s", maxDigits, 1, msg.NewContent+"\n")
 			return p, waitForLogs(p.logsChan)
 		}
-		logline := len(strings.Split(currentLog, "\n")) + 1
-		loglineStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("242")).Render(fmt.Sprintf("%*d", maxDigits, logline))
-		currentLog += fmt.Sprintf("%s %s", loglineStyle, msg.NewContent+"\n")
+		currentLog += fmt.Sprintf("%*d %s", maxDigits, len(strings.Split(currentLog, "\n"))+1, msg.NewContent+"\n")
 		p.buildLogs[msg.StepRecordId] = currentLog
 		if p.currentStep == msg.StepRecordId {
 			p.logviewport.SetContent(wordwrap.String(currentLog, p.logviewport.Viewport.Width))
