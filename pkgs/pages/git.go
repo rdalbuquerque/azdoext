@@ -91,8 +91,11 @@ func (p *GitPage) Update(msg tea.Msg) (PageInterface, tea.Cmd) {
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
 			switch msg.String() {
+			case "q":
+				sec, cmd := p.sections[sections.Commit].Update(msg)
+				p.sections[sections.Commit] = sec
+				return p, cmd
 			case "tab":
-				p.logger.LogToFile("debug", "got tab")
 				p.switchSection()
 				return p, nil
 			}

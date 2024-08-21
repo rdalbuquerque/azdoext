@@ -2,11 +2,13 @@ package styles
 
 import (
 	"github.com/charmbracelet/bubbles/help"
+	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/lipgloss"
 )
 
 var (
 	ShortHelpStyle = help.New().Styles.ShortKey
+	TitleStyle     = list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0).Styles.Title.Align(lipgloss.Center).Background(lipgloss.Color("#000000")).Foreground(lipgloss.Color("#ffffff")).Padding(0, 1)
 	ActiveStyle    = lipgloss.NewStyle().
 			Border(lipgloss.NormalBorder(), true, false, true, false).
 			BorderForeground(lipgloss.Color("#00ff00"))

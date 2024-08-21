@@ -57,6 +57,8 @@ func (c *Choice) Update(msg tea.Msg) (Section, tea.Cmd) {
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
 			switch msg.String() {
+			case "q":
+				return c, nil
 			case "enter":
 				c.logger.LogToFile("debug", fmt.Sprintf("submiting choice [%s]", c.choice.SelectedItem().(listitems.ChoiceItem).Option))
 				return c, func() tea.Msg { return SubmitChoiceMsg(c.choice.SelectedItem().(listitems.ChoiceItem).Option) }
@@ -74,11 +76,13 @@ func (c *Choice) Update(msg tea.Msg) (Section, tea.Cmd) {
 }
 
 func (c *Choice) View() string {
+	title := styles.TitleStyle.Render(c.choice.Title)
+	secView := lipgloss.JoinVertical(lipgloss.Top, title, c.choice.View())
 	if !c.hidden {
 		if c.focused {
-			return styles.ActiveStyle.Render(lipgloss.JoinVertical(lipgloss.Center, c.choice.Title, c.choice.View()))
+			return styles.ActiveStyle.Render(secView)
 		}
-		return styles.InactiveStyle.Render(lipgloss.JoinVertical(lipgloss.Center, c.choice.Title, c.choice.View()))
+		return styles.InactiveStyle.Render(secView)
 	}
 	return ""
 }

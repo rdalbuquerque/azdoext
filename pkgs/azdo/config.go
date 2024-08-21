@@ -140,7 +140,7 @@ func getAccountId(orgName, pat string) string {
 	var accounts accounts
 	json.Unmarshal(body, &accounts)
 	for _, account := range accounts.Value {
-		if account.AccountName == orgName {
+		if strings.EqualFold(account.AccountName, orgName) {
 			return account.AccountId
 		}
 	}

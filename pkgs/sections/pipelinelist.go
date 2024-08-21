@@ -42,7 +42,9 @@ func NewPipelineList(ctx context.Context, secid SectionName, buildclient azdo.Bu
 	logger := logger.NewLogger("pipelinelist.log")
 	pipelinelist := list.New([]list.Item{}, listitems.ItemDelegate{}, 40, 0)
 	pipelinelist.Title = "Pipelines"
+
 	pipelinelist.SetShowStatusBar(false)
+	pipelinelist.SetShowTitle(false)
 	spner := spinner.New()
 	spner.Spinner = spinner.Dot
 	spner.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#00a9ff"))
@@ -90,10 +92,12 @@ func (p *PipelineListSection) Blur() {
 }
 
 func (p *PipelineListSection) View() string {
+	title := styles.TitleStyle.Render(p.pipelinelist.Title)
+	secView := lipgloss.JoinVertical(lipgloss.Top, title, p.pipelinelist.View())
 	if p.focused {
-		return styles.ActiveStyle.Render(p.pipelinelist.View())
+		return styles.ActiveStyle.Render(secView)
 	}
-	return styles.InactiveStyle.Render(p.pipelinelist.View())
+	return styles.InactiveStyle.Render(secView)
 }
 
 func (p *PipelineListSection) Update(msg tea.Msg) (Section, tea.Cmd) {
@@ -136,9 +140,11 @@ func (p *PipelineListSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 		*p.spinnerView = spinner.View()
 		cmds = append(cmds, cmd)
 	}
-	pipelines, cmd := p.pipelinelist.Update(msg)
-	cmds = append(cmds, cmd)
-	p.pipelinelist = pipelines
+	if p.focused {
+		pipelines, cmd := p.pipelinelist.Update(msg)
+		cmds = append(cmds, cmd)
+		p.pipelinelist = pipelines
+	}
 	return p, tea.Batch(cmds...)
 }
 
@@ -159,7 +165,8 @@ func (p *PipelineListSection) runPipeline(ctx context.Context, pipeline listitem
 }
 
 func (p *PipelineListSection) SetDimensions(width, height int) {
-	p.pipelinelist.SetHeight(height)
+	// -1 to account for the title
+	p.pipelinelist.SetHeight(height - 1)
 }
 
 func (p *PipelineListSection) fetchBuilds(ctx context.Context, wait time.Duration) tea.Cmd {

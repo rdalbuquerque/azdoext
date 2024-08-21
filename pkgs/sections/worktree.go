@@ -116,11 +116,12 @@ func (ws *WorktreeSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 }
 
 func (ws *WorktreeSection) View() string {
+	title := styles.TitleStyle.Render(ws.status.Title)
 	if !ws.hidden {
 		if ws.focused {
-			return styles.ActiveStyle.Render(lipgloss.JoinVertical(lipgloss.Center, ws.status.Title, ws.status.View(), ws.customhelp))
+			return styles.ActiveStyle.Render(lipgloss.JoinVertical(lipgloss.Top, title, ws.status.View(), ws.customhelp))
 		}
-		return styles.InactiveStyle.Render(lipgloss.JoinVertical(lipgloss.Center, ws.status.Title, ws.status.View(), ws.customhelp))
+		return styles.InactiveStyle.Render(lipgloss.JoinVertical(lipgloss.Top, title, ws.status.View(), ws.customhelp))
 	}
 	return ""
 }

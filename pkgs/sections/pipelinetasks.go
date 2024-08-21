@@ -43,12 +43,14 @@ type PipelineTasksSection struct {
 	spinner           spinner.Model
 	buildclient       azdo.BuildClientInterface
 	followRun         bool
+	result            string
 	sectionIdentifier SectionName
 }
 
 func NewPipelineTasks(ctx context.Context, secid SectionName, buildclient azdo.BuildClientInterface) Section {
 	logger := logger.NewLogger("pipelinetasks.log")
 	tasklist := list.New([]list.Item{}, listitems.PipelineRecordItemDelegate{}, 0, 0)
+	tasklist.SetShowTitle(false)
 	tasklist.SetShowStatusBar(false)
 	tasklist.SetShowHelp(false)
 	tasklist.SetShowPagination(false)
@@ -105,14 +107,18 @@ func (p *PipelineTasksSection) followView() string {
 }
 
 func (p *PipelineTasksSection) View() string {
+	title := styles.TitleStyle.Render(p.tasklist.Title)
+	if len(p.result) > 0 {
+		title = lipgloss.JoinHorizontal(lipgloss.Left, title, " ", *p.getSymbol(p.result))
+	}
 	tasklistWidth := p.tasklist.Width()
 	followViewStyle := lipgloss.NewStyle().PaddingLeft(tasklistWidth - p.tasklist.Paginator.TotalPages - len(p.followView()))
 	bottomView := lipgloss.JoinHorizontal(lipgloss.Bottom, p.tasklist.Paginator.View(), followViewStyle.Render(p.followView()))
-	tasklistView := lipgloss.JoinVertical(lipgloss.Top, p.tasklist.View(), bottomView)
+	secView := lipgloss.JoinVertical(lipgloss.Top, title, p.tasklist.View(), bottomView)
 	if p.focused {
-		return styles.ActiveStyle.MaxWidth(tasklistWidth).Render(tasklistView)
+		return styles.ActiveStyle.MaxWidth(tasklistWidth).Render(secView)
 	}
-	return styles.InactiveStyle.MaxWidth(tasklistWidth).Render(tasklistView)
+	return styles.InactiveStyle.MaxWidth(tasklistWidth).Render(secView)
 }
 
 func (p *PipelineTasksSection) Update(msg tea.Msg) (Section, tea.Cmd) {
@@ -134,9 +140,7 @@ func (p *PipelineTasksSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 		return p, tea.Batch(p.getRunState(p.ctx, msg.RunId, 0), p.spinner.Tick)
 	case utils.LogMsg:
 		if len(msg.BuildResult) > 0 {
-			symbol := *p.getSymbol(msg.BuildResult)
-			newTitle := fmt.Sprintf("%s %s", p.tasklist.Title, symbol)
-			p.tasklist.Title = newTitle
+			p.result = msg.BuildResult
 			return p, nil
 		}
 		if !p.followRun {
@@ -163,6 +167,8 @@ func (p *PipelineTasksSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 		return p, cmd
 	case tea.KeyMsg:
 		switch msg.String() {
+		case "q":
+			return p, nil
 		case "f":
 			p.followRun = !p.followRun
 			return p, nil
@@ -326,6 +332,6 @@ func (p *PipelineTasksSection) getSymbol(status string) *string {
 
 func (p *PipelineTasksSection) SetDimensions(width, height int) {
 	p.tasklist.SetWidth(styles.DefaultSectionWidth)
-	// here we decrease height by 1 to make room for the paginator view
-	p.tasklist.SetHeight(height - 1)
+	// here we decrease height by 2 to make room for the paginator view and the title
+	p.tasklist.SetHeight(height - 2)
 }

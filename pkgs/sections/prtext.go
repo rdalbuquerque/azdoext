@@ -30,6 +30,7 @@ type PRSection struct {
 	defaultBranch     string
 	gitclient         azdo.GitClientInterface
 	sectionIdentifier SectionName
+	help              string
 }
 
 func (pr *PRSection) IsHidden() bool {
@@ -43,6 +44,7 @@ func (pr *PRSection) IsFocused() bool {
 func NewPRSection(secid SectionName, gitclient azdo.GitClientInterface, azdoconfig azdo.Config) Section {
 	logger := logger.NewLogger("pr.log")
 	title := "Open PR:"
+	styledHelpText := styles.ShortHelpStyle.Render("ctrl+s save and open PR")
 	textarea := textarea.New()
 	textarea.SetHeight(styles.ActiveStyle.GetHeight() - 2)
 	textarea.Placeholder = "Title and description"
@@ -63,6 +65,7 @@ func NewPRSection(secid SectionName, gitclient azdo.GitClientInterface, azdoconf
 		currentBranch:     formatBranchName(azdoconfig.CurrentBranch),
 		defaultBranch:     azdoconfig.DefaultBranch,
 		gitclient:         gitclient,
+		help:              styledHelpText,
 	}
 }
 
@@ -79,27 +82,32 @@ func (pr *PRSection) GetSectionIdentifier() SectionName {
 }
 
 func (pr *PRSection) SetDimensions(width, height int) {
-	pr.textarea.SetWidth(styles.DefaultSectionWidth)
-	pr.textarea.SetHeight(height - 1)
+	pr.textarea.SetWidth(styles.DefaultSectionWidth + 20)
+	pr.textarea.SetHeight(height - 4)
 }
 
 func (pr *PRSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		switch msg.String() {
-		case "ctrl+s":
-			if pr.textarea.Focused() {
-				pr.textarea.Blur()
+		if pr.focused {
+			switch msg.String() {
+			case "ctrl+s":
+				if pr.textarea.Focused() {
+					pr.textarea.Blur()
+				}
+				return pr, func() tea.Msg { return SubmitPRMsg(pr.textarea.Value()) }
 			}
-			return pr, func() tea.Msg { return SubmitPRMsg(pr.textarea.Value()) }
 		}
 	case SubmitPRMsg:
 		titleAndDescription := strings.SplitN(string(msg), "\n", 2)
-		if len(titleAndDescription) != 2 {
-			return pr, func() tea.Msg { return PRErrorMsg("Title and description are required") }
-		}
 		title := titleAndDescription[0]
-		description := titleAndDescription[1]
+		if title == "" {
+			panic("PR title cannot be empty")
+		}
+		var description string
+		if len(titleAndDescription) == 2 {
+			description = titleAndDescription[1]
+		}
 		pr.logger.LogToFile("info", fmt.Sprintf("submitting PR with title: %s and description: %s, from %s to %s", title, description, pr.currentBranch, pr.defaultBranch))
 		return pr, func() tea.Msg { return pr.openPR(pr.currentBranch, pr.defaultBranch, title, description) }
 	case PRErrorMsg:
@@ -130,16 +138,18 @@ func (pr *PRSection) openPR(currentBranch, defaultBranch, title, description str
 }
 
 func (pr *PRSection) View() string {
+	title := styles.TitleStyle.Render(pr.title)
 	if !pr.hidden {
 		if pr.focused {
-			return styles.ActiveStyle.Render(lipgloss.JoinVertical(lipgloss.Center, pr.title, pr.textarea.View()))
+			return styles.ActiveStyle.Render(lipgloss.JoinVertical(lipgloss.Top, title, "", pr.textarea.View(), "", pr.help))
 		}
-		return styles.InactiveStyle.Render(lipgloss.JoinVertical(lipgloss.Center, pr.title, pr.textarea.View()))
+		return styles.InactiveStyle.Render(lipgloss.JoinVertical(lipgloss.Top, title, "", pr.textarea.View(), "", pr.help))
 	}
 	return ""
 }
 
 func (pr *PRSection) Hide() {
+	pr.focused = false
 	pr.hidden = true
 }
 

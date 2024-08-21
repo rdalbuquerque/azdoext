@@ -14,6 +14,7 @@ type CommitSection struct {
 	title             string
 	textarea          textarea.Model
 	sectionIdentifier SectionName
+	help              string
 }
 
 func (cs *CommitSection) IsHidden() bool {
@@ -25,12 +26,14 @@ func (cs *CommitSection) IsFocused() bool {
 }
 
 func NewCommitSection(secid SectionName) Section {
-	title := "Git commit:"
+	title := styles.TitleStyle.Render("Git commit:")
+	styledHelpText := styles.ShortHelpStyle.Render("ctrl+s save and push")
 	textarea := textarea.New()
 	return &CommitSection{
 		title:             title,
 		textarea:          textarea,
 		sectionIdentifier: secid,
+		help:              styledHelpText,
 	}
 }
 
@@ -40,19 +43,17 @@ func (cs *CommitSection) GetSectionIdentifier() SectionName {
 
 func (cs *CommitSection) SetDimensions(width, height int) {
 	cs.textarea.SetWidth(styles.DefaultSectionWidth)
-	cs.textarea.SetHeight(height - 1)
+	cs.textarea.SetHeight(height - 4)
 }
 
 func (cs *CommitSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 	if cs.focused {
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
-			if cs.focused {
-				switch msg.String() {
-				case "ctrl+s":
-					cs.textarea.Blur()
-					return cs, func() tea.Msg { return commitMsg(cs.textarea.Value()) }
-				}
+			switch msg.String() {
+			case "ctrl+s":
+				cs.textarea.Blur()
+				return cs, func() tea.Msg { return commitMsg(cs.textarea.Value()) }
 			}
 		}
 		ta, cmd := cs.textarea.Update(msg)
@@ -65,9 +66,9 @@ func (cs *CommitSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 func (cs *CommitSection) View() string {
 	if !cs.hidden {
 		if cs.focused {
-			return styles.ActiveStyle.Render(lipgloss.JoinVertical(lipgloss.Center, cs.title, cs.textarea.View()))
+			return styles.ActiveStyle.Render(lipgloss.JoinVertical(lipgloss.Top, cs.title, "", cs.textarea.View(), "", cs.help))
 		}
-		return styles.InactiveStyle.Render(lipgloss.JoinVertical(lipgloss.Center, cs.title, cs.textarea.View()))
+		return styles.InactiveStyle.Render(lipgloss.JoinVertical(lipgloss.Top, cs.title, "", cs.textarea.View(), "", cs.help))
 	}
 	return ""
 }
