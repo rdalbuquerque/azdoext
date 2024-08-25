@@ -111,7 +111,9 @@ func (ws *WorktreeSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 	case GitPushedMsg:
 		ws.status.Title = "Pushed"
 	}
-
+	if len(ws.status.Items()) == 0 {
+		return ws, func() tea.Msg { return NothingToCommitMsg{} }
+	}
 	return ws, nil
 }
 
@@ -197,3 +199,4 @@ func (ws *WorktreeSection) noStagedFiles() bool {
 
 type GitPushedMsg bool
 type GitPushingMsg bool
+type NothingToCommitMsg struct{}

@@ -25,6 +25,7 @@ type LogViewportSection struct {
 	StyledHelpText    string
 	followRun         bool
 	currentStep       utils.StepRecordId
+	currentRunId      int
 	sectionIdentifier SectionName
 	azdoConfig        azdo.Config
 
@@ -35,7 +36,7 @@ type LogViewportSection struct {
 	logsChan chan utils.LogMsg
 
 	// websocket connection to get live logs
-	wsConn *azdosignalr.SignalRConn
+	signalrClient *azdosignalr.SignalRClient
 }
 
 func NewLogViewport(ctx context.Context, secid SectionName, azdoconfig azdo.Config) Section {
@@ -45,10 +46,7 @@ func NewLogViewport(ctx context.Context, secid SectionName, azdoconfig azdo.Conf
 
 	styledHelpText := styles.ShortHelpStyle.Render("/ find • alt+m maximize")
 
-	wsConn, err := azdosignalr.NewSignalRConn(azdoconfig.OrgName, azdoconfig.AccoundId, azdoconfig.ProjectId)
-	if err != nil {
-		panic(fmt.Errorf("signalr connection failed: %v", err))
-	}
+	signalrClient := azdosignalr.NewSignalR(azdoconfig.OrgName, azdoconfig.AccoundId, azdoconfig.ProjectId)
 
 	logger.LogToFile("INFO", "azdoconfig: "+fmt.Sprintf("%+v", azdoconfig))
 	logsChan := make(chan utils.LogMsg, 100)
@@ -59,7 +57,7 @@ func NewLogViewport(ctx context.Context, secid SectionName, azdoconfig azdo.Conf
 		logsChan:          logsChan,
 		sectionIdentifier: secid,
 		azdoConfig:        azdoconfig,
-		wsConn:            wsConn,
+		signalrClient:     signalrClient,
 		StyledHelpText:    styledHelpText,
 	}
 }
@@ -109,9 +107,22 @@ func (p *LogViewportSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 		p.logviewport.SetContent(wrappedContent)
 		return p, nil
 	case PipelineRunIdMsg:
+		if p.currentRunId == msg.RunId {
+			return p, nil
+		}
+		p.logviewport.SetContent("")
+		p.currentRunId = msg.RunId
+		if p.signalrClient.Conn != nil {
+			err := p.signalrClient.Conn.Close()
+			if err != nil {
+				p.logger.LogToFile("ERROR", fmt.Sprintf("error closing connection: %v", err))
+				panic(err)
+			}
+		}
+		p.signalrClient.Connect()
 		p.buildLogs = make(utils.Logs)
-		go p.wsConn.StartReceivingLoop(p.logsChan)
-		p.wsConn.SendMessage("builddetailhub", "WatchBuild", []interface{}{p.azdoConfig.ProjectId, msg.RunId})
+		go p.signalrClient.StartReceivingLoop(p.logsChan)
+		p.signalrClient.SendMessage("builddetailhub", "WatchBuild", []interface{}{p.azdoConfig.ProjectId, msg.RunId})
 		return p, waitForLogs(p.logsChan)
 	case utils.LogMsg:
 		currentLog, ok := p.buildLogs[msg.StepRecordId]
@@ -129,13 +140,6 @@ func (p *LogViewportSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 			p.currentStep = msg.StepRecordId
 			p.logviewport.SetContent(wordwrap.String(currentLog, p.logviewport.Viewport.Width))
 			p.logviewport.GotoBottom()
-		}
-		if msg.BuildStatus == "completed" {
-			err := p.wsConn.Conn.Close()
-			if err != nil {
-				p.logger.LogToFile("ERROR", fmt.Sprintf("error closing connection: %v", err))
-			}
-			return p, nil
 		}
 		return p, waitForLogs(p.logsChan)
 	case RecordSelectedMsg:

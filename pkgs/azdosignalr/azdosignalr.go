@@ -6,9 +6,11 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"os"
+	"time"
 
 	"github.com/gorilla/websocket"
 )
@@ -41,26 +43,23 @@ type SignalRResponse struct {
 	M []Message `json:"M"`
 }
 
-type SignalRConn struct {
-	Conn            *websocket.Conn
-	logger          *logger.Logger
-	AuthHeader      string
-	Organization    string
-	ProjectID       string
-	ConnectionToken string
+type SignalRClient struct {
+	Conn         *websocket.Conn
+	logger       *logger.Logger
+	Organization string
+	AccountID    string
+	ProjectID    string
 }
 
 type negotiateResponse struct {
 	ConnectionToken string `json:"ConnectionToken"`
 }
 
-// NewSignalRConn initializes and returns a new websocket connection with Azure Devops SignalR endpoint
-func NewSignalRConn(organization, accountID, projectID string) (*SignalRConn, error) {
-	logger := logger.NewLogger("azdosignalr.log")
+func GetConnectionParameters(organization string, accountID string, projectID string) (string, http.Header, error) {
 	authHeader := fetchAuthHeader()
 	connectionToken, err := fetchConnectionToken(authHeader, organization, projectID)
 	if err != nil {
-		return nil, fmt.Errorf("error fetching connection token: %w", err)
+		return "", nil, err
 	}
 
 	contextToken := accountID
@@ -79,28 +78,31 @@ func NewSignalRConn(organization, accountID, projectID string) (*SignalRConn, er
 	header := http.Header{}
 	header.Add("Authorization", authHeader)
 
-	c, _, err := websocket.DefaultDialer.Dial(signalrURL.String(), header)
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to WebSocket: %w", err)
-	}
+	return signalrURL.String(), header, nil
+}
 
+func sendHandshake(c *websocket.Conn) error {
 	handshake := map[string]interface{}{
 		"protocol": "json",
 		"version":  1,
 	}
-	err = c.WriteJSON(handshake)
+	err := c.WriteJSON(handshake)
 	if err != nil {
-		return nil, fmt.Errorf("failed to send handshake: %w", err)
+		return err
 	}
+	return nil
+}
 
-	return &SignalRConn{
-		Conn:            c,
-		AuthHeader:      authHeader,
-		Organization:    organization,
-		ProjectID:       projectID,
-		ConnectionToken: connectionToken,
-		logger:          logger,
-	}, nil
+// NewSignalRConn initializes and returns a new websocket connection with Azure Devops SignalR endpoint
+func NewSignalR(organization, accountID, projectID string) *SignalRClient {
+	logger := logger.NewLogger("azdosignalr.log")
+
+	return &SignalRClient{
+		Organization: organization,
+		AccountID:    accountID,
+		ProjectID:    projectID,
+		logger:       logger,
+	}
 }
 
 // fetchAuthHeader fetches the authorization header
@@ -148,15 +150,59 @@ func fetchConnectionToken(authHeader, organization, projectID string) (string, e
 	return result.ConnectionToken, nil
 }
 
+func (s *SignalRClient) Connect() error {
+	s.logger.LogToFile("INFO", "connecting to signalr")
+	signalrURL, header, err := GetConnectionParameters(s.Organization, s.AccountID, s.ProjectID)
+	if err != nil {
+		return fmt.Errorf("failed to get connection parameters for SignalR: %w", err)
+	}
+	c, _, err := websocket.DefaultDialer.Dial(signalrURL, header)
+	if err != nil {
+		return fmt.Errorf("failed to connect to WebSocket: %w", err)
+	}
+	err = sendHandshake(c)
+	if err != nil {
+		return fmt.Errorf("failed to send handshake: %w", err)
+	}
+	s.Conn = c
+	return nil
+}
+
+func (s *SignalRClient) ReadMessageWithRetry(attempts int, initialDelay time.Duration) ([]byte, error) {
+	var message []byte
+	var err error
+	delay := initialDelay
+	for i := 0; ; i++ {
+		_, message, err = s.Conn.ReadMessage()
+		if err == nil {
+			return message, nil
+		}
+		if i >= (attempts - 1) {
+			break
+		}
+		s.logger.LogToFile("ERROR", fmt.Sprintf("error reading message, retrying in %.2f: %v", delay.Seconds(), err))
+		time.Sleep(delay)
+		delay = delay*2 + time.Duration(rand.Int63n(int64(delay/2)))
+	}
+	return nil, err
+}
+
 // StartReceivingLoop starts the loop for receiving messages
-func (s *SignalRConn) StartReceivingLoop(logChan chan<- utils.LogMsg) {
+func (s *SignalRClient) StartReceivingLoop(logChan chan<- utils.LogMsg) {
+	defer func() {
+		if err := s.Conn.Close(); err != nil {
+			s.logger.LogToFile("ERROR", fmt.Sprintf("error closing connection: %v", err))
+		} else {
+			s.logger.LogToFile("INFO", "connection closed")
+		}
+	}()
+receiveMessages:
 	for {
-		_, message, err := s.Conn.ReadMessage()
+		message, err := s.ReadMessageWithRetry(5, 1*time.Second)
 		if err != nil {
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				s.logger.LogToFile("ERROR", fmt.Sprintf("unexpected close error: %v", err))
-			} else {
-				s.logger.LogToFile("ERROR", fmt.Sprintf("error reading message: %v", err))
+			s.logger.LogToFile("ERROR", fmt.Sprintf("error reading message: %v", err))
+			logChan <- utils.LogMsg{
+				ReadLogError: err,
 			}
 			break
 		}
@@ -164,19 +210,23 @@ func (s *SignalRConn) StartReceivingLoop(logChan chan<- utils.LogMsg) {
 		var response SignalRResponse
 		err = json.Unmarshal(message, &response)
 		if err != nil {
-			s.logger.LogToFile("ERROR", fmt.Sprintf("error unmarshalling message %s: %v", message, err))
+			s.logger.LogToFile("WARN", fmt.Sprintf("error unmarshalling message %s: %v", message, err))
 			continue
 		}
 
 		for _, msg := range response.M {
 			for _, detail := range msg.A {
-				s.logger.LogToFile("INFO", fmt.Sprintf("sending log message: %s", detail.Build.Status))
 				if len(detail.Lines) == 0 {
 					logChan <- utils.LogMsg{
 						BuildStatus: detail.Build.Status,
 						BuildResult: detail.Build.Result,
 					}
-					continue
+					if detail.Build.Status == "completed" {
+						s.logger.LogToFile("INFO", "build completed")
+						break receiveMessages
+					} else {
+						continue
+					}
 				}
 				for _, line := range detail.Lines {
 					logChan <- utils.LogMsg{
@@ -192,7 +242,7 @@ func (s *SignalRConn) StartReceivingLoop(logChan chan<- utils.LogMsg) {
 }
 
 // SendMessage sends a message to the SignalR connection
-func (s *SignalRConn) SendMessage(hubName, methodName string, args []interface{}) error {
+func (s *SignalRClient) SendMessage(hubName, methodName string, args []interface{}) error {
 	s.logger.LogToFile("INFO", fmt.Sprintf("sending message to hub %s, method %s, args %v", hubName, methodName, args))
 	message := map[string]interface{}{
 		"H": hubName,

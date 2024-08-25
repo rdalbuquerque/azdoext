@@ -134,10 +134,10 @@ func (p *PipelineTasksSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 		if msg.RunId == p.monitoredRunId {
 			return p, nil
 		}
-		p.tasklist.SetItems([]list.Item{})
+		setEmptyListCmd := p.tasklist.SetItems([]list.Item{})
 		p.tasklist.Title = fmt.Sprintf(msg.PipelineName)
 		p.monitoredRunId = msg.RunId
-		return p, tea.Batch(p.getRunState(p.ctx, msg.RunId, 0), p.spinner.Tick)
+		return p, tea.Batch(p.getRunState(p.ctx, msg.RunId, 0), p.spinner.Tick, setEmptyListCmd)
 	case utils.LogMsg:
 		if len(msg.BuildResult) > 0 {
 			p.result = msg.BuildResult

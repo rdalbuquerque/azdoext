@@ -9,17 +9,15 @@ import (
 )
 
 func TestStartReceivingLoop(t *testing.T) {
-	signalrConn, err := NewSignalRConn("rdalbuquerque", "accountIDPlaceholder", "explore-bubbletea")
-	if err != nil {
-		t.Errorf("NewSignalRClient() failed: %v", err)
-	}
+	signalrConn := NewSignalR("rdalbuquerque", "e7828ecc-4891-47d9-82b6-6ce09c901f67", "explore-bubbletea")
+
 	// Capture stdout
 	oldStdout := os.Stdout
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 
 	// Start the receiving loop in a separate goroutine
-	// go signalrConn.StartReceivingLoop()
+	go signalrConn.ReadMessageWithRetry(5, 1*time.Second)
 
 	// Allow some time for the message to be processed
 	time.Sleep(10 * time.Second) // Adjust the sleep duration as needed
@@ -45,13 +43,10 @@ func TestStartReceivingLoop(t *testing.T) {
 }
 
 func TestSendMessage(t *testing.T) {
-	signalrConn, err := NewSignalRConn("rdalbuquerque", "accountIDPlaceholder", "explore-bubbletea")
-	if err != nil {
-		t.Errorf("NewSignalRClient() failed: %v", err)
-	}
+	signalrConn := NewSignalR("rdalbuquerque", "accountIDPlaceholder", "explore-bubbletea")
 
 	// Send a message
-	err = signalrConn.SendMessage("chat", "send", []interface{}{"Hello, SignalR!"})
+	err := signalrConn.SendMessage("chat", "send", []interface{}{"Hello, SignalR!"})
 	if err != nil {
 		t.Errorf("SendMessage() failed: %v", err)
 	}
@@ -59,16 +54,13 @@ func TestSendMessage(t *testing.T) {
 
 func TestSendBuildSelection(t *testing.T) {
 	project := "160c770b-e289-4b64-9b14-af7475a1b744"
-	signalrConn, err := NewSignalRConn("rdalbuquerque", "accountIDPlaceholder", project)
-	if err != nil {
-		t.Errorf("NewSignalRClient() failed: %v", err)
-	}
+	signalrConn := NewSignalR("rdalbuquerque", "accountIDPlaceholder", project)
 
 	// Start the receiving loop in a separate goroutine
 	// go signalrConn.StartReceivingLoop()
 
 	// Select a build to watch
-	err = signalrConn.SendMessage("builddetailhub", "WatchBuild", []interface{}{project, 887})
+	err := signalrConn.SendMessage("builddetailhub", "WatchBuild", []interface{}{project, 887})
 	if err != nil {
 		t.Errorf("SendMessage() failed: %v", err)
 	}

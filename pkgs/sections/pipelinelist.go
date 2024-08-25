@@ -26,6 +26,7 @@ type PipelineSelectedMsg listitems.PipelineItem
 type PipelineListSection struct {
 	project                 string
 	repositoryId            uuid.UUID
+	currentBranch           string
 	pipelineFetchingEnabled bool
 	logger                  *logger.Logger
 	pipelinelist            list.Model
@@ -58,6 +59,7 @@ func NewPipelineList(ctx context.Context, secid SectionName, buildclient azdo.Bu
 		buildclient:       buildclient,
 		project:           azdoconfig.ProjectId,
 		repositoryId:      azdoconfig.RepositoryId,
+		currentBranch:     azdoconfig.CurrentBranch,
 		sectionIdentifier: secid,
 	}
 }
@@ -112,7 +114,7 @@ func (p *PipelineListSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 			runId = selectedPipeline.RunId
 		} else if listitems.OptionName(msg) == Options.RunPipeline {
 			p.logger.LogToFile("info", fmt.Sprintf("selected pipeline: %s", selectedPipeline.Name))
-			runId = p.runPipeline(p.ctx, selectedPipeline, p.project)
+			runId = p.runPipeline(p.ctx, selectedPipeline, p.project, p.currentBranch)
 		}
 		return p, func() tea.Msg { return PipelineRunIdMsg{RunId: runId, PipelineName: selectedPipeline.Name} }
 	case tea.KeyMsg:
@@ -125,7 +127,7 @@ func (p *PipelineListSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 			p.logger.LogToFile("error", "selected item is not a pipeline item")
 			return p, nil
 		}
-	case GitPushedMsg:
+	case GitPushedMsg, NothingToCommitMsg:
 		if p.pipelineFetchingEnabled {
 			return p, nil
 		}
@@ -148,10 +150,11 @@ func (p *PipelineListSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 	return p, tea.Batch(cmds...)
 }
 
-func (p *PipelineListSection) runPipeline(ctx context.Context, pipeline listitems.PipelineItem, project string) int {
+func (p *PipelineListSection) runPipeline(ctx context.Context, pipeline listitems.PipelineItem, project, sourceBranch string) int {
 	runId, err := p.buildclient.QueueBuild(ctx, build.QueueBuildArgs{
 		Project: &project,
 		Build: &build.Build{
+			SourceBranch: utils.Ptr(sourceBranch),
 			Definition: &build.DefinitionReference{
 				Id: &pipeline.Id,
 			},

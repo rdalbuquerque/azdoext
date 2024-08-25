@@ -121,6 +121,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case sections.Options.GoToPipelines:
 			m.addPage(pages.PipelineList)
 		}
+	case sections.NothingToCommitMsg:
+		m.logger.LogToFile("info", "nothing to commit")
+		m.addPage(pages.PipelineList)
+
 	case sections.GitPRCreatedMsg:
 		m.logger.LogToFile("info", "PR created")
 		m.addPage(pages.PipelineList)
