@@ -90,8 +90,7 @@ type Logs map[StepRecordId]string
 type LogMsg struct {
 	TimelineRecordId
 	StepRecordId
-	BuildStatus  string
-	BuildResult  string
-	NewContent   string
-	ReadLogError error
+	BuildStatus string
+	BuildResult string
+	NewContent  string
 }

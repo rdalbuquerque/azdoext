@@ -112,7 +112,8 @@ func (p *LogViewportSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 		}
 		p.logviewport.SetContent("")
 		p.currentRunId = msg.RunId
-		if p.signalrClient.Conn != nil {
+		if p.signalrClient.IsConnected {
+			p.logger.LogToFile("INFO", "active connection exists... closing connection")
 			err := p.signalrClient.Conn.Close()
 			if err != nil {
 				p.logger.LogToFile("ERROR", fmt.Sprintf("error closing connection: %v", err))

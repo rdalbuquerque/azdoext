@@ -48,7 +48,7 @@ func NewPipelineList(ctx context.Context, secid SectionName, buildclient azdo.Bu
 	pipelinelist.SetShowTitle(false)
 	spner := spinner.New()
 	spner.Spinner = spinner.Dot
-	spner.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#00a9ff"))
+	spner.Style = styles.SpinnerStyle
 
 	return &PipelineListSection{
 		logger:            logger,

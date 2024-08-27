@@ -45,6 +45,7 @@ type SignalRResponse struct {
 
 type SignalRClient struct {
 	Conn         *websocket.Conn
+	IsConnected  bool
 	logger       *logger.Logger
 	Organization string
 	AccountID    string
@@ -165,6 +166,7 @@ func (s *SignalRClient) Connect() error {
 		return fmt.Errorf("failed to send handshake: %w", err)
 	}
 	s.Conn = c
+	s.IsConnected = true
 	return nil
 }
 
@@ -193,6 +195,7 @@ func (s *SignalRClient) StartReceivingLoop(logChan chan<- utils.LogMsg) {
 		if err := s.Conn.Close(); err != nil {
 			s.logger.LogToFile("ERROR", fmt.Sprintf("error closing connection: %v", err))
 		} else {
+			s.IsConnected = false
 			s.logger.LogToFile("INFO", "connection closed")
 		}
 	}()
@@ -201,9 +204,6 @@ receiveMessages:
 		message, err := s.ReadMessageWithRetry(5, 1*time.Second)
 		if err != nil {
 			s.logger.LogToFile("ERROR", fmt.Sprintf("error reading message: %v", err))
-			logChan <- utils.LogMsg{
-				ReadLogError: err,
-			}
 			break
 		}
 

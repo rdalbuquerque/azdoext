@@ -39,7 +39,7 @@ func initialModel() model {
 	ctx, cancel := context.WithCancel(context.Background())
 	spnr := spinner.New()
 	spnr.Spinner = spinner.Line
-	spnr.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#00a9ff")).Blink(true)
+	spnr.Style = styles.SpinnerStyle
 
 	logger := logger.NewLogger("main.log")
 	helpPage := pages.NewHelpPage()
@@ -145,8 +145,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *model) View() string {
+	loadingStr := lipgloss.NewStyle().Bold(true).Render("Loading...")
+	spnerWithLoading := lipgloss.JoinHorizontal(lipgloss.Left, m.spinner.View(), " ", loadingStr)
 	if len(m.pageStack) == 0 {
-		return lipgloss.JoinVertical(lipgloss.Top, azdoextLogo, fmt.Sprintf("%s Loading...", m.spinner.View()))
+		return lipgloss.JoinVertical(lipgloss.Top, styles.LogoStyle.Render(azdoextLogo), spnerWithLoading)
 	}
 	return m.pageStack.Peek().View()
 }

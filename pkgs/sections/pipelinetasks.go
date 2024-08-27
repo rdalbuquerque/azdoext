@@ -44,6 +44,7 @@ type PipelineTasksSection struct {
 	buildclient       azdo.BuildClientInterface
 	followRun         bool
 	result            string
+	buildStatus       string
 	sectionIdentifier SectionName
 }
 
@@ -57,7 +58,7 @@ func NewPipelineTasks(ctx context.Context, secid SectionName, buildclient azdo.B
 
 	spner := spinner.New()
 	spner.Spinner = spinner.Dot
-	spner.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#00a9ff"))
+	spner.Style = styles.SpinnerStyle
 
 	return &PipelineTasksSection{
 		logger:            logger,
@@ -108,7 +109,7 @@ func (p *PipelineTasksSection) followView() string {
 
 func (p *PipelineTasksSection) View() string {
 	title := styles.TitleStyle.Render(p.tasklist.Title)
-	if len(p.result) > 0 {
+	if p.buildStatus == "completed" && len(p.result) > 0 {
 		title = lipgloss.JoinHorizontal(lipgloss.Left, title, " ", *p.getSymbol(p.result))
 	}
 	tasklistWidth := p.tasklist.Width()
@@ -140,6 +141,7 @@ func (p *PipelineTasksSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 		return p, tea.Batch(p.getRunState(p.ctx, msg.RunId, 0), p.spinner.Tick, setEmptyListCmd)
 	case utils.LogMsg:
 		if len(msg.BuildResult) > 0 {
+			p.buildStatus = msg.BuildStatus
 			p.result = msg.BuildResult
 			return p, nil
 		}
