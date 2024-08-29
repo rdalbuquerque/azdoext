@@ -1,6 +1,8 @@
 package styles
 
 import (
+	"os"
+
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/lipgloss"
@@ -24,18 +26,19 @@ var (
 	DefaultSectionWidth      = 40
 	DefaultSectionHeightDiff = 1
 
-	noRuns  = lipgloss.NewStyle().SetString("■").Foreground(lipgloss.Color("8"))  // Gray
-	pending = lipgloss.NewStyle().SetString("•").Foreground(lipgloss.Color("39")) // Blue
-	// Green
-	succeeded          = lipgloss.NewStyle().SetString("✔").Foreground(lipgloss.Color("#54a362"))            // Green
-	failed             = lipgloss.NewStyle().SetString("✖").Foreground(lipgloss.Color("#cd4944"))            // Red
-	skipped            = lipgloss.NewStyle().SetString(">").Foreground(lipgloss.Color("#ffffff"))            // White
+	noRuns             = lipgloss.NewStyle().SetString("■").Foreground(lipgloss.Color("8"))                  // Gray
+	pending            = lipgloss.NewStyle().SetString("•").Foreground(lipgloss.Color("39"))                 // Blue
+	succeededVSCode    = lipgloss.NewStyle().SetString("✔").Foreground(lipgloss.Color("#54a362"))            // Green
+	succeededBasic     = lipgloss.NewStyle().Bold(true).SetString("✓").Foreground(lipgloss.Color("#54a362")) // Green
+	failedVSCode       = lipgloss.NewStyle().SetString("✖").Foreground(lipgloss.Color("#cd4944"))            // Red
+	failedBasic        = lipgloss.NewStyle().Bold(true).SetString("✗").Foreground(lipgloss.Color("#cd4944")) // Red
+	skipped            = lipgloss.NewStyle().Bold(true).SetString(">").Foreground(lipgloss.Color("#ffffff")) // White
 	partiallySucceeded = lipgloss.NewStyle().Bold(true).SetString("!").Foreground(lipgloss.Color("#d67e3c")) // Yellow
 	canceled           = lipgloss.NewStyle().Bold(true).SetString("-").Foreground(lipgloss.Color("#ffffff")) // White
 	SymbolMap          = map[string]lipgloss.Style{
 		"pending":            pending,
-		"succeeded":          succeeded,
-		"failed":             failed,
+		"succeeded":          GetSucceededSymbol(),
+		"failed":             GetFailedSymbol(),
 		"skipped":            skipped,
 		"noRuns":             noRuns,
 		"partiallySucceeded": partiallySucceeded,
@@ -49,4 +52,20 @@ func SetDimensions(width, height int) {
 	Width = width
 	ActiveStyle.Height(Height)
 	InactiveStyle.Height(Height)
+}
+
+func GetSucceededSymbol() lipgloss.Style {
+	if os.Getenv("TERM_PROGRAM") == "vscode" {
+		return succeededVSCode
+	} else {
+		return succeededBasic
+	}
+}
+
+func GetFailedSymbol() lipgloss.Style {
+	if os.Getenv("TERM_PROGRAM") == "vscode" {
+		return failedVSCode
+	} else {
+		return failedBasic
+	}
 }
