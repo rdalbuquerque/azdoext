@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 
 	"github.com/microsoft/azure-devops-go-api/azuredevops/v7"
 	"github.com/microsoft/azure-devops-go-api/azuredevops/v7/build"
@@ -17,6 +18,7 @@ func (e ErrNoBuildsFound) Error() string {
 
 type BuildClientInterface interface {
 	GetBuildTimelineRecords(context.Context, build.GetBuildTimelineArgs) ([]build.TimelineRecord, error)
+	GetTimelineRecordLog(context.Context, build.GetBuildLogArgs) (io.ReadCloser, error)
 	QueueBuild(context.Context, build.QueueBuildArgs) (int, error)
 	GetDefinitions(context.Context, build.GetDefinitionsArgs) ([]build.BuildDefinitionReference, error)
 	GetBuilds(context.Context, build.GetBuildsArgs) ([]build.Build, error)
@@ -84,4 +86,12 @@ func (b BuildClient) GetBuilds(ctx context.Context, args build.GetBuildsArgs) ([
 		return nil, ErrNoBuildsFound{}
 	}
 	return builds, nil
+}
+
+func (b BuildClient) GetTimelineRecordLog(ctx context.Context, args build.GetBuildLogArgs) (io.ReadCloser, error) {
+	logReader, err := b.Client.GetBuildLog(ctx, args)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get timeline record logs: %w", err)
+	}
+	return logReader, nil
 }

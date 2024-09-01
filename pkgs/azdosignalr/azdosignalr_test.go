@@ -46,7 +46,7 @@ func TestSendMessage(t *testing.T) {
 	signalrConn := NewSignalR("rdalbuquerque", "accountIDPlaceholder", "explore-bubbletea")
 
 	// Send a message
-	err := signalrConn.SendMessage("chat", "send", []interface{}{"Hello, SignalR!"})
+	err := signalrConn.sendMessage("chat", "send", []interface{}{"Hello, SignalR!"})
 	if err != nil {
 		t.Errorf("SendMessage() failed: %v", err)
 	}
@@ -60,7 +60,7 @@ func TestSendBuildSelection(t *testing.T) {
 	// go signalrConn.StartReceivingLoop()
 
 	// Select a build to watch
-	err := signalrConn.SendMessage("builddetailhub", "WatchBuild", []interface{}{project, 887})
+	err := signalrConn.sendMessage("builddetailhub", "WatchBuild", []interface{}{project, 887})
 	if err != nil {
 		t.Errorf("SendMessage() failed: %v", err)
 	}

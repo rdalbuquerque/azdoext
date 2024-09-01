@@ -3,7 +3,6 @@ package sections
 import (
 	"azdoext/pkgs/azdo"
 	"azdoext/pkgs/azdosignalr"
-	"azdoext/pkgs/listitems"
 	"azdoext/pkgs/logger"
 	"azdoext/pkgs/searchableviewport"
 	"azdoext/pkgs/styles"
@@ -14,9 +13,9 @@ import (
 	"io"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/google/uuid"
 	"github.com/microsoft/azure-devops-go-api/azuredevops/v7/build"
 	"github.com/muesli/reflow/wordwrap"
 )
@@ -29,11 +28,11 @@ type LogViewportSection struct {
 	ctx               context.Context
 	StyledHelpText    string
 	followRun         bool
-	currentStep       utils.StepRecordId
+	currentStep       uuid.UUID
 	currentRunId      int
 	sectionIdentifier SectionName
 	azdoConfig        azdo.Config
-	logclient         azdo.LogClientInterface
+	buildclient       azdo.BuildClientInterface
 
 	// this map stores task logs with log id and log content
 	buildLogs utils.Logs
@@ -70,7 +69,7 @@ func NewLogViewport(ctx context.Context, secid SectionName, azdoconfig azdo.Conf
 	connClosedChan := make(chan bool)
 	connClosedErrChan := make(chan error)
 
-	logclient := azdo.NewLogClient(ctx, azdoconfig.OrgUrl, azdoconfig.ProjectId, azdoconfig.PAT)
+	buildclient := azdo.NewBuildClient(ctx, azdoconfig.OrgUrl, azdoconfig.ProjectId, azdoconfig.PAT)
 	return &LogViewportSection{
 		logger:            logger,
 		logviewport:       vp,
@@ -82,7 +81,7 @@ func NewLogViewport(ctx context.Context, secid SectionName, azdoconfig azdo.Conf
 		azdoConfig:        azdoconfig,
 		signalrClient:     signalrClient,
 		StyledHelpText:    styledHelpText,
-		logclient:         logclient,
+		buildclient:       buildclient,
 		buildLogs:         buildLogs,
 	}
 }
@@ -132,30 +131,19 @@ func (p *LogViewportSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 		p.logviewport.SetContent(wrappedContent)
 		return p, nil
 	case PipelineRunIdMsg:
-		p.logviewport.SetContent("")
-		p.logger.LogToFile("INFO", fmt.Sprintf("run id: %d, status: %s", msg.RunId, msg.Status))
-		if p.currentRunId == msg.RunId || msg.Status == "completed" {
-			p.currentRunId = msg.RunId
-			p.logger.LogToFile("INFO", "run already selected or completed")
+		if p.currentRunId == msg.RunId {
 			return p, nil
 		}
 		p.currentRunId = msg.RunId
-		if p.cancelReceiveLogs != nil {
-			p.cancelReceiveLogs()
-			select {
-			case <-p.connClosedChan:
-				p.logger.LogToFile("INFO", "connection closed")
-			case <-p.connClosedChan:
-				p.logger.LogToFile("ERROR", fmt.Sprintf("error closing connection: %v", <-p.connClosedErrChan))
-				panic("error closing connection")
-			}
+		p.cancelReceiveLogsIfExists()
+		p.logviewport.SetContent("")
+		if msg.Status == "completed" {
+			p.handleCompletedRun(msg.RunId)
+			return p, nil
 		}
-
-		recLoopCtx, cancel := context.WithCancel(p.ctx)
+		ctx, cancel := context.WithCancel(p.ctx)
 		p.cancelReceiveLogs = cancel
-		p.signalrClient.Connect()
-		go p.signalrClient.StartReceivingLoop(recLoopCtx, p.logsChan, p.connClosedChan, p.connClosedErrChan)
-		p.signalrClient.SendMessage("builddetailhub", "WatchBuild", []interface{}{p.azdoConfig.ProjectId, msg.RunId})
+		p.startMonitoringLogs(ctx, msg.RunId, p.connClosedChan, p.connClosedErrChan)
 		return p, waitForLogs(p.logsChan)
 	case utils.LogMsg:
 		currentLog, ok := p.buildLogs[msg.StepRecordId]
@@ -176,10 +164,10 @@ func (p *LogViewportSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 		}
 		return p, waitForLogs(p.logsChan)
 	case RecordSelectedMsg:
-		wrappedContent := wordwrap.String(p.buildLogs[utils.StepRecordId(msg.RecordId)], p.logviewport.Viewport.Width)
+		wrappedContent := wordwrap.String(p.buildLogs[msg.RecordId], p.logviewport.Viewport.Width)
 		p.logviewport.SetContent(wrappedContent)
 		p.logviewport.GotoBottom()
-		p.currentStep = utils.StepRecordId(msg.RecordId)
+		p.currentStep = msg.RecordId
 		return p, nil
 	case tea.KeyMsg:
 		if msg.String() == "f" {
@@ -195,20 +183,49 @@ func (p *LogViewportSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 	return p, nil
 }
 
+func (p *LogViewportSection) startMonitoringLogs(ctx context.Context, runId int, connClosedChan chan bool, connClosedErrChan chan error) {
+	err := p.signalrClient.Connect()
+	if err != nil {
+		panic(fmt.Sprintf("error connecting to signalr: %v", err))
+	}
+	go p.signalrClient.StartReceivingLoop(ctx, p.logsChan, connClosedChan, connClosedErrChan)
+	p.signalrClient.SendWatchBuildMessage(runId)
+}
+
 func waitForLogs(logsChan chan utils.LogMsg) tea.Cmd {
 	return func() tea.Msg {
 		return <-logsChan
 	}
 }
 
-func (p *LogViewportSection) handleCompletedRun(msg []list.Item) {
-	for _, item := range msg {
-		recordId := utils.StepRecordId(item.(listitems.PipelineRecordItem).RecordId)
-		recordLogId := item.(listitems.PipelineRecordItem).LogId
+func (p *LogViewportSection) cancelReceiveLogsIfExists() {
+	if p.cancelReceiveLogs != nil {
+		p.cancelReceiveLogs()
+		p.cancelReceiveLogs = nil
+		select {
+		case <-p.connClosedChan:
+			p.logger.LogToFile("INFO", "connection closed")
+		case err := <-p.connClosedErrChan:
+			p.logger.LogToFile("ERROR", fmt.Sprintf("error closing connection: %v", err))
+			panic(fmt.Sprintf("error closing connection: %v", err))
+		}
+	}
+}
+
+func (p *LogViewportSection) handleCompletedRun(runId int) {
+	records, err := p.buildclient.GetBuildTimelineRecords(p.ctx, build.GetBuildTimelineArgs{
+		BuildId: &runId,
+	})
+	if err != nil {
+		panic(fmt.Sprintf("error getting timeline records: %v", err))
+	}
+	for _, item := range records {
+		recordId := *item.Id
+		recordLogId := getLogId(item)
 		if p.buildLogs[recordId] != "" || recordLogId == nil {
 			continue
 		}
-		logreader, err := p.logclient.GetTimelineRecordLog(p.ctx, build.GetBuildLogArgs{
+		logreader, err := p.buildclient.GetTimelineRecordLog(p.ctx, build.GetBuildLogArgs{
 			Project: &p.azdoConfig.ProjectId,
 			BuildId: &p.currentRunId,
 			LogId:   recordLogId,
@@ -216,8 +233,15 @@ func (p *LogViewportSection) handleCompletedRun(msg []list.Item) {
 		if err != nil {
 			panic(fmt.Sprintf("error getting log: %v", err))
 		}
-		p.buildLogs[utils.StepRecordId(item.(listitems.PipelineRecordItem).RecordId)] = formatLog(logreader)
+		p.buildLogs[recordId] = formatLog(logreader)
 	}
+}
+
+func getLogId(item build.TimelineRecord) *int {
+	if item.Log == nil {
+		return nil
+	}
+	return item.Log.Id
 }
 
 func formatLine(line string, lineNum int) string {

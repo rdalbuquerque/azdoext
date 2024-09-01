@@ -83,14 +83,12 @@ func StatusOrResult[S Status, R Result](status *S, result *R) string {
 
 type TimelineRecordId string
 
-type StepRecordId string
-
-type Logs map[StepRecordId]string
+type Logs map[uuid.UUID]string
 
 type LogMsg struct {
 	TimelineRecordId
-	StepRecordId
-	BuildStatus string
-	BuildResult string
-	NewContent  string
+	StepRecordId uuid.UUID
+	BuildStatus  string
+	BuildResult  string
+	NewContent   string
 }

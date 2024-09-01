@@ -28,7 +28,7 @@ type PipelineRunIdMsg struct {
 }
 
 type RecordSelectedMsg struct {
-	RecordId string
+	RecordId uuid.UUID
 }
 
 type PipelineRunStateMsg struct {
@@ -159,7 +159,7 @@ func (p *PipelineTasksSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 		currentIndex := p.tasklist.Index()
 		var recordIndex int
 		for i, record := range p.tasklist.Items() {
-			if record.(listitems.PipelineRecordItem).RecordId == string(msg.StepRecordId) {
+			if record.(listitems.PipelineRecordItem).RecordId == msg.StepRecordId {
 				recordIndex = i
 				break
 			}
@@ -321,10 +321,6 @@ func (p *PipelineTasksSection) buildPipelineRecordItem(node *recordNode) listite
 		recordStartTime = node.Record.StartTime.Time
 	}
 
-	var logId *int
-	if node.Record.Log != nil {
-		logId = node.Record.Log.Id
-	}
 	return listitems.PipelineRecordItem{
 		StartTime: recordStartTime,
 		Type:      *node.Record.Type,
@@ -332,8 +328,7 @@ func (p *PipelineTasksSection) buildPipelineRecordItem(node *recordNode) listite
 		State:     *node.Record.State,
 		Result:    getResult(node),
 		Symbol:    p.getSymbol(utils.StatusOrResult(node.Record.State, node.Record.Result)),
-		RecordId:  node.Record.Id.String(),
-		LogId:     logId,
+		RecordId:  *node.Record.Id,
 	}
 }
 
@@ -342,14 +337,6 @@ func getResult(node *recordNode) build.TaskResult {
 		return ""
 	}
 	return *node.Record.Result
-}
-
-func getLogId(node *recordNode) *int {
-	if node.Record.Log == nil {
-		return nil
-	}
-	logId := *node.Record.Log.Id
-	return &logId
 }
 
 func (p *PipelineTasksSection) getSymbol(status string) *string {

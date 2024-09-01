@@ -13,6 +13,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
 
@@ -237,11 +238,16 @@ receiveMessages:
 							continue
 						}
 					}
+					uuidStepRecordID, err := uuid.Parse(detail.StepRecordID)
+					if err != nil {
+						s.logger.LogToFile("ERROR", fmt.Sprintf("error parsing step record ID: %v", err))
+						continue
+					}
 					for _, line := range detail.Lines {
 						logChan <- utils.LogMsg{
 							NewContent:       line,
 							TimelineRecordId: utils.TimelineRecordId(detail.TimelineRecordID),
-							StepRecordId:     utils.StepRecordId(detail.StepRecordID),
+							StepRecordId:     uuidStepRecordID,
 							BuildStatus:      detail.Build.Status,
 						}
 					}
@@ -251,8 +257,12 @@ receiveMessages:
 	}
 }
 
+func (s *SignalRClient) SendWatchBuildMessage(runID int) error {
+	return s.sendMessage("builddetailhub", "WatchBuild", []interface{}{s.ProjectID, runID})
+}
+
 // SendMessage sends a message to the SignalR connection
-func (s *SignalRClient) SendMessage(hubName, methodName string, args []interface{}) error {
+func (s *SignalRClient) sendMessage(hubName, methodName string, args []interface{}) error {
 	s.logger.LogToFile("INFO", fmt.Sprintf("sending message to hub %s, method %s, args %v", hubName, methodName, args))
 	message := map[string]interface{}{
 		"H": hubName,

@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/google/uuid"
 	"github.com/microsoft/azure-devops-go-api/azuredevops/v7/build"
 )
 
@@ -128,11 +129,10 @@ type PipelineRecordItem struct {
 	Order     int
 	StartTime time.Time
 	Type      string
-	RecordId  string
+	RecordId  uuid.UUID
 	State     build.TimelineRecordState
 	Result    build.TaskResult
 	Symbol    *string
-	LogId     *int
 }
 
 func (p PipelineRecordItem) FilterValue() string { return "" }
