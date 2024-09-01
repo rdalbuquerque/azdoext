@@ -24,6 +24,7 @@ type PipelineItem struct {
 	Id     int
 	RunId  int
 	Status string
+	Result string
 	Symbol *string
 }
 
@@ -131,6 +132,7 @@ type PipelineRecordItem struct {
 	State     build.TimelineRecordState
 	Result    build.TaskResult
 	Symbol    *string
+	LogId     *int
 }
 
 func (p PipelineRecordItem) FilterValue() string { return "" }

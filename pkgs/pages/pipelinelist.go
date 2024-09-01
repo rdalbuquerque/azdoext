@@ -115,11 +115,20 @@ func (p *PipelineListPage) Update(msg tea.Msg) (PageInterface, tea.Cmd) {
 		}
 		return p, nil
 	case sections.SubmitChoiceMsg:
-		if choiseSec, ok := p.sections[sections.PipelineActionChoice]; !ok || !choiseSec.IsFocused() {
+		p.logger.LogToFile("debug", "received choice")
+		if choiceSec, ok := p.sections[sections.PipelineActionChoice]; !ok || !choiceSec.IsFocused() {
 			return p, nil
 		}
+		p.logger.LogToFile("debug", "choice is focused, hiding choice section")
+		p.sections[sections.PipelineActionChoice].Hide()
+		p.sections[sections.PipelineList].Focus()
 	case sections.PipelineSelectedMsg:
 		p.selectedPipeline = listitems.PipelineItem(msg)
+		if _, ok := p.sections[sections.PipelineActionChoice]; ok {
+			p.sections[sections.PipelineActionChoice].Show()
+			p.sections[sections.PipelineList].Blur()
+			return p, nil
+		}
 		pipeactionsec := sections.NewChoice(sections.PipelineActionChoice)
 		p.AddSection(pipeactionsec)
 		options := []list.Item{
@@ -128,7 +137,7 @@ func (p *PipelineListPage) Update(msg tea.Msg) (PageInterface, tea.Cmd) {
 		}
 		sec, cmd := p.sections[sections.PipelineActionChoice].Update(sections.OptionsMsg(options))
 		cmds = append(cmds, cmd)
-		p.sections[sections.PrOrPipelineChoice] = sec
+		p.sections[sections.PipelineActionChoice] = sec
 	}
 	sections, sectioncmds := p.updateSections(msg)
 	cmds = append(cmds, sectioncmds...)

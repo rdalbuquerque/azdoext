@@ -78,10 +78,12 @@ func (p *PipelineListSection) IsFocused() bool {
 
 func (p *PipelineListSection) Hide() {
 	p.hidden = true
+	p.focused = false
 }
 
 func (p *PipelineListSection) Show() {
 	p.hidden = false
+	p.focused = true
 }
 
 func (p *PipelineListSection) Focus() {
@@ -110,21 +112,24 @@ func (p *PipelineListSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 
 		var runId int
 		if listitems.OptionName(msg) == Options.GoToTasks {
-			p.logger.LogToFile("info", fmt.Sprintf("selected pipeline: %s, with run id: %d", selectedPipeline.Name, selectedPipeline.Id))
 			runId = selectedPipeline.RunId
 		} else if listitems.OptionName(msg) == Options.RunPipeline {
-			p.logger.LogToFile("info", fmt.Sprintf("selected pipeline: %s", selectedPipeline.Name))
 			runId = p.runPipeline(p.ctx, selectedPipeline, p.project, p.currentBranch)
+			selectedPipeline.Status = "notStarted"
 		}
-		return p, func() tea.Msg { return PipelineRunIdMsg{RunId: runId, PipelineName: selectedPipeline.Name} }
+		return p, func() tea.Msg {
+			return PipelineRunIdMsg{RunId: runId, PipelineName: selectedPipeline.Name, Status: selectedPipeline.Status}
+		}
 	case tea.KeyMsg:
+		if !p.focused {
+			return p, nil
+		}
 		switch msg.String() {
 		case "enter":
 			selectedPipeline, ok := p.pipelinelist.SelectedItem().(listitems.PipelineItem)
 			if ok {
 				return p, func() tea.Msg { return PipelineSelectedMsg(selectedPipeline) }
 			}
-			p.logger.LogToFile("error", "selected item is not a pipeline item")
 			return p, nil
 		}
 	case GitPushedMsg, NothingToCommitMsg:
@@ -174,10 +179,8 @@ func (p *PipelineListSection) SetDimensions(width, height int) {
 
 func (p *PipelineListSection) fetchBuilds(ctx context.Context, wait time.Duration) tea.Cmd {
 	return func() tea.Msg {
-		p.logger.LogToFile("info", fmt.Sprintf("fetching builds of project %s and repository %s...", p.project, p.repositoryId))
 		err := utils.SleepWithContext(ctx, wait)
 		if err != nil {
-			p.logger.LogToFile("error", fmt.Sprintf("error while waiting: %s", err))
 			return buildsFetchedMsg(p.pipelinelist.Items())
 		}
 		definitions, err := p.buildclient.GetDefinitions(ctx, build.GetDefinitionsArgs{
@@ -193,14 +196,14 @@ func (p *PipelineListSection) fetchBuilds(ctx context.Context, wait time.Duratio
 		}
 		pipelineList := []list.Item{}
 		for _, definition := range definitions {
-			status, runId := p.getBuildStatus(*definition.Id)
-			pipelineList = append(pipelineList, listitems.PipelineItem{Name: *definition.Name, Status: status, Symbol: p.getSymbol(status), RunId: runId, Id: *definition.Id})
+			status, result, runId := p.getBuildStatusAndResult(*definition.Id)
+			pipelineList = append(pipelineList, listitems.PipelineItem{Name: *definition.Name, Status: status, Result: result, Symbol: p.getSymbol(status, result), RunId: runId, Id: *definition.Id})
 		}
 		return buildsFetchedMsg(pipelineList)
 	}
 }
 
-func (p *PipelineListSection) getBuildStatus(pipelineId int) (string, int) {
+func (p *PipelineListSection) getBuildStatusAndResult(pipelineId int) (string, string, int) {
 	builds, err := p.buildclient.GetBuilds(p.ctx, build.GetBuildsArgs{
 		Definitions: &[]int{pipelineId},
 		Top:         utils.Ptr(1),
@@ -208,24 +211,43 @@ func (p *PipelineListSection) getBuildStatus(pipelineId int) (string, int) {
 	})
 	if err != nil {
 		if errors.Is(err, context.Canceled) {
-			return "", 0
+			return "", "", 0
 		}
 		if errors.Is(err, azdo.ErrNoBuildsFound{}) {
-			return "noRuns", 0
+			return "noRuns", "", 0
 		}
 		panic(err)
 	}
 	buildValue := builds[0]
-	status := buildValue.Status
-	result := buildValue.Result
-	return utils.StatusOrResult(status, result), *buildValue.Id
+	status, result := getStatusAndResult(&buildValue)
+	return status, result, *buildValue.Id
 }
 
-func (p *PipelineListSection) getSymbol(status string) *string {
-	if status == "inProgress" {
+func getStatusAndResult(build *build.Build) (string, string) {
+	var status, result string
+
+	if build.Status != nil {
+		status = string(*build.Status)
+	} else {
+		status = "" // or any default value
+	}
+
+	if build.Result != nil {
+		result = string(*build.Result)
+	} else {
+		result = "" // or any default value
+	}
+
+	return status, result
+}
+
+func (p *PipelineListSection) getSymbol(status, result string) *string {
+	finalStatus := utils.StatusOrResult(&status, &result)
+	p.logger.LogToFile("info", fmt.Sprintf("final status: %s", finalStatus))
+	if finalStatus == "inProgress" {
 		return p.spinnerView
 	} else {
-		symbol := styles.SymbolMap[status].String()
+		symbol := styles.SymbolMap[finalStatus].String()
 		return &symbol
 	}
 }

@@ -88,10 +88,12 @@ func (c *Choice) View() string {
 }
 
 func (c *Choice) Hide() {
+	c.focused = false
 	c.hidden = true
 }
 
 func (c *Choice) Show() {
+	c.focused = true
 	c.hidden = false
 }
 

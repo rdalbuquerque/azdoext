@@ -24,13 +24,17 @@ type PipelineRunIdMsg struct {
 	RunId        int
 	PipelineName string
 	ProjectId    string
+	Status       string
 }
 
 type RecordSelectedMsg struct {
 	RecordId string
 }
 
-type PipelineRunStateMsg []list.Item
+type PipelineRunStateMsg struct {
+	Items  []list.Item
+	Status string
+}
 
 type PipelineTasksSection struct {
 	spinnerView       *string
@@ -40,6 +44,7 @@ type PipelineTasksSection struct {
 	hidden            bool
 	focused           bool
 	ctx               context.Context
+	cancelCtx         context.CancelFunc
 	spinner           spinner.Model
 	buildclient       azdo.BuildClientInterface
 	followRun         bool
@@ -109,9 +114,6 @@ func (p *PipelineTasksSection) followView() string {
 
 func (p *PipelineTasksSection) View() string {
 	title := styles.TitleStyle.Render(p.tasklist.Title)
-	if p.buildStatus == "completed" && len(p.result) > 0 {
-		title = lipgloss.JoinHorizontal(lipgloss.Left, title, " ", *p.getSymbol(p.result))
-	}
 	tasklistWidth := p.tasklist.Width()
 	followViewStyle := lipgloss.NewStyle().PaddingLeft(tasklistWidth - p.tasklist.Paginator.TotalPages - len(p.followView()))
 	bottomView := lipgloss.JoinHorizontal(lipgloss.Bottom, p.tasklist.Paginator.View(), followViewStyle.Render(p.followView()))
@@ -126,7 +128,7 @@ func (p *PipelineTasksSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 	var cmds []tea.Cmd
 	switch msg := msg.(type) {
 	case PipelineRunStateMsg:
-		setitemscmd := p.tasklist.SetItems(msg)
+		setitemscmd := p.tasklist.SetItems(msg.Items)
 		tasks, listupdatecmd := p.tasklist.Update(msg)
 		p.tasklist = tasks
 		cmds = append(cmds, p.getRunState(p.ctx, p.monitoredRunId, 2*time.Second), listupdatecmd, setitemscmd)
@@ -135,10 +137,16 @@ func (p *PipelineTasksSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 		if msg.RunId == p.monitoredRunId {
 			return p, nil
 		}
+		if p.cancelCtx != nil {
+			p.cancelCtx()
+		}
+		newCtx, newCancel := context.WithCancel(context.Background())
+		p.ctx = newCtx
+		p.cancelCtx = newCancel
 		setEmptyListCmd := p.tasklist.SetItems([]list.Item{})
 		p.tasklist.Title = fmt.Sprintf(msg.PipelineName)
 		p.monitoredRunId = msg.RunId
-		return p, tea.Batch(p.getRunState(p.ctx, msg.RunId, 0), p.spinner.Tick, setEmptyListCmd)
+		return p, tea.Batch(p.getRunState(newCtx, msg.RunId, 0), p.spinner.Tick, setEmptyListCmd)
 	case utils.LogMsg:
 		if len(msg.BuildResult) > 0 {
 			p.buildStatus = msg.BuildStatus
@@ -195,9 +203,11 @@ func (p *PipelineTasksSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 
 func (p *PipelineTasksSection) getRunState(ctx context.Context, runId int, wait time.Duration) tea.Cmd {
 	return func() tea.Msg {
+		p.logger.LogToFile("debug", fmt.Sprintf("fetching run state for runId %d after %s", runId, wait))
 		err := utils.SleepWithContext(ctx, wait)
 		if err != nil {
 			if errors.Is(err, context.Canceled) {
+				p.logger.LogToFile("debug", "context cancelled while sleeping")
 				return nil
 			}
 			panic(err)
@@ -207,6 +217,7 @@ func (p *PipelineTasksSection) getRunState(ctx context.Context, runId int, wait 
 		})
 		if err != nil {
 			if errors.Is(err, context.Canceled) {
+				p.logger.LogToFile("debug", "context cancelled while fetching timeline records")
 				return nil
 			}
 			p.logger.LogToFile("error", fmt.Sprintf("error while fetching build timeline: %s", err))
@@ -219,7 +230,20 @@ func (p *PipelineTasksSection) getRunState(ctx context.Context, runId int, wait 
 		nodes := getRecordTree(records)
 		pipelineRecords := p.getTaskList(nodes)
 		sortedPipelineRecords := sortRecords(pipelineRecords)
-		return PipelineRunStateMsg(sortedPipelineRecords)
+		build, err := p.buildclient.GetBuilds(ctx, build.GetBuildsArgs{
+			BuildIds: &[]int{runId},
+		})
+		if err != nil {
+			if errors.Is(err, context.Canceled) {
+				return nil
+			}
+			panic(fmt.Sprintf("error getting build: %v", err))
+		}
+		buildstatus := build[0].Status
+		return PipelineRunStateMsg{
+			Items:  sortedPipelineRecords,
+			Status: string(*buildstatus),
+		}
 	}
 }
 
@@ -297,6 +321,10 @@ func (p *PipelineTasksSection) buildPipelineRecordItem(node *recordNode) listite
 		recordStartTime = node.Record.StartTime.Time
 	}
 
+	var logId *int
+	if node.Record.Log != nil {
+		logId = node.Record.Log.Id
+	}
 	return listitems.PipelineRecordItem{
 		StartTime: recordStartTime,
 		Type:      *node.Record.Type,
@@ -305,6 +333,7 @@ func (p *PipelineTasksSection) buildPipelineRecordItem(node *recordNode) listite
 		Result:    getResult(node),
 		Symbol:    p.getSymbol(utils.StatusOrResult(node.Record.State, node.Record.Result)),
 		RecordId:  node.Record.Id.String(),
+		LogId:     logId,
 	}
 }
 

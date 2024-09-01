@@ -16,6 +16,7 @@ type PipelineRunPage struct {
 	current          bool
 	name             PageName
 	ctx              context.Context
+	cancelCtx        context.CancelFunc
 	sections         map[sections.SectionName]sections.Section
 	orderedSections  []sections.SectionName
 	shorthelp        string
@@ -59,15 +60,19 @@ func NewPipelineRunPage(ctx context.Context, buildclient azdo.BuildClientInterfa
 	logger := logger.NewLogger("pipelinerun.log")
 	hk := helpKeys{}
 	helpstring := bubbleshelp.New().View(hk)
+
+	ctxWithCancel, cancel := context.WithCancel(ctx)
+
 	pipelineRunPage := &PipelineRunPage{
-		ctx:       ctx,
+		ctx:       ctxWithCancel,
+		cancelCtx: cancel,
 		name:      PipelineRun,
 		shorthelp: helpstring,
 		logger:    logger,
 	}
-	pipetaskssec := sections.NewPipelineTasks(ctx, sections.PipelineTasks, buildclient)
+	pipetaskssec := sections.NewPipelineTasks(ctxWithCancel, sections.PipelineTasks, buildclient)
 	pipelineRunPage.AddSection(pipetaskssec)
-	logvpsec := sections.NewLogViewport(ctx, sections.LogViewport, azdoconfig)
+	logvpsec := sections.NewLogViewport(ctxWithCancel, sections.LogViewport, azdoconfig)
 	pipelineRunPage.AddSection(logvpsec)
 	pipelineRunPage.sections[sections.LogViewport].Blur()
 	pipelineRunPage.sections[sections.PipelineTasks].Focus()

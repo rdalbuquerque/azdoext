@@ -3,6 +3,7 @@ package azdosignalr
 import (
 	"azdoext/pkgs/logger"
 	"azdoext/pkgs/utils"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -190,50 +191,59 @@ func (s *SignalRClient) ReadMessageWithRetry(attempts int, initialDelay time.Dur
 }
 
 // StartReceivingLoop starts the loop for receiving messages
-func (s *SignalRClient) StartReceivingLoop(logChan chan<- utils.LogMsg) {
+func (s *SignalRClient) StartReceivingLoop(ctx context.Context, logChan chan<- utils.LogMsg, connClosedChan chan<- bool, connClosedErrChan chan<- error) {
 	defer func() {
 		if err := s.Conn.Close(); err != nil {
 			s.logger.LogToFile("ERROR", fmt.Sprintf("error closing connection: %v", err))
+			connClosedErrChan <- err
 		} else {
 			s.IsConnected = false
+			s.logger.LogToFile("INFO", "sending connection closed signal")
+			connClosedChan <- true
 			s.logger.LogToFile("INFO", "connection closed")
 		}
 	}()
 receiveMessages:
 	for {
-		message, err := s.ReadMessageWithRetry(5, 1*time.Second)
-		if err != nil {
-			s.logger.LogToFile("ERROR", fmt.Sprintf("error reading message: %v", err))
-			break
-		}
+		select {
+		case <-ctx.Done():
+			s.logger.LogToFile("INFO", "receiving loop canceled")
+			break receiveMessages
+		default:
+			message, err := s.ReadMessageWithRetry(5, 1*time.Second)
+			if err != nil {
+				s.logger.LogToFile("ERROR", fmt.Sprintf("error reading message: %v", err))
+				break receiveMessages
+			}
 
-		var response SignalRResponse
-		err = json.Unmarshal(message, &response)
-		if err != nil {
-			s.logger.LogToFile("WARN", fmt.Sprintf("error unmarshalling message %s: %v", message, err))
-			continue
-		}
+			var response SignalRResponse
+			err = json.Unmarshal(message, &response)
+			if err != nil {
+				s.logger.LogToFile("WARN", fmt.Sprintf("error unmarshalling message %s: %v", message, err))
+				continue
+			}
 
-		for _, msg := range response.M {
-			for _, detail := range msg.A {
-				if len(detail.Lines) == 0 {
-					logChan <- utils.LogMsg{
-						BuildStatus: detail.Build.Status,
-						BuildResult: detail.Build.Result,
+			for _, msg := range response.M {
+				for _, detail := range msg.A {
+					if len(detail.Lines) == 0 {
+						logChan <- utils.LogMsg{
+							BuildStatus: detail.Build.Status,
+							BuildResult: detail.Build.Result,
+						}
+						if detail.Build.Status == "completed" {
+							s.logger.LogToFile("INFO", "build completed")
+							break receiveMessages
+						} else {
+							continue
+						}
 					}
-					if detail.Build.Status == "completed" {
-						s.logger.LogToFile("INFO", "build completed")
-						break receiveMessages
-					} else {
-						continue
-					}
-				}
-				for _, line := range detail.Lines {
-					logChan <- utils.LogMsg{
-						NewContent:       line,
-						TimelineRecordId: utils.TimelineRecordId(detail.TimelineRecordID),
-						StepRecordId:     utils.StepRecordId(detail.StepRecordID),
-						BuildStatus:      detail.Build.Status,
+					for _, line := range detail.Lines {
+						logChan <- utils.LogMsg{
+							NewContent:       line,
+							TimelineRecordId: utils.TimelineRecordId(detail.TimelineRecordID),
+							StepRecordId:     utils.StepRecordId(detail.StepRecordID),
+							BuildStatus:      detail.Build.Status,
+						}
 					}
 				}
 			}
