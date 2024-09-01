@@ -92,3 +92,8 @@ type LogMsg struct {
 	BuildResult  string
 	NewContent   string
 }
+
+type BuildStatusUpdateMsg struct {
+	Status string
+	Result string
+}
