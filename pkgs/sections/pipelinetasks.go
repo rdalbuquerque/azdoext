@@ -106,10 +106,13 @@ func (p *PipelineTasksSection) Blur() {
 }
 
 func (p *PipelineTasksSection) followView() string {
+	on := lipgloss.NewStyle().Foreground(lipgloss.Color("#54a362")).SetString("on")   // Green
+	off := lipgloss.NewStyle().Foreground(lipgloss.Color("#cd4944")).SetString("off") // Red
+	follow := lipgloss.NewStyle().Foreground(lipgloss.Color("#ffffff")).SetString("follow: ")
 	if p.followRun {
-		return "follow: on"
+		return follow.Render() + on.Render()
 	}
-	return "follow: off"
+	return follow.String() + off.String()
 }
 
 func (p *PipelineTasksSection) View() string {

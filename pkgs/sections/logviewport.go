@@ -11,6 +11,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"regexp"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -259,16 +260,17 @@ func getLogId(item build.TimelineRecord) *int {
 
 func formatLine(line string, lineNum int) string {
 	maxDigits := len(fmt.Sprintf("%d", 100000))
+	line = removeTimestamp(line)
 	formattedLine := fmt.Sprintf("%*d: %s\n", maxDigits, lineNum, line)
 	return formattedLine
 }
 
 func removeTimestamp(line string) string {
-	parts := strings.SplitN(line, " ", 2)
-	if len(parts) < 2 {
-		return line // Return the original line if there is no timestamp
-	}
-	return parts[1]
+	// Regular expression to match the timestamp pattern
+	pattern := `^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z\s+`
+	re := regexp.MustCompile(pattern)
+	// Replace the matched timestamp with an empty string
+	return re.ReplaceAllString(line, "")
 }
 
 func formatLog(log io.ReadCloser) string {
