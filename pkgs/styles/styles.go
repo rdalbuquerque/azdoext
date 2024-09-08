@@ -12,9 +12,9 @@ var (
 	azdoBlue       = lipgloss.Color("#0178d4")
 	LogoStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color(azdoBlue)).Bold(true)
 	ShortHelpStyle = help.New().Styles.ShortKey
-	TitleStyle     = list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0).Styles.Title.Align(lipgloss.Center).Background(lipgloss.Color("#000000")).Foreground(lipgloss.Color("#ffffff")).Padding(0, 1)
+	TitleStyle     = list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0).Styles.Title.Align(lipgloss.Center).Background(lipgloss.Color("#0178d4")).Foreground(lipgloss.Color("#ffffff")).Padding(0, 1)
 	ActiveStyle    = lipgloss.NewStyle().
-			Border(lipgloss.NormalBorder(), true, false, true, false).
+			Border(lipgloss.ThickBorder(), true, false, true, false).
 			BorderForeground(lipgloss.Color(azdoBlue))
 
 	InactiveStyle = lipgloss.NewStyle().
@@ -26,8 +26,8 @@ var (
 	DefaultSectionWidth      = 40
 	DefaultSectionHeightDiff = 1
 
-	noRuns             = lipgloss.NewStyle().SetString("■").Foreground(lipgloss.Color("8"))                  // Gray
-	pending            = lipgloss.NewStyle().SetString("•").Foreground(lipgloss.Color("39"))                 // Blue
+	noRuns             = lipgloss.NewStyle().SetString("-").Foreground(lipgloss.Color("#6c6c6c"))            // Gray
+	pending            = lipgloss.NewStyle().SetString("•").Foreground(azdoBlue)                             // Blue
 	succeededVSCode    = lipgloss.NewStyle().SetString("✔").Foreground(lipgloss.Color("#54a362"))            // Green
 	succeededBasic     = lipgloss.NewStyle().Bold(true).SetString("✓").Foreground(lipgloss.Color("#54a362")) // Green
 	failedVSCode       = lipgloss.NewStyle().SetString("✖").Foreground(lipgloss.Color("#cd4944"))            // Red

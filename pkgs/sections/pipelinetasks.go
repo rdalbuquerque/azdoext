@@ -109,16 +109,18 @@ func (p *PipelineTasksSection) followView() string {
 	on := lipgloss.NewStyle().Foreground(lipgloss.Color("#54a362")).SetString("on")   // Green
 	off := lipgloss.NewStyle().Foreground(lipgloss.Color("#cd4944")).SetString("off") // Red
 	follow := lipgloss.NewStyle().Foreground(lipgloss.Color("#ffffff")).SetString("follow: ")
+	followText := follow.String()
 	if p.followRun {
-		return follow.Render() + on.Render()
+		followText += on.String()
+		return lipgloss.NewStyle().PaddingRight(1).Render(followText)
 	}
-	return follow.String() + off.String()
+	return followText + off.String()
 }
 
 func (p *PipelineTasksSection) View() string {
 	title := styles.TitleStyle.Render(p.tasklist.Title)
 	tasklistWidth := p.tasklist.Width()
-	followViewStyle := lipgloss.NewStyle().PaddingLeft(tasklistWidth - p.tasklist.Paginator.TotalPages - len(p.followView()))
+	followViewStyle := lipgloss.NewStyle().PaddingLeft(tasklistWidth - p.tasklist.Paginator.TotalPages - lipgloss.Width(p.followView()))
 	bottomView := lipgloss.JoinHorizontal(lipgloss.Bottom, p.tasklist.Paginator.View(), followViewStyle.Render(p.followView()))
 	secView := lipgloss.JoinVertical(lipgloss.Top, title, p.tasklist.View(), bottomView)
 	if p.focused {
