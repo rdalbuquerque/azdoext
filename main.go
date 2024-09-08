@@ -146,7 +146,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *model) View() string {
 	loadingStr := lipgloss.NewStyle().Bold(true).Render("Loading...")
-	spnerWithLoading := lipgloss.JoinHorizontal(lipgloss.Left, m.spinner.View(), " ", loadingStr)
+	spnerWithLoading := lipgloss.NewStyle().Bold(true).Padding(1).Render(lipgloss.JoinHorizontal(lipgloss.Left, m.spinner.View(), " ", loadingStr))
 	if len(m.pageStack) == 0 {
 		return lipgloss.JoinVertical(lipgloss.Top, styles.LogoStyle.Render(azdoextLogo), spnerWithLoading)
 	}

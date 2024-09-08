@@ -57,17 +57,12 @@ type LogViewportSection struct {
 
 func NewLogViewport(ctx context.Context, secid SectionName, azdoconfig azdo.Config) Section {
 	logger := logger.NewLogger("logviewport.log")
-	logger.LogToFile("INFO", "logviewport section initialized")
 	vp := searchableviewport.New(0, 0)
 
 	styledHelpText := styles.ShortHelpStyle.Render("/ find • alt+m maximize")
 
 	signalrClient := azdosignalr.NewSignalR(azdoconfig.OrgName, azdoconfig.AccoundId, azdoconfig.ProjectId)
 
-	logger.LogToFile("INFO", "azdoconfig: "+fmt.Sprintf("%+v", azdoconfig))
-
-	logsChan := make(chan utils.LogMsg, 100)
-	buildLogs := make(utils.Logs)
 	connClosedChan := make(chan bool)
 	connClosedErrChan := make(chan error)
 
@@ -83,8 +78,6 @@ func NewLogViewport(ctx context.Context, secid SectionName, azdoconfig azdo.Conf
 		signalrClient:     signalrClient,
 		StyledHelpText:    styledHelpText,
 		buildclient:       buildclient,
-		buildLogs:         buildLogs,
-		logsChan:          logsChan,
 	}
 }
 
@@ -136,10 +129,15 @@ func (p *LogViewportSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 		if p.currentRunId == msg.RunId {
 			return p, nil
 		}
+		buildsLogs := make(utils.Logs)
+		p.buildLogs = buildsLogs
 		p.buildStatus = msg.Status
 		p.currentRunId = msg.RunId
 		p.cancelReceiveLogsIfExists()
-		p.emptyLogChannel()
+
+		logsChan := make(chan utils.LogMsg, 100)
+		p.logsChan = logsChan
+
 		p.logviewport.SetContent("")
 		if msg.Status == "completed" {
 			p.handleCompletedRun(msg.RunId)
@@ -149,12 +147,12 @@ func (p *LogViewportSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 		p.readLogsCtx = ctx
 		p.cancelReceiveLogs = cancel
 		p.startMonitoringLogs(ctx, msg.RunId, p.connClosedChan, p.connClosedErrChan)
-		return p, waitForLogs(ctx, p.logsChan)
+		return p, waitForLogs(*p.logger, ctx, p.logsChan)
 	case utils.LogMsg:
 		currentLog, ok := p.buildLogs[msg.StepRecordId]
 		if !ok {
 			p.buildLogs[msg.StepRecordId] = formatLine(msg.NewContent, 1)
-			return p, waitForLogs(p.readLogsCtx, p.logsChan)
+			return p, waitForLogs(*p.logger, p.readLogsCtx, p.logsChan)
 		}
 		lineNum := len(strings.Split(currentLog, "\n")) + 1
 		currentLog += formatLine(msg.NewContent, lineNum)
@@ -167,7 +165,7 @@ func (p *LogViewportSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 			p.logviewport.SetContent(wordwrap.String(currentLog, p.logviewport.Viewport.Width))
 			p.logviewport.GotoBottom()
 		}
-		return p, waitForLogs(p.readLogsCtx, p.logsChan)
+		return p, waitForLogs(*p.logger, p.readLogsCtx, p.logsChan)
 	case readLogsCtxDoneMsg:
 		p.logviewport.SetContent("")
 		return p, nil
@@ -191,17 +189,8 @@ func (p *LogViewportSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 	return p, nil
 }
 
-func (p *LogViewportSection) emptyLogChannel() {
-	for {
-		select {
-		case <-p.logsChan:
-		default:
-			return
-		}
-	}
-}
-
 func (p *LogViewportSection) startMonitoringLogs(ctx context.Context, runId int, connClosedChan chan bool, connClosedErrChan chan error) {
+	p.logger.LogToFile("INFO", "connecting to signalr")
 	err := p.signalrClient.Connect()
 	if err != nil {
 		panic(fmt.Sprintf("error connecting to signalr: %v", err))
@@ -210,13 +199,14 @@ func (p *LogViewportSection) startMonitoringLogs(ctx context.Context, runId int,
 	p.signalrClient.SendWatchBuildMessage(runId)
 }
 
-func waitForLogs(ctx context.Context, logsChan chan utils.LogMsg) tea.Cmd {
+func waitForLogs(logger logger.Logger, ctx context.Context, logsChan chan utils.LogMsg) tea.Cmd {
 	return func() tea.Msg {
 		select {
-		case <-logsChan:
-			return <-logsChan
 		case <-ctx.Done():
+			logger.LogToFile("INFO", "receiving logs done")
 			return readLogsCtxDoneMsg{}
+		default:
+			return <-logsChan
 		}
 	}
 }
@@ -269,7 +259,6 @@ func getLogId(item build.TimelineRecord) *int {
 
 func formatLine(line string, lineNum int) string {
 	maxDigits := len(fmt.Sprintf("%d", 100000))
-	line = removeTimestamp(line)
 	formattedLine := fmt.Sprintf("%*d: %s\n", maxDigits, lineNum, line)
 	return formattedLine
 }
