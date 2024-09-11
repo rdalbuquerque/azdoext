@@ -5,6 +5,7 @@ import (
 	"azdoext/pkgs/listitems"
 	"azdoext/pkgs/logger"
 	"azdoext/pkgs/styles"
+	"azdoext/pkgs/teamsg"
 	"azdoext/pkgs/utils"
 	"context"
 	"errors"
@@ -19,9 +20,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/microsoft/azure-devops-go-api/azuredevops/v7/build"
 )
-
-type buildsFetchedMsg []list.Item
-type PipelineSelectedMsg listitems.PipelineItem
 
 type PipelineListSection struct {
 	project                 string
@@ -107,7 +105,7 @@ func (p *PipelineListSection) View() string {
 func (p *PipelineListSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 	var cmds []tea.Cmd
 	switch msg := msg.(type) {
-	case SubmitChoiceMsg:
+	case teamsg.SubmitChoiceMsg:
 		selectedPipeline := p.pipelinelist.SelectedItem().(listitems.PipelineItem)
 
 		var runId int
@@ -118,7 +116,7 @@ func (p *PipelineListSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 			selectedPipeline.Status = "notStarted"
 		}
 		return p, func() tea.Msg {
-			return PipelineRunIdMsg{RunId: runId, PipelineName: selectedPipeline.Name, Status: selectedPipeline.Status}
+			return teamsg.PipelineRunIdMsg{RunId: runId, PipelineName: selectedPipeline.Name, Status: selectedPipeline.Status}
 		}
 	case tea.KeyMsg:
 		if !p.focused {
@@ -128,17 +126,17 @@ func (p *PipelineListSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 		case "enter":
 			selectedPipeline, ok := p.pipelinelist.SelectedItem().(listitems.PipelineItem)
 			if ok {
-				return p, func() tea.Msg { return PipelineSelectedMsg(selectedPipeline) }
+				return p, func() tea.Msg { return teamsg.PipelineSelectedMsg(selectedPipeline) }
 			}
 			return p, nil
 		}
-	case GitPushedMsg, NothingToCommitMsg:
+	case teamsg.GitPushedMsg, teamsg.NothingToCommitMsg:
 		if p.pipelineFetchingEnabled {
 			return p, nil
 		}
 		p.pipelineFetchingEnabled = true
 		return p, tea.Batch(p.fetchBuilds(p.ctx, 0), p.spinner.Tick)
-	case buildsFetchedMsg:
+	case teamsg.BuildsFetchedMsg:
 		p.pipelinelist.SetItems(msg)
 		return p, p.fetchBuilds(p.ctx, 10*time.Second)
 	case spinner.TickMsg:
@@ -181,7 +179,7 @@ func (p *PipelineListSection) fetchBuilds(ctx context.Context, wait time.Duratio
 	return func() tea.Msg {
 		err := utils.SleepWithContext(ctx, wait)
 		if err != nil {
-			return buildsFetchedMsg(p.pipelinelist.Items())
+			return teamsg.BuildsFetchedMsg(p.pipelinelist.Items())
 		}
 		definitions, err := p.buildclient.GetDefinitions(ctx, build.GetDefinitionsArgs{
 			RepositoryId:   utils.Ptr(p.repositoryId.String()),
@@ -199,7 +197,7 @@ func (p *PipelineListSection) fetchBuilds(ctx context.Context, wait time.Duratio
 			status, result, runId := p.getBuildStatusAndResult(*definition.Id)
 			pipelineList = append(pipelineList, listitems.PipelineItem{Name: *definition.Name, Status: status, Result: result, Symbol: p.getSymbol(status, result), RunId: runId, Id: *definition.Id})
 		}
-		return buildsFetchedMsg(pipelineList)
+		return teamsg.BuildsFetchedMsg(pipelineList)
 	}
 }
 

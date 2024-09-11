@@ -2,6 +2,7 @@ package azdosignalr
 
 import (
 	"azdoext/pkgs/logger"
+	"azdoext/pkgs/teamsg"
 	"azdoext/pkgs/utils"
 	"context"
 	"encoding/base64"
@@ -192,7 +193,7 @@ func (s *SignalRClient) ReadMessageWithRetry(attempts int, initialDelay time.Dur
 }
 
 // StartReceivingLoop starts the loop for receiving messages
-func (s *SignalRClient) StartReceivingLoop(ctx context.Context, logChan chan<- utils.LogMsg, connClosedChan chan<- bool, connClosedErrChan chan<- error) {
+func (s *SignalRClient) StartReceivingLoop(ctx context.Context, logChan chan<- teamsg.LogMsg, connClosedChan chan<- bool, connClosedErrChan chan<- error) {
 	defer func() {
 		if err := s.Conn.Close(); err != nil {
 			s.logger.LogToFile("ERROR", fmt.Sprintf("error closing connection: %v", err))
@@ -227,7 +228,7 @@ receiveMessages:
 			for _, msg := range response.M {
 				for _, detail := range msg.A {
 					if len(detail.Lines) == 0 {
-						logChan <- utils.LogMsg{
+						logChan <- teamsg.LogMsg{
 							BuildStatus: detail.Build.Status,
 							BuildResult: detail.Build.Result,
 						}
@@ -244,7 +245,7 @@ receiveMessages:
 						continue
 					}
 					for _, line := range detail.Lines {
-						logChan <- utils.LogMsg{
+						logChan <- teamsg.LogMsg{
 							NewContent:       line,
 							TimelineRecordId: utils.TimelineRecordId(detail.TimelineRecordID),
 							StepRecordId:     uuidStepRecordID,

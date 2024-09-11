@@ -4,14 +4,13 @@ import (
 	"azdoext/pkgs/listitems"
 	"azdoext/pkgs/logger"
 	"azdoext/pkgs/styles"
+	"azdoext/pkgs/teamsg"
 	"fmt"
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
-
-type OptionsMsg []list.Item
 
 type Choice struct {
 	logger            *logger.Logger
@@ -61,9 +60,9 @@ func (c *Choice) Update(msg tea.Msg) (Section, tea.Cmd) {
 				return c, nil
 			case "enter":
 				c.logger.LogToFile("debug", fmt.Sprintf("submiting choice [%s]", c.choice.SelectedItem().(listitems.ChoiceItem).Option))
-				return c, func() tea.Msg { return SubmitChoiceMsg(c.choice.SelectedItem().(listitems.ChoiceItem).Option) }
+				return c, func() tea.Msg { return teamsg.SubmitChoiceMsg(c.choice.SelectedItem().(listitems.ChoiceItem).Option) }
 			}
-		case OptionsMsg:
+		case teamsg.OptionsMsg:
 			return c, c.choice.SetItems(msg)
 		}
 		choice, cmd := c.choice.Update(msg)
@@ -105,5 +104,3 @@ func (c *Choice) Focus() {
 func (c *Choice) Blur() {
 	c.focused = false
 }
-
-type SubmitChoiceMsg listitems.OptionName

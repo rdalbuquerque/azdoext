@@ -5,6 +5,7 @@ import (
 	"azdoext/pkgs/listitems"
 	"azdoext/pkgs/logger"
 	"azdoext/pkgs/styles"
+	"azdoext/pkgs/teamsg"
 	"errors"
 
 	bubbleshelp "github.com/charmbracelet/bubbles/help"
@@ -26,7 +27,7 @@ type WorktreeSection struct {
 
 func (ws *WorktreeSection) push() tea.Msg {
 	gitexec.Push("origin", ws.branch)
-	return GitPushedMsg(true)
+	return teamsg.GitPushedMsg(true)
 }
 
 func (ws *WorktreeSection) addAllToStage() {
@@ -101,18 +102,18 @@ func (ws *WorktreeSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 		return ws, nil
 	}
 	switch msg := msg.(type) {
-	case commitMsg:
+	case teamsg.CommitMsg:
 		if ws.noStagedFiles() {
 			ws.addAllToStage()
 		}
 		ws.status.Title = "Pushing..."
 		gitexec.Commit(string(msg))
-		return ws, tea.Batch(ws.push, func() tea.Msg { return GitPushingMsg(true) })
-	case GitPushedMsg:
+		return ws, tea.Batch(ws.push, func() tea.Msg { return teamsg.GitPushingMsg(true) })
+	case teamsg.GitPushedMsg:
 		ws.status.Title = "Pushed"
 	}
 	if len(ws.status.Items()) == 0 {
-		return ws, func() tea.Msg { return NothingToCommitMsg{} }
+		return ws, func() tea.Msg { return teamsg.NothingToCommitMsg{} }
 	}
 	return ws, nil
 }
@@ -196,7 +197,3 @@ func (ws *WorktreeSection) noStagedFiles() bool {
 	}
 	return true
 }
-
-type GitPushedMsg bool
-type GitPushingMsg bool
-type NothingToCommitMsg struct{}

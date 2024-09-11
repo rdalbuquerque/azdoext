@@ -2,6 +2,7 @@ package sections
 
 import (
 	"azdoext/pkgs/styles"
+	"azdoext/pkgs/teamsg"
 
 	"github.com/charmbracelet/bubbles/textarea"
 	tea "github.com/charmbracelet/bubbletea"
@@ -53,7 +54,7 @@ func (cs *CommitSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 			switch msg.String() {
 			case "ctrl+s":
 				cs.textarea.Blur()
-				return cs, func() tea.Msg { return commitMsg(cs.textarea.Value()) }
+				return cs, func() tea.Msg { return teamsg.CommitMsg(cs.textarea.Value()) }
 			}
 		}
 		ta, cmd := cs.textarea.Update(msg)
@@ -90,5 +91,3 @@ func (cs *CommitSection) Blur() {
 	cs.textarea.Blur()
 	cs.focused = false
 }
-
-type commitMsg string

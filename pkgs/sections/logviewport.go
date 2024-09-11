@@ -6,6 +6,7 @@ import (
 	"azdoext/pkgs/logger"
 	"azdoext/pkgs/searchableviewport"
 	"azdoext/pkgs/styles"
+	"azdoext/pkgs/teamsg"
 	"azdoext/pkgs/utils"
 	"bufio"
 	"context"
@@ -40,7 +41,7 @@ type LogViewportSection struct {
 	buildLogs utils.Logs
 
 	// channel to receive logs
-	logsChan chan utils.LogMsg
+	logsChan chan teamsg.LogMsg
 
 	// cancel function to stop receiving logs and close signalr connection
 	readLogsCtx       context.Context
@@ -122,11 +123,11 @@ func (p *LogViewportSection) View() string {
 
 func (p *LogViewportSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 	switch msg := msg.(type) {
-	case ToggleMaximizeMsg:
+	case teamsg.ToggleMaximizeMsg:
 		wrappedContent := wordwrap.String(p.buildLogs[p.currentStep], p.logviewport.Viewport.Width)
 		p.logviewport.SetContent(wrappedContent)
 		return p, nil
-	case PipelineRunIdMsg:
+	case teamsg.PipelineRunIdMsg:
 		if p.currentRunId == msg.RunId {
 			return p, nil
 		}
@@ -136,7 +137,7 @@ func (p *LogViewportSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 		p.currentRunId = msg.RunId
 		p.cancelReceiveLogsIfExists()
 
-		logsChan := make(chan utils.LogMsg, 100)
+		logsChan := make(chan teamsg.LogMsg, 100)
 		p.logsChan = logsChan
 
 		p.logviewport.SetContent("")
@@ -149,7 +150,7 @@ func (p *LogViewportSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 		p.cancelReceiveLogs = cancel
 		p.startMonitoringLogs(ctx, msg.RunId, p.connClosedChan, p.connClosedErrChan)
 		return p, waitForLogs(*p.logger, ctx, p.logsChan)
-	case utils.LogMsg:
+	case teamsg.LogMsg:
 		currentLog, ok := p.buildLogs[msg.StepRecordId]
 		if !ok {
 			p.buildLogs[msg.StepRecordId] = formatLine(msg.NewContent, 1)
@@ -167,10 +168,10 @@ func (p *LogViewportSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 			p.logviewport.GotoBottom()
 		}
 		return p, waitForLogs(*p.logger, p.readLogsCtx, p.logsChan)
-	case readLogsCtxDoneMsg:
+	case teamsg.ReadLogsCtxDoneMsg:
 		p.logviewport.SetContent("")
 		return p, nil
-	case RecordSelectedMsg:
+	case teamsg.RecordSelectedMsg:
 		wrappedContent := wordwrap.String(p.buildLogs[msg.RecordId], p.logviewport.Viewport.Width)
 		p.logviewport.SetContent(wrappedContent)
 		p.logviewport.GotoBottom()
@@ -200,12 +201,12 @@ func (p *LogViewportSection) startMonitoringLogs(ctx context.Context, runId int,
 	p.signalrClient.SendWatchBuildMessage(runId)
 }
 
-func waitForLogs(logger logger.Logger, ctx context.Context, logsChan chan utils.LogMsg) tea.Cmd {
+func waitForLogs(logger logger.Logger, ctx context.Context, logsChan chan teamsg.LogMsg) tea.Cmd {
 	return func() tea.Msg {
 		select {
 		case <-ctx.Done():
 			logger.LogToFile("INFO", "receiving logs done")
-			return readLogsCtxDoneMsg{}
+			return teamsg.ReadLogsCtxDoneMsg{}
 		default:
 			return <-logsChan
 		}
@@ -296,6 +297,3 @@ func (p *LogViewportSection) SetDimensions(width, height int) {
 	// height - 1 to make space for the help text
 	p.logviewport.SetDimensions(width, height-1)
 }
-
-type ToggleMaximizeMsg struct{}
-type readLogsCtxDoneMsg struct{}

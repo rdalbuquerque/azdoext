@@ -4,6 +4,7 @@ import (
 	"azdoext/pkgs/azdo"
 	"azdoext/pkgs/logger"
 	"azdoext/pkgs/styles"
+	"azdoext/pkgs/teamsg"
 	"azdoext/pkgs/utils"
 	"context"
 	"fmt"
@@ -15,8 +16,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/microsoft/azure-devops-go-api/azuredevops/v7/git"
 )
-
-type GitPRCreatedMsg bool
 
 type PRSection struct {
 	logger            *logger.Logger
@@ -95,10 +94,10 @@ func (pr *PRSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 				if pr.textarea.Focused() {
 					pr.textarea.Blur()
 				}
-				return pr, func() tea.Msg { return SubmitPRMsg(pr.textarea.Value()) }
+				return pr, func() tea.Msg { return teamsg.SubmitPRMsg(pr.textarea.Value()) }
 			}
 		}
-	case SubmitPRMsg:
+	case teamsg.SubmitPRMsg:
 		titleAndDescription := strings.SplitN(string(msg), "\n", 2)
 		title := titleAndDescription[0]
 		if title == "" {
@@ -110,7 +109,7 @@ func (pr *PRSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 		}
 		pr.logger.LogToFile("info", fmt.Sprintf("submitting PR with title: %s and description: %s, from %s to %s", title, description, pr.currentBranch, pr.defaultBranch))
 		return pr, func() tea.Msg { return pr.openPR(pr.currentBranch, pr.defaultBranch, title, description) }
-	case PRErrorMsg:
+	case teamsg.PRErrorMsg:
 		pr.textarea.Placeholder = string(msg)
 	}
 	ta, cmd := pr.textarea.Update(msg)
@@ -132,9 +131,9 @@ func (pr *PRSection) openPR(currentBranch, defaultBranch, title, description str
 	})
 	if err != nil {
 		pr.logger.LogToFile("error", "error while creating PR: "+err.Error())
-		return GitPRCreatedMsg(false)
+		return teamsg.GitPRCreatedMsg(false)
 	}
-	return GitPRCreatedMsg(true)
+	return teamsg.GitPRCreatedMsg(true)
 }
 
 func (pr *PRSection) View() string {
@@ -167,6 +166,3 @@ func (pr *PRSection) Blur() {
 	pr.textarea.Blur()
 	pr.focused = false
 }
-
-type SubmitPRMsg string
-type PRErrorMsg string

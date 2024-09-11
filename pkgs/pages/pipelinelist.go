@@ -6,6 +6,7 @@ import (
 	"azdoext/pkgs/logger"
 	"azdoext/pkgs/sections"
 	"azdoext/pkgs/styles"
+	"azdoext/pkgs/teamsg"
 	"context"
 
 	bubbleshelp "github.com/charmbracelet/bubbles/help"
@@ -114,7 +115,7 @@ func (p *PipelineListPage) Update(msg tea.Msg) (PageInterface, tea.Cmd) {
 			return p, tea.Batch(cmds...)
 		}
 		return p, nil
-	case sections.SubmitChoiceMsg:
+	case teamsg.SubmitChoiceMsg:
 		p.logger.LogToFile("debug", "received choice")
 		if choiceSec, ok := p.sections[sections.PipelineActionChoice]; !ok || !choiceSec.IsFocused() {
 			return p, nil
@@ -122,7 +123,7 @@ func (p *PipelineListPage) Update(msg tea.Msg) (PageInterface, tea.Cmd) {
 		p.logger.LogToFile("debug", "choice is focused, hiding choice section")
 		p.sections[sections.PipelineActionChoice].Hide()
 		p.sections[sections.PipelineList].Focus()
-	case sections.PipelineSelectedMsg:
+	case teamsg.PipelineSelectedMsg:
 		p.selectedPipeline = listitems.PipelineItem(msg)
 		if _, ok := p.sections[sections.PipelineActionChoice]; ok {
 			p.sections[sections.PipelineActionChoice].Show()
@@ -135,7 +136,7 @@ func (p *PipelineListPage) Update(msg tea.Msg) (PageInterface, tea.Cmd) {
 			listitems.ChoiceItem{Option: sections.Options.GoToTasks},
 			listitems.ChoiceItem{Option: sections.Options.RunPipeline},
 		}
-		sec, cmd := p.sections[sections.PipelineActionChoice].Update(sections.OptionsMsg(options))
+		sec, cmd := p.sections[sections.PipelineActionChoice].Update(teamsg.OptionsMsg(options))
 		cmds = append(cmds, cmd)
 		p.sections[sections.PipelineActionChoice] = sec
 	}

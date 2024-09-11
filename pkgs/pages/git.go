@@ -6,6 +6,7 @@ import (
 	"azdoext/pkgs/logger"
 	"azdoext/pkgs/sections"
 	"azdoext/pkgs/styles"
+	"azdoext/pkgs/teamsg"
 	"context"
 
 	bubbleshelp "github.com/charmbracelet/bubbles/help"
@@ -99,16 +100,16 @@ func (p *GitPage) Update(msg tea.Msg) (PageInterface, tea.Cmd) {
 				p.switchSection()
 				return p, nil
 			}
-		case sections.GitPushedMsg:
+		case teamsg.GitPushedMsg:
 			p.SetFocus(sections.PrOrPipelineChoice)
 			options := []list.Item{
 				listitems.ChoiceItem{Option: sections.Options.OpenPR},
 				listitems.ChoiceItem{Option: sections.Options.GoToPipelines},
 			}
-			sec, cmd := p.sections[sections.PrOrPipelineChoice].Update(sections.OptionsMsg(options))
+			sec, cmd := p.sections[sections.PrOrPipelineChoice].Update(teamsg.OptionsMsg(options))
 			cmds = append(cmds, cmd)
 			p.sections[sections.PrOrPipelineChoice] = sec
-		case sections.SubmitChoiceMsg:
+		case teamsg.SubmitChoiceMsg:
 			if string(msg) == string(sections.Options.OpenPR) {
 				p.SetFocus(sections.OpenPR)
 			}

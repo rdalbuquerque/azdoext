@@ -11,6 +11,7 @@ import (
 	"azdoext/pkgs/pages"
 	"azdoext/pkgs/sections"
 	"azdoext/pkgs/styles"
+	"azdoext/pkgs/teamsg"
 
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
@@ -58,13 +59,11 @@ func initialModel() model {
 	return m
 }
 
-type azdoConfigMsg azdo.Config
-
 func getAzdoConfig() tea.Cmd {
 	return func() tea.Msg {
 		gitconf := gitexec.Config()
 		azdoconfig := azdo.GetAzdoConfig(gitconf.Origin, gitconf.CurrentBranch)
-		return azdoConfigMsg(azdoconfig)
+		return teamsg.AzdoConfigMsg(azdoconfig)
 	}
 }
 
@@ -79,7 +78,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		spnr, cmd := m.spinner.Update(msg)
 		cmds = append(cmds, cmd)
 		m.spinner = spnr
-	case azdoConfigMsg:
+	case teamsg.AzdoConfigMsg:
 		buildclient := azdo.NewBuildClient(m.ctx, msg.OrgUrl, msg.ProjectId, msg.PAT)
 		gitclient := azdo.NewGitClient(m.ctx, msg.OrgUrl, msg.ProjectId, msg.PAT)
 		gitpage := pages.NewGitPage(m.ctx, gitclient, azdo.Config(msg))
@@ -115,21 +114,21 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			p.SetDimensions(0, msg.Height-3)
 		}
 		return m, nil
-	case sections.SubmitChoiceMsg:
+	case teamsg.SubmitChoiceMsg:
 		m.logger.LogToFile("debug", fmt.Sprintf("choice received: %s", msg))
 		switch listitems.OptionName(msg) {
 		case sections.Options.GoToPipelines:
 			m.addPage(pages.PipelineList)
 		}
-	case sections.NothingToCommitMsg:
+	case teamsg.NothingToCommitMsg:
 		m.logger.LogToFile("info", "nothing to commit")
 		m.addPage(pages.PipelineList)
 
-	case sections.GitPRCreatedMsg:
+	case teamsg.GitPRCreatedMsg:
 		m.logger.LogToFile("info", "PR created")
 		m.addPage(pages.PipelineList)
 
-	case sections.PipelineRunIdMsg:
+	case teamsg.PipelineRunIdMsg:
 		m.logger.LogToFile("info", fmt.Sprintf("received run id: %d", msg.RunId))
 		m.addPage(pages.PipelineRun)
 	}

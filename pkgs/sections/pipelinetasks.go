@@ -5,6 +5,7 @@ import (
 	"azdoext/pkgs/listitems"
 	"azdoext/pkgs/logger"
 	"azdoext/pkgs/styles"
+	"azdoext/pkgs/teamsg"
 	"azdoext/pkgs/utils"
 	"context"
 	"errors"
@@ -19,22 +20,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/microsoft/azure-devops-go-api/azuredevops/v7/build"
 )
-
-type PipelineRunIdMsg struct {
-	RunId        int
-	PipelineName string
-	ProjectId    string
-	Status       string
-}
-
-type RecordSelectedMsg struct {
-	RecordId uuid.UUID
-}
-
-type PipelineRunStateMsg struct {
-	Items  []list.Item
-	Status string
-}
 
 type PipelineTasksSection struct {
 	spinnerView       *string
@@ -132,13 +117,13 @@ func (p *PipelineTasksSection) View() string {
 func (p *PipelineTasksSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 	var cmds []tea.Cmd
 	switch msg := msg.(type) {
-	case PipelineRunStateMsg:
+	case teamsg.PipelineRunStateMsg:
 		setitemscmd := p.tasklist.SetItems(msg.Items)
 		tasks, listupdatecmd := p.tasklist.Update(msg)
 		p.tasklist = tasks
 		cmds = append(cmds, p.getRunState(p.ctx, p.monitoredRunId, 2*time.Second), listupdatecmd, setitemscmd)
 		return p, tea.Batch(cmds...)
-	case PipelineRunIdMsg:
+	case teamsg.PipelineRunIdMsg:
 		if msg.RunId == p.monitoredRunId {
 			return p, nil
 		}
@@ -152,7 +137,7 @@ func (p *PipelineTasksSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 		p.tasklist.Title = fmt.Sprintf(msg.PipelineName)
 		p.monitoredRunId = msg.RunId
 		return p, tea.Batch(p.getRunState(newCtx, msg.RunId, 0), p.spinner.Tick, setEmptyListCmd)
-	case utils.LogMsg:
+	case teamsg.LogMsg:
 		if len(msg.BuildResult) > 0 {
 			p.buildStatus = msg.BuildStatus
 			p.result = msg.BuildResult
@@ -196,7 +181,7 @@ func (p *PipelineTasksSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 			if selectedRecord, ok := p.tasklist.SelectedItem().(listitems.PipelineRecordItem); ok {
 				cmds = append(cmds,
 					func() tea.Msg {
-						return RecordSelectedMsg{
+						return teamsg.RecordSelectedMsg{
 							RecordId: selectedRecord.RecordId,
 						}
 					})
@@ -245,7 +230,7 @@ func (p *PipelineTasksSection) getRunState(ctx context.Context, runId int, wait 
 			panic(fmt.Sprintf("error getting build: %v", err))
 		}
 		buildstatus := build[0].Status
-		return PipelineRunStateMsg{
+		return teamsg.PipelineRunStateMsg{
 			Items:  sortedPipelineRecords,
 			Status: string(*buildstatus),
 		}

@@ -5,6 +5,7 @@ import (
 	"azdoext/pkgs/logger"
 	"azdoext/pkgs/sections"
 	"azdoext/pkgs/styles"
+	"azdoext/pkgs/teamsg"
 	"context"
 
 	bubbleshelp "github.com/charmbracelet/bubbles/help"
@@ -135,7 +136,7 @@ func (p *PipelineRunPage) Update(msg tea.Msg) (PageInterface, tea.Cmd) {
 
 func toggleMaximize() tea.Cmd {
 	return func() tea.Msg {
-		return sections.ToggleMaximizeMsg{}
+		return teamsg.ToggleMaximizeMsg{}
 	}
 }
 
