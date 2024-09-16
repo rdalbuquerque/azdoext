@@ -4,7 +4,7 @@ import (
 	"azdoext/pkgs/listitems"
 	"azdoext/pkgs/logger"
 	"azdoext/pkgs/styles"
-	"context"
+	"azdoext/pkgs/teamsg"
 	"fmt"
 
 	"github.com/charmbracelet/bubbles/list"
@@ -12,16 +12,15 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-type OptionsMsg []list.Item
-
 type Choice struct {
-	logger  *logger.Logger
-	hidden  bool
-	focused bool
-	choice  list.Model
+	logger            *logger.Logger
+	hidden            bool
+	focused           bool
+	choice            list.Model
+	sectionIdentifier SectionName
 }
 
-func NewChoice(_ context.Context) Section {
+func NewChoice(secid SectionName) Section {
 	logger := logger.NewLogger("choice.log")
 
 	choice := list.New([]list.Item{}, listitems.ChoiceItemDelegate{}, 0, 0)
@@ -29,9 +28,14 @@ func NewChoice(_ context.Context) Section {
 	choice.SetHeight(styles.ActiveStyle.GetHeight() - 2)
 	choice.SetShowTitle(false)
 	return &Choice{
-		logger: logger,
-		choice: choice,
+		logger:            logger,
+		choice:            choice,
+		sectionIdentifier: secid,
 	}
+}
+
+func (c *Choice) GetSectionIdentifier() SectionName {
+	return c.sectionIdentifier
 }
 
 func (c *Choice) SetDimensions(width, height int) {
@@ -52,11 +56,13 @@ func (c *Choice) Update(msg tea.Msg) (Section, tea.Cmd) {
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
 			switch msg.String() {
+			case "q":
+				return c, nil
 			case "enter":
 				c.logger.LogToFile("debug", fmt.Sprintf("submiting choice [%s]", c.choice.SelectedItem().(listitems.ChoiceItem).Option))
-				return c, func() tea.Msg { return SubmitChoiceMsg(c.choice.SelectedItem().(listitems.ChoiceItem).Option) }
+				return c, func() tea.Msg { return teamsg.SubmitChoiceMsg(c.choice.SelectedItem().(listitems.ChoiceItem).Option) }
 			}
-		case OptionsMsg:
+		case teamsg.OptionsMsg:
 			return c, c.choice.SetItems(msg)
 		}
 		choice, cmd := c.choice.Update(msg)
@@ -69,20 +75,24 @@ func (c *Choice) Update(msg tea.Msg) (Section, tea.Cmd) {
 }
 
 func (c *Choice) View() string {
+	title := styles.TitleStyle.Render(c.choice.Title)
+	secView := lipgloss.JoinVertical(lipgloss.Top, title, c.choice.View())
 	if !c.hidden {
 		if c.focused {
-			return styles.ActiveStyle.Render(lipgloss.JoinVertical(lipgloss.Center, c.choice.Title, c.choice.View()))
+			return styles.ActiveStyle.Render(secView)
 		}
-		return styles.InactiveStyle.Render(lipgloss.JoinVertical(lipgloss.Center, c.choice.Title, c.choice.View()))
+		return styles.InactiveStyle.Render(secView)
 	}
 	return ""
 }
 
 func (c *Choice) Hide() {
+	c.focused = false
 	c.hidden = true
 }
 
 func (c *Choice) Show() {
+	c.focused = true
 	c.hidden = false
 }
 
@@ -94,5 +104,3 @@ func (c *Choice) Focus() {
 func (c *Choice) Blur() {
 	c.focused = false
 }
-
-type SubmitChoiceMsg listitems.OptionName

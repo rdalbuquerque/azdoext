@@ -2,7 +2,7 @@ package sections
 
 import (
 	"azdoext/pkgs/styles"
-	"context"
+	"azdoext/pkgs/teamsg"
 
 	"github.com/charmbracelet/bubbles/textarea"
 	tea "github.com/charmbracelet/bubbletea"
@@ -10,10 +10,14 @@ import (
 )
 
 type CommitSection struct {
-	hidden   bool
-	focused  bool
-	title    string
-	textarea textarea.Model
+	hidden            bool
+	focused           bool
+	title             string
+	textarea          textarea.Model
+	sectionIdentifier SectionName
+	pushed            bool
+	pushInProgress    bool
+	help              string
 }
 
 func (cs *CommitSection) IsHidden() bool {
@@ -24,30 +28,49 @@ func (cs *CommitSection) IsFocused() bool {
 	return cs.focused
 }
 
-func NewCommitSection(_ context.Context) Section {
-	title := "Git commit:"
+func NewCommitSection(secid SectionName) Section {
+	title := styles.TitleStyle.Render("Git commit:")
+	styledHelpText := styles.ShortHelpStyle.Render("ctrl+s save and push")
 	textarea := textarea.New()
 	return &CommitSection{
-		title:    title,
-		textarea: textarea,
+		title:             title,
+		textarea:          textarea,
+		sectionIdentifier: secid,
+		help:              styledHelpText,
 	}
+}
+
+func (cs *CommitSection) GetSectionIdentifier() SectionName {
+	return cs.sectionIdentifier
 }
 
 func (cs *CommitSection) SetDimensions(width, height int) {
 	cs.textarea.SetWidth(styles.DefaultSectionWidth)
-	cs.textarea.SetHeight(height - 1)
+	cs.textarea.SetHeight(height - 4)
 }
 
 func (cs *CommitSection) Update(msg tea.Msg) (Section, tea.Cmd) {
+	switch msg.(type) {
+	case teamsg.GitPushedMsg:
+		cs.pushed = true
+		cs.pushInProgress = false
+		return cs, nil
+	}
 	if cs.focused {
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
-			if cs.focused {
-				switch msg.String() {
-				case "ctrl+s":
-					cs.textarea.Blur()
-					return cs, func() tea.Msg { return commitMsg(cs.textarea.Value()) }
+			switch msg.String() {
+			case "ctrl+s":
+				if cs.pushed || cs.pushInProgress {
+					cs.textarea.InsertString("\n")
+					cs.textarea.FocusedStyle.CursorLine = lipgloss.NewStyle().Foreground(lipgloss.Color("#d67e3c"))
+					cs.textarea.BlurredStyle.CursorLine = lipgloss.NewStyle().Foreground(lipgloss.Color("#d67e3c"))
+					cs.textarea.InsertString("Already pushing or pushed...")
+					return cs, nil
 				}
+				cs.pushInProgress = true
+				cs.textarea.Blur()
+				return cs, func() tea.Msg { return teamsg.CommitMsg(cs.textarea.Value()) }
 			}
 		}
 		ta, cmd := cs.textarea.Update(msg)
@@ -60,9 +83,9 @@ func (cs *CommitSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 func (cs *CommitSection) View() string {
 	if !cs.hidden {
 		if cs.focused {
-			return styles.ActiveStyle.Render(lipgloss.JoinVertical(lipgloss.Center, cs.title, cs.textarea.View()))
+			return styles.ActiveStyle.Render(lipgloss.JoinVertical(lipgloss.Top, cs.title, "", cs.textarea.View(), "", cs.help))
 		}
-		return styles.InactiveStyle.Render(lipgloss.JoinVertical(lipgloss.Center, cs.title, cs.textarea.View()))
+		return styles.InactiveStyle.Render(lipgloss.JoinVertical(lipgloss.Top, cs.title, "", cs.textarea.View(), "", cs.help))
 	}
 	return ""
 }
@@ -84,5 +107,3 @@ func (cs *CommitSection) Blur() {
 	cs.textarea.Blur()
 	cs.focused = false
 }
-
-type commitMsg string

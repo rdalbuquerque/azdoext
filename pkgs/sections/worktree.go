@@ -5,7 +5,7 @@ import (
 	"azdoext/pkgs/listitems"
 	"azdoext/pkgs/logger"
 	"azdoext/pkgs/styles"
-	"context"
+	"azdoext/pkgs/teamsg"
 	"errors"
 
 	bubbleshelp "github.com/charmbracelet/bubbles/help"
@@ -16,17 +16,18 @@ import (
 )
 
 type WorktreeSection struct {
-	logger     *logger.Logger
-	hidden     bool
-	focused    bool
-	status     list.Model
-	customhelp string
-	branch     string
+	logger            *logger.Logger
+	hidden            bool
+	focused           bool
+	status            list.Model
+	customhelp        string
+	branch            string
+	sectionIdentifier SectionName
 }
 
 func (ws *WorktreeSection) push() tea.Msg {
 	gitexec.Push("origin", ws.branch)
-	return GitPushedMsg(true)
+	return teamsg.GitPushedMsg(true)
 }
 
 func (ws *WorktreeSection) addAllToStage() {
@@ -34,9 +35,10 @@ func (ws *WorktreeSection) addAllToStage() {
 	ws.setStagedFileList()
 }
 
-func NewWorktreeSection(_ context.Context) Section {
+func NewWorktreeSection(secid SectionName, currentBranch string) Section {
 	logger := logger.NewLogger("worktree.log")
 	worktreeSection := &WorktreeSection{}
+	worktreeSection.branch = currentBranch
 	worktreeSection.logger = logger
 	worktreeSection.status = newFileList()
 	worktreeSection.setStagedFileList()
@@ -55,7 +57,12 @@ func NewWorktreeSection(_ context.Context) Section {
 	}
 	customhelp := statusHelp.View(hk)
 	worktreeSection.customhelp = customhelp
+	worktreeSection.sectionIdentifier = secid
 	return worktreeSection
+}
+
+func (ws *WorktreeSection) GetSectionIdentifier() SectionName {
+	return ws.sectionIdentifier
 }
 
 func (ws *WorktreeSection) SetDimensions(width, height int) {
@@ -95,34 +102,29 @@ func (ws *WorktreeSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 		return ws, nil
 	}
 	switch msg := msg.(type) {
-	case BroadcastGitInfoMsg:
-		ws.logger.LogToFile("debug", "BroadcastGitInfoMsg")
-		gitconfig := gitexec.Config()
-		remoteUrl := gitconfig.Origin
-		curBranch := gitconfig.CurrentBranch
-		ref := "refs/heads/" + curBranch
-		ws.branch = curBranch
-		return ws, func() tea.Msg { return GitInfoMsg{CurrentBranch: ref, RemoteUrl: remoteUrl} }
-	case commitMsg:
+	case teamsg.CommitMsg:
 		if ws.noStagedFiles() {
 			ws.addAllToStage()
 		}
 		ws.status.Title = "Pushing..."
 		gitexec.Commit(string(msg))
-		return ws, tea.Batch(ws.push, func() tea.Msg { return GitPushingMsg(true) })
-	case GitPushedMsg:
+		return ws, tea.Batch(ws.push, func() tea.Msg { return teamsg.GitPushingMsg(true) })
+	case teamsg.GitPushedMsg:
 		ws.status.Title = "Pushed"
 	}
-
+	if len(ws.status.Items()) == 0 {
+		return ws, func() tea.Msg { return teamsg.NothingToCommitMsg{} }
+	}
 	return ws, nil
 }
 
 func (ws *WorktreeSection) View() string {
+	title := styles.TitleStyle.Render(ws.status.Title)
 	if !ws.hidden {
 		if ws.focused {
-			return styles.ActiveStyle.Render(lipgloss.JoinVertical(lipgloss.Center, ws.status.Title, ws.status.View(), ws.customhelp))
+			return styles.ActiveStyle.Render(lipgloss.JoinVertical(lipgloss.Top, title, ws.status.View(), ws.customhelp))
 		}
-		return styles.InactiveStyle.Render(lipgloss.JoinVertical(lipgloss.Center, ws.status.Title, ws.status.View(), ws.customhelp))
+		return styles.InactiveStyle.Render(lipgloss.JoinVertical(lipgloss.Top, title, ws.status.View(), ws.customhelp))
 	}
 	return ""
 }
@@ -194,12 +196,4 @@ func (ws *WorktreeSection) noStagedFiles() bool {
 		}
 	}
 	return true
-}
-
-type GitPushedMsg bool
-type GitPushingMsg bool
-type BroadcastGitInfoMsg bool
-type GitInfoMsg struct {
-	CurrentBranch string
-	RemoteUrl     string
 }

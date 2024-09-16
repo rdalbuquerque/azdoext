@@ -2,7 +2,6 @@ package sections
 
 import (
 	"azdoext/pkgs/styles"
-	"context"
 
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -59,14 +58,15 @@ While on the pipeline instance section you can go to logs, browse and hit '/' to
 
 `
 
-type Help struct {
-	hidden   bool
-	focused  bool
-	viewport viewport.Model
-	style    lipgloss.Style
+type HelpSection struct {
+	hidden            bool
+	focused           bool
+	viewport          viewport.Model
+	style             lipgloss.Style
+	sectionIdentifier SectionName
 }
 
-func NewHelp(_ context.Context) Section {
+func NewHelpSection(secid SectionName) Section {
 	vp := viewport.New(0, 0)
 
 	renderer, err := glamour.NewTermRenderer(
@@ -83,26 +83,31 @@ func NewHelp(_ context.Context) Section {
 
 	vp.SetContent(str)
 
-	return &Help{
-		viewport: vp,
-		style:    styles.ActiveStyle.Copy(),
+	return &HelpSection{
+		sectionIdentifier: "help",
+		viewport:          vp,
+		style:             styles.ActiveStyle.Copy(),
 	}
 }
 
-func (h *Help) SetDimensions(width, height int) {
+func (h *HelpSection) GetSectionIdentifier() SectionName {
+	return h.sectionIdentifier
+}
+
+func (h *HelpSection) SetDimensions(width, height int) {
 
 	h.viewport.Height = height
 }
 
-func (h *Help) IsHidden() bool {
+func (h *HelpSection) IsHidden() bool {
 	return h.hidden
 }
 
-func (h *Help) IsFocused() bool {
+func (h *HelpSection) IsFocused() bool {
 	return h.focused
 }
 
-func (h *Help) Update(msg tea.Msg) (Section, tea.Cmd) {
+func (h *HelpSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 	if h.focused {
 		vp, cmd := h.viewport.Update(msg)
 		h.viewport = vp
@@ -111,26 +116,26 @@ func (h *Help) Update(msg tea.Msg) (Section, tea.Cmd) {
 	return h, nil
 }
 
-func (h *Help) View() string {
+func (h *HelpSection) View() string {
 	if h.focused {
 		return h.style.Width(styles.Width).Render(h.viewport.View())
 	}
 	return ""
 }
 
-func (h *Help) Hide() {
+func (h *HelpSection) Hide() {
 	h.hidden = true
 }
 
-func (h *Help) Show() {
+func (h *HelpSection) Show() {
 	h.hidden = false
 }
 
-func (h *Help) Focus() {
+func (h *HelpSection) Focus() {
 	h.Show()
 	h.focused = true
 }
 
-func (h *Help) Blur() {
+func (h *HelpSection) Blur() {
 	h.focused = false
 }

@@ -1,8 +1,11 @@
 package pages
 
 import (
+	"azdoext/pkgs/azdo"
+	"azdoext/pkgs/logger"
 	"azdoext/pkgs/sections"
 	"azdoext/pkgs/styles"
+	"azdoext/pkgs/teamsg"
 	"context"
 
 	bubbleshelp "github.com/charmbracelet/bubbles/help"
@@ -11,12 +14,15 @@ import (
 )
 
 type PipelineRunPage struct {
-	current         bool
-	name            PageName
-	ctx             context.Context
-	sections        map[sections.SectionName]sections.Section
-	orderedSections []sections.SectionName
-	shorthelp       string
+	current          bool
+	name             PageName
+	ctx              context.Context
+	cancelCtx        context.CancelFunc
+	sections         map[sections.SectionName]sections.Section
+	orderedSections  []sections.SectionName
+	shorthelp        string
+	logger           *logger.Logger
+	sectionMaximized *bool
 }
 
 func (p *PipelineRunPage) IsCurrentPage() bool {
@@ -31,7 +37,11 @@ func (p *PipelineRunPage) UnsetCurrentPage() {
 	p.current = false
 }
 
-func (p *PipelineRunPage) AddSection(ctx context.Context, section sections.SectionName) {
+func (p *PipelineRunPage) AddSection(section sections.Section) {
+	secid := section.GetSectionIdentifier()
+	if secid == "" {
+		panic("section identifier is empty")
+	}
 	if p.sections == nil {
 		p.sections = make(map[sections.SectionName]sections.Section)
 	}
@@ -40,24 +50,31 @@ func (p *PipelineRunPage) AddSection(ctx context.Context, section sections.Secti
 			p.sections[sec].Blur()
 		}
 	}
-	newSection := sectionNewFuncs[section](ctx)
-	newSection.SetDimensions(0, styles.Height)
-	newSection.Show()
-	newSection.Focus()
-	p.orderedSections = append(p.orderedSections, section)
-	p.sections[section] = newSection
+	section.SetDimensions(0, styles.Height)
+	section.Show()
+	section.Focus()
+	p.orderedSections = append(p.orderedSections, secid)
+	p.sections[secid] = section
 }
 
-func NewPipelineRunPage(ctx context.Context) PageInterface {
+func NewPipelineRunPage(ctx context.Context, buildclient azdo.BuildClientInterface, azdoconfig azdo.Config) PageInterface {
+	logger := logger.NewLogger("pipelinerun.log")
 	hk := helpKeys{}
 	helpstring := bubbleshelp.New().View(hk)
+
+	ctxWithCancel, cancel := context.WithCancel(ctx)
+
 	pipelineRunPage := &PipelineRunPage{
-		ctx:       ctx,
+		ctx:       ctxWithCancel,
+		cancelCtx: cancel,
 		name:      PipelineRun,
 		shorthelp: helpstring,
+		logger:    logger,
 	}
-	pipelineRunPage.AddSection(ctx, sections.PipelineTasks)
-	pipelineRunPage.AddSection(ctx, sections.LogViewport)
+	pipetaskssec := sections.NewPipelineTasks(ctxWithCancel, sections.PipelineTasks, buildclient)
+	pipelineRunPage.AddSection(pipetaskssec)
+	logvpsec := sections.NewLogViewport(ctxWithCancel, sections.LogViewport, azdoconfig)
+	pipelineRunPage.AddSection(logvpsec)
 	pipelineRunPage.sections[sections.LogViewport].Blur()
 	pipelineRunPage.sections[sections.PipelineTasks].Focus()
 	return pipelineRunPage
@@ -68,8 +85,13 @@ func (p *PipelineRunPage) GetPageName() PageName {
 }
 
 func (p *PipelineRunPage) SetDimensions(width, height int) {
-	for s := range p.sections {
-		p.sections[s].SetDimensions(width, height)
+	if width == 0 {
+		p.sections[sections.PipelineTasks].SetDimensions(styles.DefaultSectionWidth, height)
+		p.sections[sections.LogViewport].SetDimensions(styles.Width-styles.DefaultSectionWidth, height)
+		return
+	}
+	for _, section := range p.orderedSections {
+		p.sections[section].SetDimensions(width, height)
 	}
 }
 
@@ -89,6 +111,18 @@ func (p *PipelineRunPage) Update(msg tea.Msg) (PageInterface, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
+		case "alt+m":
+			if p.sectionMaximized == nil {
+				p.sectionMaximized = new(bool)
+			}
+			if *p.sectionMaximized {
+				p.restoreSectionDimensions()
+				*p.sectionMaximized = false
+			} else {
+				p.maximizeCurrentSection()
+				*p.sectionMaximized = true
+			}
+			return p, toggleMaximize()
 		case "tab":
 			p.switchSection()
 			return p, nil
@@ -98,6 +132,34 @@ func (p *PipelineRunPage) Update(msg tea.Msg) (PageInterface, tea.Cmd) {
 	cmds = append(cmds, sectioncmds...)
 	p.sections = sections
 	return p, tea.Batch(cmds...)
+}
+
+func toggleMaximize() tea.Cmd {
+	return func() tea.Msg {
+		return teamsg.ToggleMaximizeMsg{}
+	}
+}
+
+func (p *PipelineRunPage) maximizeCurrentSection() sections.SectionName {
+	if p.sections[sections.PipelineTasks].IsFocused() {
+		p.sections[sections.PipelineTasks].SetDimensions(styles.Width, styles.Height)
+		p.sections[sections.LogViewport].Hide()
+		return sections.PipelineTasks
+	} else {
+		p.sections[sections.LogViewport].SetDimensions(styles.Width, styles.Height)
+		p.sections[sections.PipelineTasks].Hide()
+		return sections.LogViewport
+	}
+}
+
+func (p *PipelineRunPage) restoreSectionDimensions() {
+	if p.sections[sections.PipelineTasks].IsFocused() {
+		p.sections[sections.PipelineTasks].SetDimensions(styles.DefaultSectionWidth, styles.Height)
+		p.sections[sections.LogViewport].Show()
+	} else {
+		p.sections[sections.LogViewport].SetDimensions(styles.Width-styles.DefaultSectionWidth, styles.Height)
+		p.sections[sections.PipelineTasks].Show()
+	}
 }
 
 func (p *PipelineRunPage) View() string {

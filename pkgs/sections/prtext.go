@@ -1,36 +1,36 @@
 package sections
 
 import (
+	"azdoext/pkgs/azdo"
 	"azdoext/pkgs/logger"
 	"azdoext/pkgs/styles"
+	"azdoext/pkgs/teamsg"
 	"azdoext/pkgs/utils"
 	"context"
-	"errors"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/textarea"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/google/uuid"
-	"github.com/microsoft/azure-devops-go-api/azuredevops/v7"
 	"github.com/microsoft/azure-devops-go-api/azuredevops/v7/git"
 )
 
-type GitPRCreatedMsg bool
-
 type PRSection struct {
-	logger        *logger.Logger
-	hidden        bool
-	focused       bool
-	title         string
-	textarea      textarea.Model
-	project       string
-	repositoryId  uuid.UUID
-	currentBranch string
-	defaultBranch string
-	gitclient     git.Client
+	errorDisplayed    bool
+	logger            *logger.Logger
+	hidden            bool
+	focused           bool
+	title             string
+	textarea          textarea.Model
+	project           string
+	repositoryId      uuid.UUID
+	currentBranch     string
+	defaultBranch     string
+	gitclient         azdo.GitClientInterface
+	sectionIdentifier SectionName
+	help              string
 }
 
 func (pr *PRSection) IsHidden() bool {
@@ -41,9 +41,10 @@ func (pr *PRSection) IsFocused() bool {
 	return pr.focused
 }
 
-func NewPRSection(_ context.Context) Section {
+func NewPRSection(secid SectionName, gitclient azdo.GitClientInterface, azdoconfig azdo.Config) Section {
 	logger := logger.NewLogger("pr.log")
 	title := "Open PR:"
+	styledHelpText := styles.ShortHelpStyle.Render("ctrl+s save and open PR")
 	textarea := textarea.New()
 	textarea.SetHeight(styles.ActiveStyle.GetHeight() - 2)
 	textarea.Placeholder = "Title and description"
@@ -55,54 +56,71 @@ func NewPRSection(_ context.Context) Section {
 		}
 	})
 	return &PRSection{
-		logger:   logger,
-		title:    title,
-		textarea: textarea,
+		logger:            logger,
+		title:             title,
+		textarea:          textarea,
+		sectionIdentifier: secid,
+		project:           azdoconfig.ProjectId,
+		repositoryId:      azdoconfig.RepositoryId,
+		currentBranch:     formatBranchName(azdoconfig.CurrentBranch),
+		defaultBranch:     azdoconfig.DefaultBranch,
+		gitclient:         gitclient,
+		help:              styledHelpText,
 	}
 }
 
+// formatBranchName adds refs/heads/ prefix to the branch name if it is not already present
+func formatBranchName(branch string) string {
+	if strings.HasPrefix(branch, "refs/heads/") {
+		return branch
+	}
+	return "refs/heads/" + branch
+}
+
+func (pr *PRSection) GetSectionIdentifier() SectionName {
+	return pr.sectionIdentifier
+}
+
 func (pr *PRSection) SetDimensions(width, height int) {
-	pr.textarea.SetWidth(styles.DefaultSectionWidth)
-	pr.textarea.SetHeight(height - 1)
+	pr.textarea.SetWidth(styles.DefaultSectionWidth + 20)
+	pr.textarea.SetHeight(height - 4)
 }
 
 func (pr *PRSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 	switch msg := msg.(type) {
-	case GitInfoMsg:
-		azdoInfo := utils.ExtractAzdoInfo(msg.RemoteUrl)
-		azdoconn := azuredevops.NewPatConnection(azdoInfo.OrgUrl, os.Getenv("AZDO_PERSONAL_ACCESS_TOKEN"))
-		gitclient, err := git.NewClient(context.Background(), azdoconn)
-		if err != nil {
-			if errors.Is(err, context.Canceled) {
+	case tea.KeyMsg:
+		if pr.focused {
+			switch msg.String() {
+			case "ctrl+s":
+				if pr.textarea.Focused() {
+					pr.textarea.Blur()
+				}
+				return pr, func() tea.Msg { return teamsg.SubmitPRMsg(pr.textarea.Value()) }
+			}
+			if pr.errorDisplayed && msg.String() == "enter" {
+				pr.textarea.Reset()
 				return pr, nil
 			}
-			panic(err)
+
 		}
-		defaultBranch := utils.GetRepositoryDefaultBranch(context.Background(), azdoconn, azdoInfo.Project, azdoInfo.RepositoryName)
-		pr.logger.LogToFile("info", "default branch: "+defaultBranch)
-		repositoryId := utils.GetRepositoryId(context.Background(), azdoconn, azdoInfo.Project, azdoInfo.RepositoryName)
-		pr.logger.LogToFile("info", "repository id: "+repositoryId.String())
-		pr.gitclient, pr.project, pr.currentBranch, pr.defaultBranch, pr.repositoryId = gitclient, azdoInfo.Project, msg.CurrentBranch, defaultBranch, repositoryId
-		return pr, nil
-	case tea.KeyMsg:
-		switch msg.String() {
-		case "ctrl+s":
-			if pr.textarea.Focused() {
-				pr.textarea.Blur()
-			}
-			return pr, func() tea.Msg { return SubmitPRMsg(pr.textarea.Value()) }
-		}
-	case SubmitPRMsg:
+	case teamsg.SubmitPRMsg:
 		titleAndDescription := strings.SplitN(string(msg), "\n", 2)
-		if len(titleAndDescription) != 2 {
-			return pr, func() tea.Msg { return PRErrorMsg("Title and description are required") }
-		}
 		title := titleAndDescription[0]
-		description := titleAndDescription[1]
+		if title == "" {
+			panic("PR title cannot be empty")
+		}
+		var description string
+		if len(titleAndDescription) == 2 {
+			description = titleAndDescription[1]
+		}
 		pr.logger.LogToFile("info", fmt.Sprintf("submitting PR with title: %s and description: %s, from %s to %s", title, description, pr.currentBranch, pr.defaultBranch))
 		return pr, func() tea.Msg { return pr.openPR(pr.currentBranch, pr.defaultBranch, title, description) }
-	case PRErrorMsg:
-		pr.textarea.Placeholder = string(msg)
+	case teamsg.PRErrorMsg:
+		pr.textarea.FocusedStyle.Text = lipgloss.NewStyle().Foreground(lipgloss.Color("#cd4944"))
+		pr.textarea.BlurredStyle.Text = lipgloss.NewStyle().Foreground(lipgloss.Color("#cd4944"))
+		pr.textarea.Focus()
+		pr.errorDisplayed = true
+		pr.textarea.SetValue(string(msg) + "\nPress 'enter' to dismiss")
 	}
 	ta, cmd := pr.textarea.Update(msg)
 	pr.textarea = ta
@@ -110,7 +128,8 @@ func (pr *PRSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 }
 
 func (pr *PRSection) openPR(currentBranch, defaultBranch, title, description string) tea.Msg {
-	_, err := pr.gitclient.CreatePullRequest(context.Background(), git.CreatePullRequestArgs{
+	pr.logger.LogToFile("info", fmt.Sprintf("creating PR with title: %s and description: %s, from %s to %s", title, description, currentBranch, defaultBranch))
+	createdpr, err := pr.gitclient.CreatePullRequest(context.Background(), git.CreatePullRequestArgs{
 		RepositoryId: utils.Ptr(pr.repositoryId.String()),
 		Project:      &pr.project,
 		GitPullRequestToCreate: &git.GitPullRequest{
@@ -120,24 +139,27 @@ func (pr *PRSection) openPR(currentBranch, defaultBranch, title, description str
 			TargetRefName: &defaultBranch,
 		},
 	})
+	pr.logger.LogToFile("info", fmt.Sprintf("PR created: %v", createdpr))
 	if err != nil {
 		pr.logger.LogToFile("error", "error while creating PR: "+err.Error())
-		return GitPRCreatedMsg(false)
+		return teamsg.PRErrorMsg(err.Error())
 	}
-	return GitPRCreatedMsg(true)
+	return teamsg.GitPRCreatedMsg{}
 }
 
 func (pr *PRSection) View() string {
+	title := styles.TitleStyle.Render(pr.title)
 	if !pr.hidden {
 		if pr.focused {
-			return styles.ActiveStyle.Render(lipgloss.JoinVertical(lipgloss.Center, pr.title, pr.textarea.View()))
+			return styles.ActiveStyle.Render(lipgloss.JoinVertical(lipgloss.Top, title, "", pr.textarea.View(), "", pr.help))
 		}
-		return styles.InactiveStyle.Render(lipgloss.JoinVertical(lipgloss.Center, pr.title, pr.textarea.View()))
+		return styles.InactiveStyle.Render(lipgloss.JoinVertical(lipgloss.Top, title, "", pr.textarea.View(), "", pr.help))
 	}
 	return ""
 }
 
 func (pr *PRSection) Hide() {
+	pr.focused = false
 	pr.hidden = true
 }
 
@@ -155,6 +177,3 @@ func (pr *PRSection) Blur() {
 	pr.textarea.Blur()
 	pr.focused = false
 }
-
-type SubmitPRMsg string
-type PRErrorMsg string

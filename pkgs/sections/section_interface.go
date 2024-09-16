@@ -5,6 +5,7 @@ import (
 )
 
 type Section interface {
+	GetSectionIdentifier() SectionName
 	IsHidden() bool
 	IsFocused() bool
 	Hide()
@@ -25,7 +26,7 @@ const (
 	Worktree             SectionName = "worktree"
 	AzdoSection          SectionName = "azdoSection"
 	OpenPR               SectionName = "openPR"
-	HelpSection          SectionName = "help"
+	Help                 SectionName = "help"
 	PipelineTasks        SectionName = "pipelineTasks"
 	LogViewport          SectionName = "logviewport"
 	PipelineList         SectionName = "pipelineList"

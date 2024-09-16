@@ -1,9 +1,12 @@
 package pages
 
 import (
+	"azdoext/pkgs/azdo"
 	"azdoext/pkgs/listitems"
+	"azdoext/pkgs/logger"
 	"azdoext/pkgs/sections"
 	"azdoext/pkgs/styles"
+	"azdoext/pkgs/teamsg"
 	"context"
 
 	bubbleshelp "github.com/charmbracelet/bubbles/help"
@@ -14,6 +17,7 @@ import (
 )
 
 type GitPage struct {
+	logger          *logger.Logger
 	current         bool
 	name            PageName
 	sections        map[sections.SectionName]sections.Section
@@ -33,7 +37,11 @@ func (p *GitPage) UnsetCurrentPage() {
 	p.current = false
 }
 
-func (p *GitPage) AddSection(ctx context.Context, section sections.SectionName) {
+func (p *GitPage) AddSection(section sections.Section) {
+	secid := section.GetSectionIdentifier()
+	if secid == "" {
+		panic("section identifier is empty")
+	}
 	if p.sections == nil {
 		p.sections = make(map[sections.SectionName]sections.Section)
 	}
@@ -42,24 +50,30 @@ func (p *GitPage) AddSection(ctx context.Context, section sections.SectionName) 
 			p.sections[sec].Blur()
 		}
 	}
-	newSection := sectionNewFuncs[section](ctx)
-	newSection.SetDimensions(0, styles.Height)
-	newSection.Show()
-	newSection.Focus()
-	p.orderedSections = append(p.orderedSections, section)
-	p.sections[section] = newSection
+	section.SetDimensions(0, styles.Height)
+	section.Show()
+	section.Focus()
+	p.orderedSections = append(p.orderedSections, secid)
+	p.sections[secid] = section
 }
 
-func NewGitPage() PageInterface {
+func NewGitPage(ctx context.Context, gitclient azdo.GitClientInterface, azdoconfig azdo.Config) PageInterface {
+	logger := logger.NewLogger("gitpage.log")
 	hk := helpKeys{}
 	helpstring := bubbleshelp.New().View(hk)
-	gitPage := &GitPage{}
+	gitPage := &GitPage{
+		logger: logger,
+	}
 	gitPage.name = Git
 	gitPage.shortHelp = helpstring
-	gitPage.AddSection(context.Background(), sections.Commit)
-	gitPage.AddSection(context.Background(), sections.Worktree)
-	gitPage.AddSection(context.Background(), sections.PrOrPipelineChoice)
-	gitPage.AddSection(context.Background(), sections.OpenPR)
+	commitsec := sections.NewCommitSection(sections.Commit)
+	gitPage.AddSection(commitsec)
+	worktreesec := sections.NewWorktreeSection(sections.Worktree, azdoconfig.CurrentBranch)
+	gitPage.AddSection(worktreesec)
+	commitActionChoiceSec := sections.NewChoice(sections.PrOrPipelineChoice)
+	gitPage.AddSection(commitActionChoiceSec)
+	openprsec := sections.NewPRSection(sections.OpenPR, gitclient, azdoconfig)
+	gitPage.AddSection(openprsec)
 	gitPage.sections[sections.Commit].Focus()
 	gitPage.sections[sections.Worktree].Blur()
 	gitPage.sections[sections.PrOrPipelineChoice].Hide()
@@ -78,20 +92,24 @@ func (p *GitPage) Update(msg tea.Msg) (PageInterface, tea.Cmd) {
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
 			switch msg.String() {
+			case "q":
+				sec, cmd := p.sections[sections.Commit].Update(msg)
+				p.sections[sections.Commit] = sec
+				return p, cmd
 			case "tab":
 				p.switchSection()
 				return p, nil
 			}
-		case sections.GitPushedMsg:
+		case teamsg.GitPushedMsg:
 			p.SetFocus(sections.PrOrPipelineChoice)
 			options := []list.Item{
 				listitems.ChoiceItem{Option: sections.Options.OpenPR},
 				listitems.ChoiceItem{Option: sections.Options.GoToPipelines},
 			}
-			sec, cmd := p.sections[sections.PrOrPipelineChoice].Update(sections.OptionsMsg(options))
+			sec, cmd := p.sections[sections.PrOrPipelineChoice].Update(teamsg.OptionsMsg(options))
 			cmds = append(cmds, cmd)
 			p.sections[sections.PrOrPipelineChoice] = sec
-		case sections.SubmitChoiceMsg:
+		case teamsg.SubmitChoiceMsg:
 			if string(msg) == string(sections.Options.OpenPR) {
 				p.SetFocus(sections.OpenPR)
 			}

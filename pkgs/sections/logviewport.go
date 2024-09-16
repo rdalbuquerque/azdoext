@@ -1,58 +1,90 @@
 package sections
 
 import (
+	"azdoext/pkgs/azdo"
+	"azdoext/pkgs/azdosignalr"
 	"azdoext/pkgs/logger"
 	"azdoext/pkgs/searchableviewport"
 	"azdoext/pkgs/styles"
+	"azdoext/pkgs/teamsg"
 	"azdoext/pkgs/utils"
 	"bufio"
 	"context"
-	"errors"
 	"fmt"
 	"io"
-	"os"
+	"regexp"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/microsoft/azure-devops-go-api/azuredevops/v7"
+	"github.com/charmbracelet/lipgloss"
+	"github.com/google/uuid"
 	"github.com/microsoft/azure-devops-go-api/azuredevops/v7/build"
+	"github.com/muesli/reflow/wordwrap"
 )
 
-type RecordLog struct {
-	Content         string
-	LastRecordState build.TimelineRecordState
-}
-
-// msg with task id so log can be fetched
-type LogIdMsg struct {
-	BuildId     int
-	LogId       *int
-	RecordState build.TimelineRecordState
-}
-
 type LogViewportSection struct {
-	logviewport *searchableviewport.Model
-	logger      *logger.Logger
-	hidden      bool
-	focused     bool
-	project     string
-	buildclient build.Client
-	ctx         context.Context
+	logviewport       *searchableviewport.Model
+	logger            *logger.Logger
+	hidden            bool
+	focused           bool
+	ctx               context.Context
+	StyledHelpText    string
+	followRun         bool
+	currentStep       uuid.UUID
+	currentRunId      int
+	sectionIdentifier SectionName
+	azdoConfig        azdo.Config
+	buildclient       azdo.BuildClientInterface
+	buildStatus       string
 
 	// this map stores task logs with log id and log content
-	buildLogs map[int]RecordLog
+	buildLogs utils.Logs
+
+	// channel to receive logs
+	logsChan chan teamsg.LogMsg
+
+	// cancel function to stop receiving logs and close signalr connection
+	readLogsCtx       context.Context
+	cancelReceiveLogs context.CancelFunc
+
+	// channel to signal that the connection is closed
+	connClosedChan chan bool
+
+	// channel to signal an error while closing the connection
+	connClosedErrChan chan error
+
+	// websocket connection to get live logs
+	signalrClient *azdosignalr.SignalRClient
 }
 
-func NewLogViewport(ctx context.Context) Section {
+func NewLogViewport(ctx context.Context, secid SectionName, azdoconfig azdo.Config) Section {
 	logger := logger.NewLogger("logviewport.log")
-	logger.LogToFile("INFO", "logviewport section initialized")
 	vp := searchableviewport.New(0, 0)
+
+	styledHelpText := styles.ShortHelpStyle.Render("/ find • alt+m maximize")
+
+	signalrClient := azdosignalr.NewSignalR(azdoconfig.OrgName, azdoconfig.AccoundId, azdoconfig.ProjectId)
+
+	connClosedChan := make(chan bool)
+	connClosedErrChan := make(chan error)
+
+	buildclient := azdo.NewBuildClient(ctx, azdoconfig.OrgUrl, azdoconfig.ProjectId, azdoconfig.PAT)
 	return &LogViewportSection{
-		logger:      logger,
-		logviewport: vp,
-		ctx:         ctx,
-		buildLogs:   make(map[int]RecordLog),
+		logger:            logger,
+		logviewport:       vp,
+		ctx:               ctx,
+		connClosedChan:    connClosedChan,
+		connClosedErrChan: connClosedErrChan,
+		sectionIdentifier: secid,
+		azdoConfig:        azdoconfig,
+		signalrClient:     signalrClient,
+		StyledHelpText:    styledHelpText,
+		buildclient:       buildclient,
 	}
+}
+
+func (p *LogViewportSection) GetSectionIdentifier() SectionName {
+	return p.sectionIdentifier
 }
 
 func (p *LogViewportSection) IsHidden() bool {
@@ -81,89 +113,175 @@ func (p *LogViewportSection) Blur() {
 }
 
 func (p *LogViewportSection) View() string {
+	helpPlacement := lipgloss.NewStyle().PaddingLeft(p.logviewport.Viewport.Width - len(p.StyledHelpText) + 18)
+	logsAndHelp := lipgloss.JoinVertical(lipgloss.Top, p.logviewport.View(), helpPlacement.Render(p.StyledHelpText))
 	if p.focused {
-		return styles.ActiveStyle.Render(p.logviewport.View())
+		return styles.ActiveStyle.Render(logsAndHelp)
 	}
-	return styles.InactiveStyle.Render(p.logviewport.View())
+	return styles.InactiveStyle.Render(logsAndHelp)
 }
 
 func (p *LogViewportSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 	switch msg := msg.(type) {
-	case PipelineRunIdMsg:
+	case teamsg.ToggleMaximizeMsg:
+		wrappedContent := wordwrap.String(p.buildLogs[p.currentStep], p.logviewport.Viewport.Width)
+		p.logviewport.SetContent(wrappedContent)
+		return p, nil
+	case teamsg.PipelineRunIdMsg:
+		if p.currentRunId == msg.RunId {
+			return p, nil
+		}
+		buildsLogs := make(utils.Logs)
+		p.buildLogs = buildsLogs
+		p.buildStatus = msg.Status
+		p.currentRunId = msg.RunId
+		p.cancelReceiveLogsIfExists()
+
+		logsChan := make(chan teamsg.LogMsg, 100)
+		p.logsChan = logsChan
+
 		p.logviewport.SetContent("")
+		if msg.Status == "completed" {
+			p.handleCompletedRun(msg.RunId)
+			return p, nil
+		}
+		ctx, cancel := context.WithCancel(p.ctx)
+		p.readLogsCtx = ctx
+		p.cancelReceiveLogs = cancel
+		p.startMonitoringLogs(ctx, msg.RunId, p.connClosedChan, p.connClosedErrChan)
+		return p, waitForLogs(*p.logger, ctx, p.logsChan)
+	case teamsg.LogMsg:
+		currentLog, ok := p.buildLogs[msg.StepRecordId]
+		if !ok {
+			p.buildLogs[msg.StepRecordId] = formatLine(msg.NewContent, 1)
+			return p, waitForLogs(*p.logger, p.readLogsCtx, p.logsChan)
+		}
+		lineNum := len(strings.Split(currentLog, "\n")) + 1
+		currentLog += formatLine(msg.NewContent, lineNum)
+		p.buildLogs[msg.StepRecordId] = currentLog
+		if p.currentStep == msg.StepRecordId {
+			p.logviewport.SetContent(wordwrap.String(currentLog, p.logviewport.Viewport.Width))
+		}
+		if p.followRun {
+			p.currentStep = msg.StepRecordId
+			p.logviewport.SetContent(wordwrap.String(currentLog, p.logviewport.Viewport.Width))
+			p.logviewport.GotoBottom()
+		}
+		return p, waitForLogs(*p.logger, p.readLogsCtx, p.logsChan)
+	// case teamsg.ReadLogsCtxDoneMsg:
+	// 	p.logviewport.SetContent("")
+	// 	return p, nil
+	case teamsg.RecordSelectedMsg:
+		wrappedContent := wordwrap.String(p.buildLogs[msg.RecordId], p.logviewport.Viewport.Width)
+		p.logviewport.SetContent(wrappedContent)
+		p.logviewport.GotoBottom()
+		p.currentStep = msg.RecordId
 		return p, nil
 	case tea.KeyMsg:
+		if msg.String() == "f" {
+			p.followRun = !p.followRun
+			return p, nil
+		}
 		if p.focused {
 			vp, cmd := p.logviewport.Update(msg)
 			p.logviewport = vp
 			return p, cmd
 		}
-	case LogIdMsg:
-		p.logger.LogToFile("INFO", "received LogIdMsg")
-		if msg.LogId == nil {
-			return p, nil
-		}
-		p.logger.LogToFile("INFO", fmt.Sprintf("log id: %v", *msg.LogId))
-		content, err := p.GetLog(msg)
-		if err != nil {
-			p.logger.LogToFile("ERROR", err.Error())
-			return p, nil
-		}
-		p.buildLogs[*msg.LogId] = RecordLog{
-			Content:         content,
-			LastRecordState: msg.RecordState,
-		}
-		p.logviewport.SetContent(content)
-		return p, nil
-	case GitInfoMsg:
-		p.logger.LogToFile("INFO", "received git info")
-		azdoInfo := utils.ExtractAzdoInfo(msg.RemoteUrl)
-		azdoconn := azuredevops.NewPatConnection(azdoInfo.OrgUrl, os.Getenv("AZDO_PERSONAL_ACCESS_TOKEN"))
-		buildclient, err := build.NewClient(p.ctx, azdoconn)
-		if err != nil {
-			if errors.Is(err, context.Canceled) {
-				return p, nil
-			}
-			panic(err)
-		}
-		p.buildclient, p.project = buildclient, azdoInfo.Project
-		return p, nil
 	}
 	return p, nil
 }
 
-func (p *LogViewportSection) GetLog(msg LogIdMsg) (string, error) {
-	logId := *msg.LogId
-	if p.shouldGetLog(logId) {
-		logReader, err := p.buildclient.GetBuildLog(p.ctx, build.GetBuildLogArgs{
-			Project: &p.project,
-			BuildId: &msg.BuildId,
-			LogId:   &logId,
+func (p *LogViewportSection) startMonitoringLogs(ctx context.Context, runId int, connClosedChan chan bool, connClosedErrChan chan error) {
+	p.logger.LogToFile("INFO", "connecting to signalr")
+	err := p.signalrClient.Connect()
+	if err != nil {
+		panic(fmt.Sprintf("error connecting to signalr: %v", err))
+	}
+	go p.signalrClient.StartReceivingLoop(ctx, p.logsChan, connClosedChan, connClosedErrChan)
+	p.signalrClient.SendWatchBuildMessage(runId)
+}
+
+func waitForLogs(logger logger.Logger, ctx context.Context, logsChan chan teamsg.LogMsg) tea.Cmd {
+	return func() tea.Msg {
+		// select {
+		// case <-ctx.Done():
+		// 	logger.LogToFile("INFO", "receiving logs done")
+		// 	return teamsg.ReadLogsCtxDoneMsg{}
+		// default:
+		return <-logsChan
+		// }
+	}
+}
+
+func (p *LogViewportSection) cancelReceiveLogsIfExists() {
+	if p.cancelReceiveLogs != nil {
+		p.cancelReceiveLogs()
+		p.cancelReceiveLogs = nil
+		select {
+		case <-p.connClosedChan:
+			p.logger.LogToFile("INFO", "connection closed")
+		case err := <-p.connClosedErrChan:
+			p.logger.LogToFile("ERROR", fmt.Sprintf("error closing connection: %v", err))
+			panic(fmt.Sprintf("error closing connection: %v", err))
+		}
+	}
+}
+
+func (p *LogViewportSection) handleCompletedRun(runId int) {
+	records, err := p.buildclient.GetBuildTimelineRecords(p.ctx, build.GetBuildTimelineArgs{
+		BuildId: &runId,
+	})
+	if err != nil {
+		panic(fmt.Sprintf("error getting timeline records: %v", err))
+	}
+	for _, item := range records {
+		recordId := *item.Id
+		recordLogId := getLogId(item)
+		if p.buildLogs[recordId] != "" || recordLogId == nil {
+			continue
+		}
+		logreader, err := p.buildclient.GetTimelineRecordLog(p.ctx, build.GetBuildLogArgs{
+			Project: &p.azdoConfig.ProjectId,
+			BuildId: &p.currentRunId,
+			LogId:   recordLogId,
 		})
 		if err != nil {
-			return "", fmt.Errorf("error fetching log: %v", err)
+			panic(fmt.Sprintf("error getting log: %v", err))
 		}
-
-		return formatLog(logReader), nil
+		p.buildLogs[recordId] = formatLog(logreader)
 	}
-	return p.buildLogs[logId].Content, nil
+}
+
+func getLogId(item build.TimelineRecord) *int {
+	if item.Log == nil {
+		return nil
+	}
+	return item.Log.Id
+}
+
+func formatLine(line string, lineNum int) string {
+	maxDigits := len(fmt.Sprintf("%d", 100000))
+	line = removeTimestamp(line)
+	formattedLine := fmt.Sprintf("%*d: %s\n", maxDigits, lineNum, line)
+	return formattedLine
+}
+
+func removeTimestamp(line string) string {
+	// Regular expression to match the timestamp pattern
+	pattern := `^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z\s+`
+	re := regexp.MustCompile(pattern)
+	// Replace the matched timestamp with an empty string
+	return re.ReplaceAllString(line, "")
 }
 
 func formatLog(log io.ReadCloser) string {
 	scanner := bufio.NewScanner(log)
 	var formattedLog string
 	lineNum := 1
-	maxDigits := len(fmt.Sprintf("%d", 100000))
 	for scanner.Scan() {
 		line := scanner.Text()
-		parts := strings.SplitN(line, " ", 2)
-		var newLine string
-		if len(parts) > 1 {
-			newLine = fmt.Sprintf("%*d %s", maxDigits, lineNum, parts[1])
-		} else {
-			newLine = fmt.Sprintf("%*d %s", maxDigits, lineNum, line)
-		}
-		formattedLog += newLine + "\n"
+		newLine := formatLine(line, lineNum)
+		formattedLog += newLine
 		lineNum++
 	}
 	if err := scanner.Err(); err != nil {
@@ -172,15 +290,10 @@ func formatLog(log io.ReadCloser) string {
 	return formattedLog
 }
 
-func (p *LogViewportSection) shouldGetLog(logId int) bool {
-	task, ok := p.buildLogs[logId]
-	if !ok {
-		return true
-	}
-	taskCompleted := task.LastRecordState == build.TimelineRecordStateValues.Completed
-	return !taskCompleted
-}
-
 func (p *LogViewportSection) SetDimensions(width, height int) {
-	p.logviewport.SetDimensions(styles.Width, height)
+	if width == 0 {
+		width = styles.Width - styles.DefaultSectionWidth
+	}
+	// height - 1 to make space for the help text
+	p.logviewport.SetDimensions(width, height-1)
 }
