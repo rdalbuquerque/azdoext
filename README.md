@@ -10,7 +10,18 @@ to help streamline the process of commiting, pushing, creating PRs and following
 	- this is necessarry because the app fetches the account id during initialization. [ref](https://medium.com/@shivapatel1102001/get-list-of-organization-from-azure-devops-microsoft-account-861ea29dae93)
 - git installed - there is a [go package to handle git operations](https://pkg.go.dev/github.com/go-git/go-git/v5) but it still has a few bugs, so it just run git commands.
 
-## Usage
+## Get started
+### Install on Linux
+```bash
+# Downloads the CLI based on your OS/arch and puts it in /usr/local/bin
+curl -fsSL https://raw.githubusercontent.com/rdalbuquerque/azdoext/main/scripts/install.sh | sh
+```
+
+### Install on Windows
+```powershell
+Invoke-RestMethod "https://raw.githubusercontent.com/rdalbuquerque/azdoext/main/scripts/install.ps1" | Invoke-Expression
+```
+
 ### Keybindings
 - `ctrl+c`: quit
 - `ctrl+b`: go back to previous page
