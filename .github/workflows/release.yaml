@@ -35,6 +35,7 @@ jobs:
         fi
         mkdir -p bin
         go build -ldflags "-X main.version=${{ github.ref_name }}" -o "$BINARY_NAME"
+        ls -l
         if [ "${{ matrix.goos }}" = "linux" ]; then
           ./$BINARY_NAME --version
           # test last exit code
