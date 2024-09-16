@@ -27,7 +27,7 @@ Write-Host "Moving $env:TEMP\$filename to $destination"
 $null = New-Item -ItemType Directory -Force -Path "$destination"
 if (Test-Path $destination) {
     Write-Warning "Overwriting $destination"
-    Move-Item -Path "$env:TEMP\$filename" -Destination $destination -Force
+    Move-Item -Path "$env:TEMP\$filename" -Destination "$destination\azdoext.exe" -Force
 }
 
 # Add the azdoext.exe to the PATH if it's not
