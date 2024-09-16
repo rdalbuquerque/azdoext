@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
+	"os"
 
 	"azdoext/pkgs/azdo"
 	"azdoext/pkgs/gitexec"
@@ -28,6 +30,8 @@ type model struct {
 	width     int
 	spinner   spinner.Model
 }
+
+var version string
 
 var azdoextLogo = `
   __  ____ ____  __ ____ _  _ ____ 
@@ -181,6 +185,13 @@ func restart() (*model, tea.Cmd) {
 }
 
 func main() {
+	versionFlag := flag.Bool("version", false, "Print the version and exit")
+	flag.Parse()
+
+	if *versionFlag {
+		fmt.Println("Version:", version)
+		os.Exit(0)
+	}
 	initialModel := initialModel()
 	if _, err := tea.NewProgram(&initialModel).Run(); err != nil {
 		fmt.Println("Error running program:", err)
