@@ -138,7 +138,7 @@ func (p *PipelineListSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 		return p, tea.Batch(p.fetchBuilds(p.ctx, 0), p.spinner.Tick)
 	case teamsg.BuildsFetchedMsg:
 		p.pipelinelist.SetItems(msg)
-		return p, p.fetchBuilds(p.ctx, 10*time.Second)
+		return p, p.fetchBuilds(p.ctx, 5*time.Second)
 	case spinner.TickMsg:
 		spinner, cmd := p.spinner.Update(msg)
 		p.spinner = spinner

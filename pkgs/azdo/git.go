@@ -9,14 +9,14 @@ import (
 )
 
 type GitClientInterface interface {
-	CreatePullRequest(context.Context, git.CreatePullRequestArgs) error
+	CreatePullRequest(context.Context, git.CreatePullRequestArgs) (git.GitPullRequest, error)
 }
 
 type GitClient struct {
 	git.Client
 }
 
-func NewGitClient(ctx context.Context, orgurl, projectid, pat string) *GitClient {
+func NewGitClient(ctx context.Context, orgurl, projectid, pat string) GitClientInterface {
 	azdoconn := azuredevops.NewPatConnection(orgurl, pat)
 	client, err := git.NewClient(ctx, azdoconn)
 	if err != nil {
@@ -27,10 +27,10 @@ func NewGitClient(ctx context.Context, orgurl, projectid, pat string) *GitClient
 	}
 }
 
-func (g *GitClient) CreatePullRequest(ctx context.Context, args git.CreatePullRequestArgs) error {
-	_, err := g.Client.CreatePullRequest(ctx, args)
+func (g *GitClient) CreatePullRequest(ctx context.Context, args git.CreatePullRequestArgs) (git.GitPullRequest, error) {
+	pr, err := g.Client.CreatePullRequest(ctx, args)
 	if err != nil {
-		return err
+		return git.GitPullRequest{}, err
 	}
-	return nil
+	return *pr, nil
 }

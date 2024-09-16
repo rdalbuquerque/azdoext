@@ -168,9 +168,9 @@ func (p *LogViewportSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 			p.logviewport.GotoBottom()
 		}
 		return p, waitForLogs(*p.logger, p.readLogsCtx, p.logsChan)
-	case teamsg.ReadLogsCtxDoneMsg:
-		p.logviewport.SetContent("")
-		return p, nil
+	// case teamsg.ReadLogsCtxDoneMsg:
+	// 	p.logviewport.SetContent("")
+	// 	return p, nil
 	case teamsg.RecordSelectedMsg:
 		wrappedContent := wordwrap.String(p.buildLogs[msg.RecordId], p.logviewport.Viewport.Width)
 		p.logviewport.SetContent(wrappedContent)
@@ -203,13 +203,13 @@ func (p *LogViewportSection) startMonitoringLogs(ctx context.Context, runId int,
 
 func waitForLogs(logger logger.Logger, ctx context.Context, logsChan chan teamsg.LogMsg) tea.Cmd {
 	return func() tea.Msg {
-		select {
-		case <-ctx.Done():
-			logger.LogToFile("INFO", "receiving logs done")
-			return teamsg.ReadLogsCtxDoneMsg{}
-		default:
-			return <-logsChan
-		}
+		// select {
+		// case <-ctx.Done():
+		// 	logger.LogToFile("INFO", "receiving logs done")
+		// 	return teamsg.ReadLogsCtxDoneMsg{}
+		// default:
+		return <-logsChan
+		// }
 	}
 }
 

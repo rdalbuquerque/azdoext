@@ -85,15 +85,3 @@ type TimelineRecordId string
 
 type Logs map[uuid.UUID]string
 
-type LogMsg struct {
-	TimelineRecordId
-	StepRecordId uuid.UUID
-	BuildStatus  string
-	BuildResult  string
-	NewContent   string
-}
-
-type BuildStatusUpdateMsg struct {
-	Status string
-	Result string
-}

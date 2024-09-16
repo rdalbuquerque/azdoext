@@ -18,6 +18,7 @@ import (
 )
 
 type PRSection struct {
+	errorDisplayed    bool
 	logger            *logger.Logger
 	hidden            bool
 	focused           bool
@@ -96,6 +97,11 @@ func (pr *PRSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 				}
 				return pr, func() tea.Msg { return teamsg.SubmitPRMsg(pr.textarea.Value()) }
 			}
+			if pr.errorDisplayed && msg.String() == "enter" {
+				pr.textarea.Reset()
+				return pr, nil
+			}
+
 		}
 	case teamsg.SubmitPRMsg:
 		titleAndDescription := strings.SplitN(string(msg), "\n", 2)
@@ -110,7 +116,11 @@ func (pr *PRSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 		pr.logger.LogToFile("info", fmt.Sprintf("submitting PR with title: %s and description: %s, from %s to %s", title, description, pr.currentBranch, pr.defaultBranch))
 		return pr, func() tea.Msg { return pr.openPR(pr.currentBranch, pr.defaultBranch, title, description) }
 	case teamsg.PRErrorMsg:
-		pr.textarea.Placeholder = string(msg)
+		pr.textarea.FocusedStyle.Text = lipgloss.NewStyle().Foreground(lipgloss.Color("#cd4944"))
+		pr.textarea.BlurredStyle.Text = lipgloss.NewStyle().Foreground(lipgloss.Color("#cd4944"))
+		pr.textarea.Focus()
+		pr.errorDisplayed = true
+		pr.textarea.SetValue(string(msg) + "\nPress 'enter' to dismiss")
 	}
 	ta, cmd := pr.textarea.Update(msg)
 	pr.textarea = ta
@@ -119,7 +129,7 @@ func (pr *PRSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 
 func (pr *PRSection) openPR(currentBranch, defaultBranch, title, description string) tea.Msg {
 	pr.logger.LogToFile("info", fmt.Sprintf("creating PR with title: %s and description: %s, from %s to %s", title, description, currentBranch, defaultBranch))
-	err := pr.gitclient.CreatePullRequest(context.Background(), git.CreatePullRequestArgs{
+	createdpr, err := pr.gitclient.CreatePullRequest(context.Background(), git.CreatePullRequestArgs{
 		RepositoryId: utils.Ptr(pr.repositoryId.String()),
 		Project:      &pr.project,
 		GitPullRequestToCreate: &git.GitPullRequest{
@@ -129,11 +139,12 @@ func (pr *PRSection) openPR(currentBranch, defaultBranch, title, description str
 			TargetRefName: &defaultBranch,
 		},
 	})
+	pr.logger.LogToFile("info", fmt.Sprintf("PR created: %v", createdpr))
 	if err != nil {
 		pr.logger.LogToFile("error", "error while creating PR: "+err.Error())
-		return teamsg.GitPRCreatedMsg(false)
+		return teamsg.PRErrorMsg(err.Error())
 	}
-	return teamsg.GitPRCreatedMsg(true)
+	return teamsg.GitPRCreatedMsg{}
 }
 
 func (pr *PRSection) View() string {

@@ -15,6 +15,8 @@ type CommitSection struct {
 	title             string
 	textarea          textarea.Model
 	sectionIdentifier SectionName
+	pushed            bool
+	pushInProgress    bool
 	help              string
 }
 
@@ -48,11 +50,25 @@ func (cs *CommitSection) SetDimensions(width, height int) {
 }
 
 func (cs *CommitSection) Update(msg tea.Msg) (Section, tea.Cmd) {
+	switch msg.(type) {
+	case teamsg.GitPushedMsg:
+		cs.pushed = true
+		cs.pushInProgress = false
+		return cs, nil
+	}
 	if cs.focused {
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
 			switch msg.String() {
 			case "ctrl+s":
+				if cs.pushed || cs.pushInProgress {
+					cs.textarea.InsertString("\n")
+					cs.textarea.FocusedStyle.CursorLine = lipgloss.NewStyle().Foreground(lipgloss.Color("#d67e3c"))
+					cs.textarea.BlurredStyle.CursorLine = lipgloss.NewStyle().Foreground(lipgloss.Color("#d67e3c"))
+					cs.textarea.InsertString("Already pushing or pushed...")
+					return cs, nil
+				}
+				cs.pushInProgress = true
 				cs.textarea.Blur()
 				return cs, func() tea.Msg { return teamsg.CommitMsg(cs.textarea.Value()) }
 			}
