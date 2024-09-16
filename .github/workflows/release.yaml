@@ -1,0 +1,120 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+env:
+  EXECUTABLE_NAME: azdoext
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        goos: [linux, windows]
+        goarch: [amd64]
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v2
+
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: '^1.21'
+
+    - name: Build Binary
+      run: |
+        export GOOS=${{ matrix.goos }}
+        export GOARCH=${{ matrix.goarch }}
+        BINARY_NAME="${{ env.EXECUTABLE_NAME }}_${{ github.ref_name }}_${{ matrix.goos }}-${{ matrix.goarch }}"
+        echo "BINARY_NAME=${BINARY_NAME}" >> $GITHUB_ENV
+        if [ "${{ matrix.goos }}" = "windows" ]; then
+          BINARY_NAME="$BINARY_NAME.exe"
+        fi
+        mkdir -p bin
+        go build -ldflags "-X ${{ env.EXECUTABLE_NAME }}/cmd.version=${{ github.ref_name }}" -o "$BINARY_NAME"
+        if [ "${{ matrix.goos }}" = "linux" ]; then
+          ./$BINARY_NAME --version
+          # test last exit code
+          if [ $? -ne 0 ]; then
+            exit 1
+          fi
+        fi
+
+    - name: Compress Binary (Linux)
+      if: matrix.goos == 'linux'
+      run: |
+        tar -czvf ${{ env.BINARY_NAME }}.tar.gz ${{ env.BINARY_NAME }}
+  
+    - name: Compress Binary (Windows)
+      if: matrix.goos == 'windows'
+      run: |
+        7z a ${{ env.BINARY_NAME }}.zip ${{ env.BINARY_NAME }}.exe
+
+    - name: Upload Artifact
+      if: matrix.goos == 'linux'
+      uses: actions/upload-artifact@v2
+      with:
+        name: ${{ env.BINARY_NAME }}.tar.gz
+        path: |
+          ${{ env.BINARY_NAME }}.tar.gz
+
+    - name: Upload Artifact
+      if: matrix.goos == 'windows'
+      uses: actions/upload-artifact@v2
+      with:
+        name: ${{ env.BINARY_NAME }}.zip
+        path: |
+          ${{ env.BINARY_NAME }}.zip
+
+  release:
+    name: Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+    - name: Download Artifacts
+      uses: actions/download-artifact@v2
+      with:
+        path: ./
+    - name: Run a multi-line script
+      run: |
+        pwd
+        ls -l
+        ls -l ${{ env.EXECUTABLE_NAME }}_${{ github.ref_name }}_linux-amd64.tar.gz
+        ls -l ${{ env.EXECUTABLE_NAME }}_${{ github.ref_name }}_windows-amd64.zip
+    - name: Release
+      id: release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref }}
+        draft: false
+        prerelease: false
+
+    - name: Upload Release Assets (Linux)
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.release.outputs.upload_url }}
+        asset_path: ./${{ env.EXECUTABLE_NAME }}_${{ github.ref_name }}_linux-amd64.tar.gz/${{ env.EXECUTABLE_NAME }}_${{ github.ref_name }}_linux-amd64.tar.gz
+        asset_name: ${{ env.EXECUTABLE_NAME }}-linux-amd64.tar.gz
+        asset_content_type: application/octet-stream
+
+    - name: Upload Release Assets (Windows)
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.release.outputs.upload_url }}
+        asset_path: ./${{ env.EXECUTABLE_NAME }}_${{ github.ref_name }}_windows-amd64.zip/${{ env.EXECUTABLE_NAME }}_${{ github.ref_name }}_windows-amd64.zip
+        asset_name: ${{ env.EXECUTABLE_NAME }}-windows-amd64.zip
+        asset_content_type: application/octet-stream
