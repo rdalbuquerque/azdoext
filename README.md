@@ -48,7 +48,7 @@ OBS: Currently, only PRs to the default branch are supported.
 On pipelines page, you will see all pipelines related to you current repository and their last run status.\
 When you press enter you will be presented with a choice, go to the tasks of the selected pipeline or execute a new run.\
 While on the pipeline instance section you can go to logs, browse and hit `/` to search for a specific string.\
-If the selected run is in progress, you'll see the live pipeline logs, you can hit `f` to toggle follow.\ 
+If the selected run is in progress, you'll see the live pipeline logs, you can hit `f` to toggle follow.\
 If enabled, you will see the latest logs and the task list cursor will indicate the current running task.
 
 ## Demo
