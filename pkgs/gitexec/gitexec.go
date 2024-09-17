@@ -7,6 +7,8 @@ package gitexec
 
 import (
 	"azdoext/pkgs/logger"
+	"encoding/base64"
+	"fmt"
 	"os/exec"
 	"strings"
 )
@@ -105,13 +107,15 @@ func Commit(message string) {
 
 }
 
-func Push(remote string, branch string, credential string) {
-	// Construct the remote URL with the PAT
-	remoteWithPAT := strings.Replace(remote, "https://", "https://"+credential+"@", 1)
-	logger := logger.NewLogger("gitexec.log")
-	logger.LogToFile("debug", "Pushing to remote: "+remoteWithPAT+" with branch: "+branch)
-	cmd := exec.Command("git", "push", remoteWithPAT, branch)
-	err := cmd.Run()
+func Push(remote string, branch string, pat string) {
+	// Encode PAT for basic auth
+	encodedAuth := base64.StdEncoding.EncodeToString([]byte(":" + pat))
+	authHeader := fmt.Sprintf("http.extraheader=AUTHORIZATION: Basic %s", encodedAuth)
+
+	// Use -c option to set temporary config for this command
+	cmd := exec.Command("git", "-c", authHeader, "push", remote, branch)
+
+	_, err := cmd.CombinedOutput()
 	if err != nil {
 		panic(err)
 	}
