@@ -1,6 +1,7 @@
 package sections
 
 import (
+	"azdoext/pkgs/azdo"
 	"azdoext/pkgs/gitexec"
 	"azdoext/pkgs/listitems"
 	"azdoext/pkgs/logger"
@@ -23,10 +24,11 @@ type WorktreeSection struct {
 	customhelp        string
 	branch            string
 	sectionIdentifier SectionName
+	azdoConfig        azdo.Config
 }
 
 func (ws *WorktreeSection) push() tea.Msg {
-	gitexec.Push("origin", ws.branch)
+	gitexec.Push("origin", ws.branch, ws.azdoConfig.PAT)
 	return teamsg.GitPushedMsg(true)
 }
 
@@ -79,9 +81,11 @@ func (ws *WorktreeSection) IsFocused() bool {
 }
 
 func (ws *WorktreeSection) Update(msg tea.Msg) (Section, tea.Cmd) {
-	if ws.focused {
-		switch msg := msg.(type) {
-		case tea.KeyMsg:
+	switch msg := msg.(type) {
+	case teamsg.AzdoConfigMsg:
+		ws.azdoConfig = azdo.Config(msg)
+	case tea.KeyMsg:
+		if ws.focused {
 			switch msg.String() {
 			case "ctrl+a":
 				ws.stageFile()

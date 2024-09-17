@@ -105,8 +105,11 @@ func Commit(message string) {
 
 }
 
-func Push(remote string, branch string) {
-	cmd := exec.Command("git", "push", remote, branch)
+func Push(remote string, branch string, credential string) {
+	// Construct the remote URL with the PAT
+	remoteWithPAT := strings.Replace(remote, "https://", "https://"+credential+"@", 1)
+
+	cmd := exec.Command("git", "push", remoteWithPAT, branch)
 	err := cmd.Run()
 	if err != nil {
 		panic(err)
