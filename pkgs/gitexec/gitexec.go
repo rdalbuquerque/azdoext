@@ -108,7 +108,8 @@ func Commit(message string) {
 func Push(remote string, branch string, credential string) {
 	// Construct the remote URL with the PAT
 	remoteWithPAT := strings.Replace(remote, "https://", "https://"+credential+"@", 1)
-
+	logger := logger.NewLogger("gitexec.log")
+	logger.LogToFile("debug", "Pushing to remote: "+remoteWithPAT+" with branch: "+branch)
 	cmd := exec.Command("git", "push", remoteWithPAT, branch)
 	err := cmd.Run()
 	if err != nil {
