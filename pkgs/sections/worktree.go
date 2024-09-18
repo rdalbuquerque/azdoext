@@ -24,11 +24,11 @@ type WorktreeSection struct {
 	customhelp        string
 	branch            string
 	sectionIdentifier SectionName
-	azdoConfig        azdo.Config
+	azdoconfig        azdo.Config
 }
 
 func (ws *WorktreeSection) push() tea.Msg {
-	gitexec.Push("origin", ws.branch, ws.azdoConfig.PAT)
+	gitexec.Push("origin", ws.branch, ws.azdoconfig.PAT)
 	return teamsg.GitPushedMsg(true)
 }
 
@@ -37,7 +37,7 @@ func (ws *WorktreeSection) addAllToStage() {
 	ws.setStagedFileList()
 }
 
-func NewWorktreeSection(secid SectionName, currentBranch string) Section {
+func NewWorktreeSection(secid SectionName, currentBranch string, azdoconfig azdo.Config) Section {
 	logger := logger.NewLogger("worktree.log")
 	worktreeSection := &WorktreeSection{}
 	worktreeSection.branch = currentBranch
@@ -60,6 +60,7 @@ func NewWorktreeSection(secid SectionName, currentBranch string) Section {
 	customhelp := statusHelp.View(hk)
 	worktreeSection.customhelp = customhelp
 	worktreeSection.sectionIdentifier = secid
+	worktreeSection.azdoconfig = azdoconfig
 	return worktreeSection
 }
 
@@ -82,8 +83,6 @@ func (ws *WorktreeSection) IsFocused() bool {
 
 func (ws *WorktreeSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 	switch msg := msg.(type) {
-	case teamsg.AzdoConfigMsg:
-		ws.azdoConfig = azdo.Config(msg)
 	case tea.KeyMsg:
 		if ws.focused {
 			switch msg.String() {

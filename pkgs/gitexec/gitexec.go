@@ -111,7 +111,8 @@ func Push(remote string, branch string, pat string) {
 	// Encode PAT for basic auth
 	encodedAuth := base64.StdEncoding.EncodeToString([]byte(":" + pat))
 	authHeader := fmt.Sprintf("http.extraheader=AUTHORIZATION: Basic %s", encodedAuth)
-
+	logger := logger.NewLogger("gitexec.log")
+	logger.LogToFile("debug", "authHeader: "+authHeader)
 	// Use -c option to set temporary config for this command
 	cmd := exec.Command("git", "-c", authHeader, "push", remote, branch)
 

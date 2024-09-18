@@ -68,7 +68,7 @@ func NewGitPage(ctx context.Context, gitclient azdo.GitClientInterface, azdoconf
 	gitPage.shortHelp = helpstring
 	commitsec := sections.NewCommitSection(sections.Commit)
 	gitPage.AddSection(commitsec)
-	worktreesec := sections.NewWorktreeSection(sections.Worktree, azdoconfig.CurrentBranch)
+	worktreesec := sections.NewWorktreeSection(sections.Worktree, azdoconfig.CurrentBranch, azdoconfig)
 	gitPage.AddSection(worktreesec)
 	commitActionChoiceSec := sections.NewChoice(sections.PrOrPipelineChoice)
 	gitPage.AddSection(commitActionChoiceSec)
