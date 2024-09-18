@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        goos: [linux, windows]
+        goos: [linux, windows, darwin]
         goarch: [amd64]
     steps:
     - name: Check out code
@@ -37,7 +37,7 @@ jobs:
         mkdir -p bin
         go build -ldflags "-X main.version=${{ github.ref_name }}" -o "$BINARY_NAME"
         ls -l
-        if [ "${{ matrix.goos }}" = "linux" ]; then
+        if [ "${{ matrix.goos }}" = "linux" ] || [ "${{ matrix.goos }}" = "darwin" ]; then
           ./$BINARY_NAME --version
           # test last exit code
           if [ $? -ne 0 ]; then
@@ -45,25 +45,25 @@ jobs:
           fi
         fi
 
-    - name: Compress Binary (Linux)
-      if: matrix.goos == 'linux'
+    - name: Compress Binary (Linux/macOS)
+      if: matrix.goos == 'linux' || matrix.goos == 'darwin'
       run: |
         tar -czvf ${{ env.BINARY_NAME }}.tar.gz ${{ env.BINARY_NAME }}
-  
+
     - name: Compress Binary (Windows)
       if: matrix.goos == 'windows'
       run: |
         7z a ${{ env.BINARY_NAME }}.zip ${{ env.BINARY_NAME }}.exe
 
-    - name: Upload Artifact
-      if: matrix.goos == 'linux'
+    - name: Upload Artifact (Linux/macOS)
+      if: matrix.goos == 'linux' || matrix.goos == 'darwin'
       uses: actions/upload-artifact@v3
       with:
         name: ${{ env.BINARY_NAME }}.tar.gz
         path: |
           ${{ env.BINARY_NAME }}.tar.gz
 
-    - name: Upload Artifact
+    - name: Upload Artifact (Windows)
       if: matrix.goos == 'windows'
       uses: actions/upload-artifact@v3
       with:
@@ -89,6 +89,7 @@ jobs:
         pwd
         ls -l
         ls -l ${{ env.EXECUTABLE_NAME }}_${{ github.ref_name }}_linux-amd64.tar.gz
+        ls -l ${{ env.EXECUTABLE_NAME }}_${{ github.ref_name }}_darwin-amd64.tar.gz
         ls -l ${{ env.EXECUTABLE_NAME }}_${{ github.ref_name }}_windows-amd64.zip
     - name: Release
       id: release
@@ -109,6 +110,16 @@ jobs:
         upload_url: ${{ steps.release.outputs.upload_url }}
         asset_path: ./${{ env.EXECUTABLE_NAME }}_${{ github.ref_name }}_linux-amd64.tar.gz/${{ env.EXECUTABLE_NAME }}_${{ github.ref_name }}_linux-amd64.tar.gz
         asset_name: ${{ env.EXECUTABLE_NAME }}-linux-amd64.tar.gz
+        asset_content_type: application/octet-stream
+
+    - name: Upload Release Assets (macOS)
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.release.outputs.upload_url }}
+        asset_path: ./${{ env.EXECUTABLE_NAME }}_${{ github.ref_name }}_darwin-amd64.tar.gz/${{ env.EXECUTABLE_NAME }}_${{ github.ref_name }}_darwin-amd64.tar.gz
+        asset_name: ${{ env.EXECUTABLE_NAME }}-darwin-amd64.tar.gz
         asset_content_type: application/octet-stream
 
     - name: Upload Release Assets (Windows)
