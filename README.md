@@ -30,7 +30,8 @@ Invoke-RestMethod "https://raw.githubusercontent.com/rdalbuquerque/azdoext/main/
 	- on commit message: push
 		- if no files are staged, stage all files before pushing
 	- on Pull Request section: open a new PR and go to the pipelines
-- `ctrl+a`: stage/unstage file on status list
+- `ctrl+a`: stage file on status list
+- `ctrl+d`: unstage a file on status list
 - `tab`: switch between available sections
 - `enter`: select an option on any list (has no effect on file status list)
 - `/` : search for a string while on pipeline logs
