@@ -30,7 +30,8 @@ Invoke-RestMethod "https://raw.githubusercontent.com/rdalbuquerque/azdoext/main/
 	- on commit message: push
 		- if no files are staged, stage all files before pushing
 	- on Pull Request section: open a new PR and go to the pipelines
-- `ctrl+a`: stage/unstage file on status list
+- `ctrl+a`: stage file on status list
+- `ctrl+d`: unstage a file on status list
 - `tab`: switch between available sections
 - `enter`: select an option on any list (has no effect on file status list)
 - `/` : search for a string while on pipeline logs
@@ -61,7 +62,9 @@ While on the pipeline instance section you can go to logs, browse and hit `/` to
 If the selected run is in progress, you'll see the live pipeline logs, you can hit `f` to toggle follow.\
 If enabled, you will see the latest logs and the task list cursor will indicate the current running task.
 
+
 ## Demo
 
-https://github.com/rdalbuquerque/azdoext/assets/23347635/d5e7357c-fe93-4d36-90e1-746354c17a16
+2x speed demo:
 
+https://github.com/user-attachments/assets/e193cca9-9f09-493d-8a0a-edf58be589b8
