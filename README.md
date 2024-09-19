@@ -11,7 +11,7 @@ to help streamline the process of commiting, pushing, creating PRs and following
 - git installed - there is a [go package to handle git operations](https://pkg.go.dev/github.com/go-git/go-git/v5) but it still has a few bugs, so it just run git commands.
 
 ## Get started
-### Install on Linux
+### Install on Linux and macOS
 ```bash
 # Downloads the CLI based on your OS/arch and puts it in /usr/local/bin
 curl -fsSL https://raw.githubusercontent.com/rdalbuquerque/azdoext/main/scripts/install.sh | sh
