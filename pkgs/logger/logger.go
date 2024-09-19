@@ -27,6 +27,9 @@ func NewLogger(filename string) *Logger {
 }
 
 func (l *Logger) LogToFile(identifier, msg string) {
+	if os.Getenv("DEBUG_AZDOEXT") == "" {
+		return
+	}
 	f, err := os.OpenFile(l.filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		panic(err)
