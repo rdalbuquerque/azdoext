@@ -13,7 +13,6 @@ to help streamline the process of commiting, pushing, creating PRs and following
 ## Get started
 ### Install on Linux and macOS
 ```bash
-# Downloads the CLI based on your OS/arch and puts it in /usr/local/bin
 curl -fsSL https://raw.githubusercontent.com/rdalbuquerque/azdoext/main/scripts/install.sh | sh
 ```
 
