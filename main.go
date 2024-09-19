@@ -189,7 +189,7 @@ func main() {
 	flag.Parse()
 
 	if *versionFlag {
-		fmt.Println("Version:", version)
+		fmt.Println(version)
 		os.Exit(0)
 	}
 	initialModel := initialModel()
