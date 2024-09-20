@@ -1,7 +1,7 @@
 
 # azdoext
 
-A terminal UI, powered by [bubbletea framework](https://github.com/charmbracelet/bubbleteahttps://github.com/charmbracelet/bubbletea)\
+A terminal UI, powered by [bubbletea framework](https://github.com/charmbracelet/bubbletea)\
 to help streamline the process of commiting, pushing, creating PRs and following pipelines in Azure DevOps.
 
 ## Prerequisites
