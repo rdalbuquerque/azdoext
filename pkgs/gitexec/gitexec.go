@@ -8,6 +8,7 @@ package gitexec
 import (
 	"azdoext/pkgs/logger"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -25,14 +26,15 @@ type GitConfig struct {
 	CurrentBranch string
 }
 
-func Config() GitConfig {
+func Config() (config GitConfig, err error) {
 	cmd := exec.Command("git", "config", "--get", "remote.origin.url")
-	origin, err := cmd.CombinedOutput()
-	if err != nil {
-		panic(err)
+	origin, _ := cmd.CombinedOutput()
+	if !strings.Contains(string(origin), "dev.azure.com") {
+		return GitConfig{}, errors.New("not a valid Azure DevOps git repository, 'git config --get remote.origin.url' does not contain 'dev.azure.com'")
 	}
 
 	cmd = exec.Command("git", "branch", "--show-current")
+
 	currentBranch, err := cmd.CombinedOutput()
 	if err != nil {
 		panic(err)
@@ -41,7 +43,7 @@ func Config() GitConfig {
 	return GitConfig{
 		Origin:        strings.TrimSpace(string(origin)),
 		CurrentBranch: strings.TrimSpace(string(currentBranch)),
-	}
+	}, nil
 }
 
 func Status() []GitFile {

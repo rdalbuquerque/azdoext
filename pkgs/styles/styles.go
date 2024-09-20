@@ -10,32 +10,41 @@ import (
 
 var (
 	azdoBlue       = lipgloss.Color("#0178d4")
+	Red            = lipgloss.Color("#cd4944")
+	Yellow         = lipgloss.Color("#d67e3c")
+	Green          = lipgloss.Color("#54a362")
+	Grey           = lipgloss.Color("#6c6c6c")
+	White          = lipgloss.Color("#ffffff")
 	LogoStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color(azdoBlue)).Bold(true)
 	ShortHelpStyle = help.New().Styles.ShortKey
-	TitleStyle     = list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0).Styles.Title.Align(lipgloss.Center).Background(lipgloss.Color("#0178d4")).Foreground(lipgloss.Color("#ffffff")).Padding(0, 1)
+	TitleStyle     = list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0).Styles.Title.Align(lipgloss.Center).Background(lipgloss.Color(azdoBlue)).Foreground(White).Padding(0, 1)
 	ActiveStyle    = lipgloss.NewStyle().
 			Border(lipgloss.ThickBorder(), true, false, true, false).
 			BorderForeground(lipgloss.Color(azdoBlue))
 
 	InactiveStyle = lipgloss.NewStyle().
 			Border(lipgloss.NormalBorder(), true, false, true, false).
-			BorderForeground(lipgloss.Color("#6c6c6c"))
-	SpinnerStyle             = lipgloss.NewStyle().Foreground(lipgloss.Color(azdoBlue))
-	Height                   int
+			BorderForeground(Grey)
+	SpinnerStyle = lipgloss.NewStyle().Foreground(lipgloss.Color(azdoBlue))
+	Height       int
+
 	Width                    int
 	DefaultSectionWidth      = 40
 	DefaultSectionHeightDiff = 1
 
-	noRuns             = lipgloss.NewStyle().SetString("-").Foreground(lipgloss.Color("#6c6c6c"))            // Gray
-	pending            = lipgloss.NewStyle().SetString("•").Foreground(azdoBlue)                             // Blue
-	succeededVSCode    = lipgloss.NewStyle().SetString("✔").Foreground(lipgloss.Color("#54a362"))            // Green
-	succeededBasic     = lipgloss.NewStyle().Bold(true).SetString("✓").Foreground(lipgloss.Color("#54a362")) // Green
-	failedVSCode       = lipgloss.NewStyle().SetString("✖").Foreground(lipgloss.Color("#cd4944"))            // Red
-	failedBasic        = lipgloss.NewStyle().Bold(true).SetString("✗").Foreground(lipgloss.Color("#cd4944")) // Red
-	skipped            = lipgloss.NewStyle().Bold(true).SetString(">").Foreground(lipgloss.Color("#ffffff")) // White
-	partiallySucceeded = lipgloss.NewStyle().Bold(true).SetString("!").Foreground(lipgloss.Color("#d67e3c")) // Yellow
-	canceled           = lipgloss.NewStyle().Bold(true).SetString("-").Foreground(lipgloss.Color("#ffffff")) // White
+	noRuns          = lipgloss.NewStyle().SetString("-").Foreground(Grey)                  // Gray
+	pending         = lipgloss.NewStyle().SetString("•").Foreground(azdoBlue)              // Blue
+	succeededVSCode = lipgloss.NewStyle().SetString("✔").Foreground(lipgloss.Color(Green)) // Green
+
+	succeededBasic = lipgloss.NewStyle().Bold(true).SetString("✓").Foreground(lipgloss.Color(Green)) // Green
+	failedVSCode   = lipgloss.NewStyle().SetString("✖").Foreground(lipgloss.Color(Red))              // Red
+	failedBasic    = lipgloss.NewStyle().Bold(true).SetString("✗").Foreground(lipgloss.Color(Red))   // Red
+	skipped        = lipgloss.NewStyle().Bold(true).SetString(">").Foreground(White)                 // White
+
+	partiallySucceeded = lipgloss.NewStyle().Bold(true).SetString("!").Foreground(lipgloss.Color(Yellow)) // Yellow
+	canceled           = lipgloss.NewStyle().Bold(true).SetString("-").Foreground(White)                  // White
 	SymbolMap          = map[string]lipgloss.Style{
+
 		"pending":            pending,
 		"succeeded":          GetSucceededSymbol(),
 		"failed":             GetFailedSymbol(),

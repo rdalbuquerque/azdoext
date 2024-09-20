@@ -22,6 +22,7 @@ import (
 
 type model struct {
 	logger    *logger.Logger
+	initError string
 	ctx       context.Context
 	cancel    context.CancelFunc
 	pages     map[pages.PageName]pages.PageInterface
@@ -65,9 +66,13 @@ func initialModel() model {
 
 func getAzdoConfig() tea.Cmd {
 	return func() tea.Msg {
-		gitconf := gitexec.Config()
+		gitconf, err := gitexec.Config()
+		if err != nil {
+			return teamsg.AzdoConfigErrorMsg(err)
+		}
 		azdoconfig := azdo.GetAzdoConfig(gitconf.Origin, gitconf.CurrentBranch)
 		return teamsg.AzdoConfigMsg(azdoconfig)
+
 	}
 }
 
@@ -76,14 +81,19 @@ func (m *model) Init() tea.Cmd {
 }
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+
 	var cmds []tea.Cmd
 	switch msg := msg.(type) {
 	case spinner.TickMsg:
 		spnr, cmd := m.spinner.Update(msg)
 		cmds = append(cmds, cmd)
 		m.spinner = spnr
+	case teamsg.AzdoConfigErrorMsg:
+		m.initError = msg.Error()
+		return m, nil
 	case teamsg.AzdoConfigMsg:
 		buildclient := azdo.NewBuildClient(m.ctx, msg.OrgUrl, msg.ProjectId, msg.PAT)
+
 		gitclient := azdo.NewGitClient(m.ctx, msg.OrgUrl, msg.ProjectId, msg.PAT)
 		gitpage := pages.NewGitPage(m.ctx, gitclient, azdo.Config(msg))
 		pipelistpage := pages.NewPipelineListPage(m.ctx, buildclient, azdo.Config(msg))
@@ -95,8 +105,14 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case tea.KeyMsg:
 		switch msg.String() {
+		case "enter":
+			if m.initError != "" {
+				m.cancel()
+				return m, tea.Quit
+			}
 		case "ctrl+c":
 			m.cancel()
+
 			return m, tea.Quit
 		case "ctrl+h":
 			if m.pageStack.Peek().GetPageName() != pages.Help {
@@ -148,8 +164,13 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *model) View() string {
+	if m.initError != "" {
+		return lipgloss.NewStyle().Foreground(styles.Red).Bold(true).Render(m.initError) + "\n\nPress 'enter' or 'ctrl+c' to exit"
+	}
 	loadingStr := lipgloss.NewStyle().Bold(true).Render("Loading...")
+
 	spnerWithLoading := lipgloss.NewStyle().Bold(true).Padding(1).Render(lipgloss.JoinHorizontal(lipgloss.Left, m.spinner.View(), " ", loadingStr))
+
 	if len(m.pageStack) == 0 {
 		return lipgloss.JoinVertical(lipgloss.Top, styles.LogoStyle.Render(azdoextLogo), spnerWithLoading)
 	}

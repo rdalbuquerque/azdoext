@@ -63,8 +63,8 @@ func (cs *CommitSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 			case "ctrl+s":
 				if cs.pushed || cs.pushInProgress {
 					cs.textarea.InsertString("\n")
-					cs.textarea.FocusedStyle.CursorLine = lipgloss.NewStyle().Foreground(lipgloss.Color("#d67e3c"))
-					cs.textarea.BlurredStyle.CursorLine = lipgloss.NewStyle().Foreground(lipgloss.Color("#d67e3c"))
+					cs.textarea.FocusedStyle.CursorLine = lipgloss.NewStyle().Foreground(lipgloss.Color(styles.Yellow))
+					cs.textarea.BlurredStyle.CursorLine = lipgloss.NewStyle().Foreground(lipgloss.Color(styles.Yellow))
 					cs.textarea.InsertString("Already pushing or pushed...")
 					return cs, nil
 				}

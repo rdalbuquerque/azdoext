@@ -116,8 +116,8 @@ func (pr *PRSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 		pr.logger.LogToFile("info", fmt.Sprintf("submitting PR with title: %s and description: %s, from %s to %s", title, description, pr.currentBranch, pr.defaultBranch))
 		return pr, func() tea.Msg { return pr.openPR(pr.currentBranch, pr.defaultBranch, title, description) }
 	case teamsg.PRErrorMsg:
-		pr.textarea.FocusedStyle.Text = lipgloss.NewStyle().Foreground(lipgloss.Color("#cd4944"))
-		pr.textarea.BlurredStyle.Text = lipgloss.NewStyle().Foreground(lipgloss.Color("#cd4944"))
+		pr.textarea.FocusedStyle.Text = lipgloss.NewStyle().Foreground(lipgloss.Color(styles.Red))
+		pr.textarea.BlurredStyle.Text = lipgloss.NewStyle().Foreground(lipgloss.Color(styles.Red))
 		pr.textarea.Focus()
 		pr.errorDisplayed = true
 		pr.textarea.SetValue(string(msg) + "\nPress 'enter' to dismiss")
