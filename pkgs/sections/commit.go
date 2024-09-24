@@ -61,6 +61,12 @@ func (cs *CommitSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 		case tea.KeyMsg:
 			switch msg.String() {
 			case "ctrl+s":
+				if cs.textarea.Value() == "" {
+					cs.textarea.FocusedStyle.Placeholder = lipgloss.NewStyle().Foreground(lipgloss.Color(styles.Yellow))
+					cs.textarea.BlurredStyle.Placeholder = lipgloss.NewStyle().Foreground(lipgloss.Color(styles.Yellow))
+					cs.textarea.Placeholder = "Commit message is empty"
+					return cs, nil
+				}
 				if cs.pushed || cs.pushInProgress {
 					cs.textarea.InsertString("\n")
 					cs.textarea.FocusedStyle.CursorLine = lipgloss.NewStyle().Foreground(lipgloss.Color(styles.Yellow))

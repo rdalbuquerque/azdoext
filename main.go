@@ -195,6 +195,9 @@ func (m *model) addPage(pageName pages.PageName) {
 }
 
 func (m *model) removeCurrentPage() {
+	if len(m.pageStack) == 0 {
+		return
+	}
 	m.pageStack.Peek().UnsetCurrentPage()
 	m.pageStack.Pop()
 	m.pageStack.Peek().SetAsCurrentPage()
