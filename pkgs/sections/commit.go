@@ -59,6 +59,7 @@ func (cs *CommitSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 	if cs.focused {
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
+			cs.textarea.Placeholder = ""
 			switch msg.String() {
 			case "ctrl+s":
 				if cs.textarea.Value() == "" {
