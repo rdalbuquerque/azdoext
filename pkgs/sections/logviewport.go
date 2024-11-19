@@ -4,7 +4,6 @@ import (
 	"azdoext/pkgs/azdo"
 	"azdoext/pkgs/azdosignalr"
 	"azdoext/pkgs/logger"
-	"azdoext/pkgs/searchableviewport"
 	"azdoext/pkgs/styles"
 	"azdoext/pkgs/teamsg"
 	"azdoext/pkgs/utils"
@@ -15,6 +14,8 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/rdalbuquerque/viewsearch"
+
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/google/uuid"
@@ -23,7 +24,7 @@ import (
 )
 
 type LogViewportSection struct {
-	logviewport       *searchableviewport.Model
+	logviewport       *viewsearch.Model
 	logger            *logger.Logger
 	hidden            bool
 	focused           bool
@@ -59,7 +60,8 @@ type LogViewportSection struct {
 
 func NewLogViewport(ctx context.Context, secid SectionName, azdoconfig azdo.Config) Section {
 	logger := logger.NewLogger("logviewport.log")
-	vp := searchableviewport.New(0, 0)
+	vp := viewsearch.New()
+	vp.SetShowHelp(false)
 
 	styledHelpText := styles.ShortHelpStyle.Render("/ find • alt+m maximize")
 
@@ -71,7 +73,7 @@ func NewLogViewport(ctx context.Context, secid SectionName, azdoconfig azdo.Conf
 	buildclient := azdo.NewBuildClient(ctx, azdoconfig.OrgUrl, azdoconfig.ProjectId, azdoconfig.PAT)
 	return &LogViewportSection{
 		logger:            logger,
-		logviewport:       vp,
+		logviewport:       &vp,
 		ctx:               ctx,
 		connClosedChan:    connClosedChan,
 		connClosedErrChan: connClosedErrChan,
@@ -149,12 +151,12 @@ func (p *LogViewportSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 		p.readLogsCtx = ctx
 		p.cancelReceiveLogs = cancel
 		p.startMonitoringLogs(ctx, msg.RunId, p.connClosedChan, p.connClosedErrChan)
-		return p, waitForLogs(*p.logger, ctx, p.logsChan)
+		return p, waitForLogs(p.logsChan)
 	case teamsg.LogMsg:
 		currentLog, ok := p.buildLogs[msg.StepRecordId]
 		if !ok {
 			p.buildLogs[msg.StepRecordId] = formatLine(msg.NewContent, 1)
-			return p, waitForLogs(*p.logger, p.readLogsCtx, p.logsChan)
+			return p, waitForLogs(p.logsChan)
 		}
 		lineNum := len(strings.Split(currentLog, "\n")) + 1
 		currentLog += formatLine(msg.NewContent, lineNum)
@@ -167,10 +169,7 @@ func (p *LogViewportSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 			p.logviewport.SetContent(wordwrap.String(currentLog, p.logviewport.Viewport.Width))
 			p.logviewport.GotoBottom()
 		}
-		return p, waitForLogs(*p.logger, p.readLogsCtx, p.logsChan)
-	// case teamsg.ReadLogsCtxDoneMsg:
-	// 	p.logviewport.SetContent("")
-	// 	return p, nil
+		return p, waitForLogs(p.logsChan)
 	case teamsg.RecordSelectedMsg:
 		wrappedContent := wordwrap.String(p.buildLogs[msg.RecordId], p.logviewport.Viewport.Width)
 		p.logviewport.SetContent(wrappedContent)
@@ -184,7 +183,7 @@ func (p *LogViewportSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 		}
 		if p.focused {
 			vp, cmd := p.logviewport.Update(msg)
-			p.logviewport = vp
+			p.logviewport = &vp
 			return p, cmd
 		}
 	}
@@ -201,15 +200,9 @@ func (p *LogViewportSection) startMonitoringLogs(ctx context.Context, runId int,
 	p.signalrClient.SendWatchBuildMessage(runId)
 }
 
-func waitForLogs(logger logger.Logger, ctx context.Context, logsChan chan teamsg.LogMsg) tea.Cmd {
+func waitForLogs(logsChan chan teamsg.LogMsg) tea.Cmd {
 	return func() tea.Msg {
-		// select {
-		// case <-ctx.Done():
-		// 	logger.LogToFile("INFO", "receiving logs done")
-		// 	return teamsg.ReadLogsCtxDoneMsg{}
-		// default:
 		return <-logsChan
-		// }
 	}
 }
 
