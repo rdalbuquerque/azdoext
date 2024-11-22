@@ -5,18 +5,20 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/charmbracelet/bubbles/viewport"
+	"github.com/charmbracelet/bubbles/help"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/rdalbuquerque/viewsearch"
 )
 
 type HelpSection struct {
 	hidden            bool
 	focused           bool
-	viewport          viewport.Model
+	viewsearch        viewsearch.Model
 	style             lipgloss.Style
 	sectionIdentifier SectionName
+	ViewsearchHelp    string
 }
 
 func fetchContent(url string) (string, error) {
@@ -35,7 +37,9 @@ func fetchContent(url string) (string, error) {
 }
 
 func NewHelpSection(secid SectionName) Section {
-	vp := viewport.New(0, 0)
+	vs := viewsearch.New()
+	helpstr := help.New().ShortHelpView(vs.HelpBindings)
+	vs.SetShowHelp(false)
 
 	renderer, err := glamour.NewTermRenderer(
 		glamour.WithAutoStyle(),
@@ -54,11 +58,12 @@ func NewHelpSection(secid SectionName) Section {
 		panic(err)
 	}
 
-	vp.SetContent(str)
+	vs.SetContent(str)
 
 	return &HelpSection{
 		sectionIdentifier: "help",
-		viewport:          vp,
+		viewsearch:        vs,
+		ViewsearchHelp:    helpstr,
 		style:             styles.ActiveStyle.Copy(),
 	}
 }
@@ -68,8 +73,7 @@ func (h *HelpSection) GetSectionIdentifier() SectionName {
 }
 
 func (h *HelpSection) SetDimensions(width, height int) {
-	h.viewport.Width = 100
-	h.viewport.Height = height
+	h.viewsearch.SetDimensions(100, height)
 }
 
 func (h *HelpSection) IsHidden() bool {
@@ -82,8 +86,8 @@ func (h *HelpSection) IsFocused() bool {
 
 func (h *HelpSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 	if h.focused {
-		vp, cmd := h.viewport.Update(msg)
-		h.viewport = vp
+		vp, cmd := h.viewsearch.Update(msg)
+		h.viewsearch = vp
 		return h, cmd
 	}
 	return h, nil
@@ -91,7 +95,7 @@ func (h *HelpSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 
 func (h *HelpSection) View() string {
 	if h.focused {
-		return h.style.Width(styles.Width).Render(h.viewport.View())
+		return h.style.Width(styles.Width).Render(h.viewsearch.View())
 	}
 	return ""
 }

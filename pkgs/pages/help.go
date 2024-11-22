@@ -48,7 +48,8 @@ func (p *HelpPage) AddSection(section sections.Section) {
 }
 
 func (p *HelpPage) View() string {
-	return p.sections[sections.Help].View()
+	helpsec := p.sections[sections.Help].(*sections.HelpSection)
+	return p.sections[sections.Help].View() + "\n" + helpsec.ViewsearchHelp
 }
 
 func (p *HelpPage) Update(msg tea.Msg) (PageInterface, tea.Cmd) {

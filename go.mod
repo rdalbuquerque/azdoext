@@ -11,7 +11,7 @@ require (
 	github.com/gorilla/websocket v1.5.3
 	github.com/microsoft/azure-devops-go-api/azuredevops/v7 v7.1.0
 	github.com/muesli/reflow v0.3.0
-	github.com/rdalbuquerque/viewsearch v0.0.3
+	github.com/rdalbuquerque/viewsearch v0.0.6
 )
 
 require (
