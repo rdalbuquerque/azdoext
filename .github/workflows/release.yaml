@@ -57,7 +57,7 @@ jobs:
 
     - name: Upload Artifact (Linux/macOS)
       if: matrix.goos == 'linux' || matrix.goos == 'darwin'
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: ${{ env.BINARY_NAME }}.tar.gz
         path: |
@@ -65,7 +65,7 @@ jobs:
 
     - name: Upload Artifact (Windows)
       if: matrix.goos == 'windows'
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: ${{ env.BINARY_NAME }}.zip
         path: |
