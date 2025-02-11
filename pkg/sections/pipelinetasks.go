@@ -7,140 +7,24 @@ import (
 	"azdoext/pkg/styles"
 	"azdoext/pkg/teamsg"
 	"azdoext/pkg/utils"
+	"cmp"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"slices"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/google/uuid"
 	"github.com/microsoft/azure-devops-go-api/azuredevops/v7/build"
 )
-
-type LinkedList struct {
-	head *Node
-}
-
-type Node struct {
-	Record build.TimelineRecord
-	Next   *Node
-}
-
-func (l *LinkedList) Insert(record build.TimelineRecord) {
-	newNode := &Node{Record: record}
-	// case where the linked list is brand new
-	if l.head == nil {
-		l.head = newNode
-	} else {
-		currentNode := l.head
-		for currentNode != nil {
-			// stage record handling (parentId = null)
-			if record.ParentId == nil {
-				// look for the previous stage and insert next to it
-				if *currentNode.Record.Order == *record.Order-1 {
-					newNode.Next = currentNode.Next
-					currentNode.Next = newNode
-					return
-				}
-				// if first stage, just assumes head
-				if *record.Order == 1 {
-					newNode.Next = l.head
-					l.head = newNode
-					return
-				}
-			} else {
-				// case of non-stage typed record with order = 1 -> should look for it's parent and be inserted next to it
-				if *record.Order == 1 && *record.ParentId == *currentNode.Record.Id {
-					newNode.Next = currentNode.Next
-					currentNode.Next = newNode
-					return
-				}
-				// case of non-stage typed record with order > 1 -> should look for the previous order item of the same parent and be inserted next to it
-				if currentNode.Record.ParentId != nil {
-					if *currentNode.Record.ParentId == *record.ParentId && *currentNode.Record.Order == *record.Order-1 {
-						newNode.Next = currentNode.Next
-						currentNode.Next = newNode
-						return
-					}
-					if currentNode.Next != nil {
-						if *currentNode.Record.ParentId == *record.ParentId && (*currentNode.Next.Record.Type != *record.Type || *currentNode.Next.Record.Order > *record.Order) {
-							newNode.Next = currentNode.Next
-							currentNode.Next = newNode
-							return
-						}
-					}
-				}
-				if currentNode.Next != nil {
-					if *record.ParentId == *currentNode.Record.Id && (*currentNode.Next.Record.Type != *record.Type || *currentNode.Next.Record.Order > *record.Order) {
-						newNode.Next = currentNode.Next
-						currentNode.Next = newNode
-						return
-					}
-				}
-			}
-			if currentNode.Next == nil {
-				currentNode.Next = newNode
-				return
-			}
-			// if it's none of these, go to the next one and keep looking
-			currentNode = currentNode.Next
-		}
-	}
-}
-
-func (l LinkedList) Print() {
-	currentNode := l.head
-	for currentNode != nil {
-		fmt.Printf("type: %s | order: %d | name: %s\n", *currentNode.Record.Type, *currentNode.Record.Order, *currentNode.Record.Name)
-		currentNode = currentNode.Next
-	}
-}
-
-func (l LinkedList) ToSliceOfItems() []listitems.PipelineRecordItem {
-	currentNode := l.head
-	itemlist := []listitems.PipelineRecordItem{}
-	for currentNode != nil {
-		itemlist = append(itemlist, buildPipelineRecordItem(*currentNode))
-		currentNode = currentNode.Next
-	}
-	return itemlist
-}
-
-func getRecordLinkedList(records []build.TimelineRecord) LinkedList {
-	stages := []build.TimelineRecord{}
-	phases := []build.TimelineRecord{}
-	jobs := []build.TimelineRecord{}
-	tasks := []build.TimelineRecord{}
-	for _, record := range records {
-		switch *record.Type {
-		case "Stage":
-			stages = append(stages, record)
-		case "Phase":
-			phases = append(phases, record)
-		case "Job":
-			jobs = append(jobs, record)
-		case "Task":
-			tasks = append(tasks, record)
-		}
-	}
-	ll := LinkedList{}
-	for _, record := range stages {
-		ll.Insert(record)
-	}
-	for _, record := range phases {
-		ll.Insert(record)
-	}
-	for _, record := range jobs {
-		ll.Insert(record)
-	}
-	for _, record := range tasks {
-		ll.Insert(record)
-	}
-	return ll
-}
 
 type PipelineTasksSection struct {
 	spinnerView       *string
@@ -331,8 +215,8 @@ func (p *PipelineTasksSection) getRunState(ctx context.Context, runId int, wait 
 		if len(records) == 0 {
 			return nil
 		}
-		recordsll := getRecordLinkedList(records)
-		sortedRecordItems := recordsll.ToSliceOfItems()
+		sortedRecords := sortRecords(records)
+		sortedRecordItems := convertToItems(sortedRecords)
 		sortedRecordItems = filterRecords(sortedRecordItems)
 		items := p.addSymbol(sortedRecordItems)
 		build, err := p.buildclient.GetBuilds(ctx, build.GetBuildsArgs{
@@ -350,13 +234,6 @@ func (p *PipelineTasksSection) getRunState(ctx context.Context, runId int, wait 
 			Status: string(*buildstatus),
 		}
 	}
-}
-
-func getResult(node Node) build.TaskResult {
-	if node.Record.Result == nil {
-		return ""
-	}
-	return *node.Record.Result
 }
 
 func getResultFromRecord(record build.TimelineRecord) build.TaskResult {
@@ -391,22 +268,6 @@ func (p *PipelineTasksSection) SetDimensions(width, height int) {
 	p.tasklist.SetHeight(height - 2)
 }
 
-func buildPipelineRecordItem(node Node) listitems.PipelineRecordItem {
-	recordStartTime := time.Time{}
-	if node.Record.StartTime != nil {
-		recordStartTime = node.Record.StartTime.Time
-	}
-
-	return listitems.PipelineRecordItem{
-		StartTime: recordStartTime,
-		Type:      *node.Record.Type,
-		Name:      *node.Record.Name,
-		State:     *node.Record.State,
-		Result:    getResult(node),
-		Id:        *node.Record.Id,
-	}
-}
-
 func buildPipelineRecordItemFromRecord(record build.TimelineRecord) listitems.PipelineRecordItem {
 	recordStartTime := time.Time{}
 	if record.StartTime != nil {
@@ -423,8 +284,95 @@ func buildPipelineRecordItemFromRecord(record build.TimelineRecord) listitems.Pi
 	}
 }
 
+// We use this filter function to remove Phase records since they seem to have a 1-1 relationship to jobs, and also filter out pending tasks
 func filterRecords(records []listitems.PipelineRecordItem) []listitems.PipelineRecordItem {
 	return slices.DeleteFunc(records, func(record listitems.PipelineRecordItem) bool {
 		return record.Type == "Phase" || record.State == build.TimelineRecordStateValues.Pending
 	})
+}
+
+type RecordNode struct {
+	Record   build.TimelineRecord
+	Children []*RecordNode
+}
+
+type RootNode struct {
+	Roots []*RecordNode
+}
+
+func (r RootNode) TimelineRecords() []build.TimelineRecord {
+	var toTimelineRecords func([]build.TimelineRecord, []*RecordNode) []build.TimelineRecord
+	toTimelineRecords = func(records []build.TimelineRecord, nodes []*RecordNode) []build.TimelineRecord {
+		for _, node := range nodes {
+			records = append(records, node.Record)
+			records = toTimelineRecords(records, node.Children)
+		}
+		return records
+	}
+
+	tlrecords := []build.TimelineRecord{}
+	tlrecords = toTimelineRecords(tlrecords, r.Roots)
+	return tlrecords
+}
+
+func sortRecordTreeByOrder(nodes []*RecordNode) {
+	slices.SortFunc(nodes, func(n1, n2 *RecordNode) int {
+		return cmp.Compare(*n1.Record.Order, *n2.Record.Order)
+	})
+	for _, node := range nodes {
+		sortRecordTreeByOrder(node.Children)
+	}
+}
+
+func printRecords(nodes []*RecordNode) {
+	for _, node := range nodes {
+		fmt.Println(strings.Join([]string{
+			strconv.Itoa(*(*node).Record.Order),
+			*(*node).Record.Type,
+			strings.ReplaceAll(*(*node).Record.Name, " ", ""),
+			(*(*node).Record.Id).String(),
+		}, "_"))
+		printRecords(node.Children)
+	}
+}
+
+func (r *RootNode) Print() {
+	rjson, err := json.MarshalIndent(r, "", "  ")
+	if err != nil {
+		log.Fatalf("unable to marshal root node: %v", err)
+	}
+	fmt.Println(string(rjson))
+}
+
+func sortRecords(records []build.TimelineRecord) []build.TimelineRecord {
+	// build a hashmap so each record is easily accessible
+	recordtree := make(map[uuid.UUID]*RecordNode)
+	for _, record := range records {
+		recordtree[*record.Id] = &RecordNode{Record: record}
+	}
+	// build a tree so the hierarchy Stage->Phase->Job->Task is respected
+	root := RootNode{}
+	for _, record := range records {
+		if record.ParentId != nil {
+			node := recordtree[*record.ParentId]
+			node.Children = append(node.Children, recordtree[*record.Id])
+			recordtree[*record.ParentId] = node
+		} else {
+			root.Roots = append(root.Roots, recordtree[*record.Id])
+		}
+	}
+	// The siblings are in a random order, so sort each Children slice
+	sortRecordTreeByOrder(root.Roots)
+
+	sorted := root.TimelineRecords()
+
+	return sorted
+}
+
+func convertToItems(records []build.TimelineRecord) []listitems.PipelineRecordItem {
+	recorditems := []listitems.PipelineRecordItem{}
+	for _, record := range records {
+		recorditems = append(recorditems, buildPipelineRecordItemFromRecord(record))
+	}
+	return recorditems
 }
