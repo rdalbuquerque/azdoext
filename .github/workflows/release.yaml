@@ -35,7 +35,7 @@ jobs:
           BINARY_NAME="$BINARY_NAME.exe"
         fi
         mkdir -p bin
-        go build -ldflags "-X main.version=${{ github.ref_name }}" -o "$BINARY_NAME"
+        go build cmd/${{ env.EXECUTABLE_NAME }}/main.go -ldflags "-X main.version=${{ github.ref_name }}" -o "$BINARY_NAME"
         ls -l
         if [ "${{ matrix.goos }}" = "linux" ]; then
           ./$BINARY_NAME --version
