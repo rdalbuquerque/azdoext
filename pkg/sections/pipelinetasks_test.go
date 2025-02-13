@@ -3,7 +3,6 @@ package sections
 import (
 	"azdoext/pkg/listitems"
 	"azdoext/pkg/utils"
-	"cmp"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -60,92 +59,6 @@ func (b buildClient) GetDefinitions(ctx context.Context, args build.GetDefinitio
 
 func (b buildClient) GetBuilds(ctx context.Context, args build.GetBuildsArgs) ([]build.Build, error) {
 	return []build.Build{}, nil
-}
-
-type RecordNode struct {
-	Record   build.TimelineRecord
-	Children []*RecordNode
-}
-
-type RootNode struct {
-	Roots []*RecordNode
-}
-
-func (r RootNode) TimelineRecords() []build.TimelineRecord {
-	var toTimelineRecords func([]build.TimelineRecord, []*RecordNode) []build.TimelineRecord
-	toTimelineRecords = func(records []build.TimelineRecord, nodes []*RecordNode) []build.TimelineRecord {
-		for _, node := range nodes {
-			records = append(records, node.Record)
-			records = toTimelineRecords(records, node.Children)
-		}
-		return records
-	}
-
-	tlrecords := []build.TimelineRecord{}
-	tlrecords = toTimelineRecords(tlrecords, r.Roots)
-	return tlrecords
-}
-
-func sortRecordTreeByOrder(nodes []*RecordNode) {
-	slices.SortFunc(nodes, func(n1, n2 *RecordNode) int {
-		return cmp.Compare(*n1.Record.Order, *n2.Record.Order)
-	})
-	for _, node := range nodes {
-		sortRecordTreeByOrder(node.Children)
-	}
-}
-
-func printRecords(nodes []*RecordNode) {
-	for _, node := range nodes {
-		fmt.Println(strings.Join([]string{
-			strconv.Itoa(*(*node).Record.Order),
-			*(*node).Record.Type,
-			strings.ReplaceAll(*(*node).Record.Name, " ", ""),
-			(*(*node).Record.Id).String(),
-		}, "_"))
-		printRecords(node.Children)
-	}
-}
-
-func (r *RootNode) Print() {
-	rjson, err := json.MarshalIndent(r, "", "  ")
-	if err != nil {
-		log.Fatalf("unable to marshal root node: %v", err)
-	}
-	fmt.Println(string(rjson))
-}
-
-func sortRecords(records []build.TimelineRecord) []build.TimelineRecord {
-	// build a hashmap so each record is easily accessible
-	recordtree := make(map[uuid.UUID]*RecordNode)
-	for _, record := range records {
-		recordtree[*record.Id] = &RecordNode{Record: record}
-	}
-	// build a tree so the hierarchy Stage->Phase->Job->Task is respected
-	root := RootNode{}
-	for _, record := range records {
-		if record.ParentId != nil {
-			node := recordtree[*record.ParentId]
-			node.Children = append(node.Children, recordtree[*record.Id])
-			recordtree[*record.ParentId] = node
-		} else {
-			root.Roots = append(root.Roots, recordtree[*record.Id])
-		}
-	}
-	// The siblings are in a random order, so sort each Children slice
-	sortRecordTreeByOrder(root.Roots)
-
-	sorted := root.TimelineRecords()
-
-	return sorted
-}
-
-func convertToItems(records []build.TimelineRecord) []listitems.PipelineRecordItem {
-	recorditems := []listitems.PipelineRecordItem{}
-	for _, record := range records {
-		recorditems = append(recorditems, buildPipelineRecordItemFromRecord(record))
-	}
-	return recorditems
 }
 
 func TestSortRecords(t *testing.T) {
@@ -227,15 +140,13 @@ func TestSortRecords(t *testing.T) {
 
 func TestBuildPipelineRecordItemWithoutStartTime(t *testing.T) {
 	id := utils.Ptr(uuid.New())
-	node := Node{
-		Record: build.TimelineRecord{
-			Name:  utils.Ptr("Record 1"),
-			Type:  utils.Ptr("Task"),
-			State: &build.TimelineRecordStateValues.InProgress,
-			Id:    id,
-		},
+	timelineRecord := build.TimelineRecord{
+		Name:  utils.Ptr("Record 1"),
+		Type:  utils.Ptr("Task"),
+		State: &build.TimelineRecordStateValues.InProgress,
+		Id:    id,
 	}
-	record := buildPipelineRecordItem(node)
+	record := buildPipelineRecordItemFromRecord(timelineRecord)
 	expectedRecord := listitems.PipelineRecordItem{
 		Name:      "Record 1",
 		Type:      "Task",

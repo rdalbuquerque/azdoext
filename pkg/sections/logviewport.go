@@ -261,7 +261,7 @@ func formatLine(line string, lineNum int) string {
 
 func removeTimestamp(line string) string {
 	// Regular expression to match the timestamp pattern
-	pattern := `^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z\s+`
+	pattern := `^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z\s`
 	re := regexp.MustCompile(pattern)
 	// Replace the matched timestamp with an empty string
 	return re.ReplaceAllString(line, "")
