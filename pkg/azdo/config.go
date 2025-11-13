@@ -147,34 +147,88 @@ func getAccountId(orgName, pat string) string {
 	panic("account not found")
 }
 
+// isSSHUrl checks if the remote URL is in SSH format (git@ssh.dev.azure.com:...)
+func isSSHUrl(remoteUrl string) bool {
+	return strings.HasPrefix(remoteUrl, "git@ssh.dev.azure.com:")
+}
+
 func getOrgName(remoteUrl string) string {
 	remoteurl_parts := strings.Split(remoteUrl, "/")
-	orgname := remoteurl_parts[3]
-	return orgname
+	if isSSHUrl(remoteUrl) {
+		// SSH format: git@ssh.dev.azure.com:v3/org/project/repo
+		// After split: [git@ssh.dev.azure.com:v3, org, project, repo]
+		if len(remoteurl_parts) < 2 {
+			panic(fmt.Errorf("invalid SSH URL format: %s", remoteUrl))
+		}
+		return remoteurl_parts[1]
+	} else {
+		// HTTPS format: https://dev.azure.com/org/project/_git/repo
+		// After split: [https:, , dev.azure.com, org, project, _git, repo]
+		if len(remoteurl_parts) < 4 {
+			panic(fmt.Errorf("invalid HTTPS URL format: %s", remoteUrl))
+		}
+		return remoteurl_parts[3]
+	}
 }
 
 func getOrgUrl(remoteUrl string) string {
-	remoteurl_parts := strings.Split(remoteUrl, "/")
-	orgurl := strings.Join(remoteurl_parts[:4], "/")
-	return orgurl
+	orgname := getOrgName(remoteUrl)
+	// Always return HTTPS format for org URL
+	return fmt.Sprintf("https://dev.azure.com/%s", orgname)
 }
 
 func getProjectName(remoteUrl string) string {
 	remoteurl_parts := strings.Split(remoteUrl, "/")
-	projectname, err := url.QueryUnescape(remoteurl_parts[4])
-	if err != nil {
-		panic(fmt.Errorf("failed to unescape project name: %v", err))
+	if isSSHUrl(remoteUrl) {
+		// SSH format: git@ssh.dev.azure.com:v3/org/project/repo
+		// After split: [git@ssh.dev.azure.com:v3, org, project, repo]
+		if len(remoteurl_parts) < 3 {
+			panic(fmt.Errorf("invalid SSH URL format: %s", remoteUrl))
+		}
+		projectname, err := url.QueryUnescape(remoteurl_parts[2])
+		if err != nil {
+			panic(fmt.Errorf("failed to unescape project name: %v", err))
+		}
+		return projectname
+	} else {
+		// HTTPS format: https://dev.azure.com/org/project/_git/repo
+		// After split: [https:, , dev.azure.com, org, project, _git, repo]
+		if len(remoteurl_parts) < 5 {
+			panic(fmt.Errorf("invalid HTTPS URL format: %s", remoteUrl))
+		}
+		projectname, err := url.QueryUnescape(remoteurl_parts[4])
+		if err != nil {
+			panic(fmt.Errorf("failed to unescape project name: %v", err))
+		}
+		return projectname
 	}
-	return projectname
 }
 
 func getRepositoryName(remoteUrl string) string {
 	remoteurl_parts := strings.Split(remoteUrl, "/")
-	reponame, err := url.QueryUnescape(remoteurl_parts[6])
-	if err != nil {
-		panic(fmt.Errorf("failed to unescape repository name: %v", err))
+	if isSSHUrl(remoteUrl) {
+		// SSH format: git@ssh.dev.azure.com:v3/org/project/repo
+		// After split: [git@ssh.dev.azure.com:v3, org, project, repo]
+		if len(remoteurl_parts) < 4 {
+			panic(fmt.Errorf("invalid SSH URL format: %s", remoteUrl))
+		}
+		reponame, err := url.QueryUnescape(remoteurl_parts[3])
+		if err != nil {
+			panic(fmt.Errorf("failed to unescape repository name: %v", err))
+		}
+		return reponame
+	} else {
+		// HTTPS format: https://dev.azure.com/org/project/_git/repo
+		// After split: [https:, , dev.azure.com, org, project, _git, repo]
+		if len(remoteurl_parts) < 7 {
+			panic(fmt.Errorf("invalid HTTPS URL format: %s", remoteUrl))
+		}
+		reponame, err := url.QueryUnescape(remoteurl_parts[6])
+		if err != nil {
+			panic(fmt.Errorf("failed to unescape repository name: %v", err))
+		}
+		return reponame
 	}
-	return reponame
 }
 
 func getProjectId(conn *azuredevops.Connection, projectname string) string {
