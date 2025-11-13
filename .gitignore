@@ -5,3 +5,4 @@ sections-log.txt
 .vscode
 worktree.log
 .env
+.claude/
