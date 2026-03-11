@@ -65,12 +65,12 @@ func NewLogViewport(ctx context.Context, secid SectionName, azdoconfig azdo.Conf
 
 	styledHelpText := styles.ShortHelpStyle.Render("/ find • alt+m maximize")
 
-	signalrClient := azdosignalr.NewSignalR(azdoconfig.OrgName, azdoconfig.AccoundId, azdoconfig.ProjectId)
+	signalrClient := azdosignalr.NewSignalR(azdoconfig.OrgName, azdoconfig.AccoundId, azdoconfig.ProjectId, azdoconfig.AuthHeader)
 
 	connClosedChan := make(chan bool)
 	connClosedErrChan := make(chan error)
 
-	buildclient := azdo.NewBuildClient(ctx, azdoconfig.OrgUrl, azdoconfig.ProjectId, azdoconfig.PAT)
+	buildclient := azdo.NewBuildClient(ctx, azdoconfig.OrgUrl, azdoconfig.ProjectId, azdoconfig.AuthHeader)
 	return &LogViewportSection{
 		logger:            logger,
 		logviewport:       &vp,

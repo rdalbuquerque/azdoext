@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/microsoft/azure-devops-go-api/azuredevops/v7"
 	"github.com/microsoft/azure-devops-go-api/azuredevops/v7/git"
 )
 
@@ -16,8 +15,8 @@ type GitClient struct {
 	git.Client
 }
 
-func NewGitClient(ctx context.Context, orgurl, projectid, pat string) GitClientInterface {
-	azdoconn := azuredevops.NewPatConnection(orgurl, pat)
+func NewGitClient(ctx context.Context, orgurl, projectid, authHeader string) GitClientInterface {
+	azdoconn := NewConnection(orgurl, authHeader)
 	client, err := git.NewClient(ctx, azdoconn)
 	if err != nil {
 		panic(fmt.Sprintf("failed to create git client: %v", err))

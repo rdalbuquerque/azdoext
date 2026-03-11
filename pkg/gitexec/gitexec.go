@@ -7,7 +7,6 @@ package gitexec
 
 import (
 	"azdoext/pkg/logger"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"os/exec"
@@ -112,10 +111,8 @@ func Commit(message string) {
 
 }
 
-func Push(remote string, branch string, pat string) {
-	// Encode PAT for basic auth
-	encodedAuth := base64.StdEncoding.EncodeToString([]byte(":" + pat))
-	authHeader := fmt.Sprintf("http.extraheader=AUTHORIZATION: Basic %s", encodedAuth)
+func Push(remote string, branch string, authHeader string) {
+	authHeader = fmt.Sprintf("http.extraheader=AUTHORIZATION: %s", authHeader)
 	logger := logger.NewLogger("gitexec.log")
 	logger.LogToFile("debug", "authHeader: "+authHeader)
 	// Use -c option to set temporary config for this command

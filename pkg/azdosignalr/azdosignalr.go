@@ -5,13 +5,11 @@ import (
 	"azdoext/pkg/teamsg"
 	"azdoext/pkg/utils"
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"math/rand"
 	"net/http"
 	"net/url"
-	"os"
 	"time"
 
 	"github.com/google/uuid"
@@ -53,14 +51,14 @@ type SignalRClient struct {
 	Organization string
 	AccountID    string
 	ProjectID    string
+	AuthHeader   string
 }
 
 type negotiateResponse struct {
 	ConnectionToken string `json:"ConnectionToken"`
 }
 
-func GetConnectionParameters(organization string, accountID string, projectID string) (string, http.Header, error) {
-	authHeader := fetchAuthHeader()
+func GetConnectionParameters(organization string, accountID string, projectID string, authHeader string) (string, http.Header, error) {
 	connectionToken, err := fetchConnectionToken(authHeader, organization, projectID)
 	if err != nil {
 		return "", nil, err
@@ -98,22 +96,16 @@ func sendHandshake(c *websocket.Conn) error {
 }
 
 // NewSignalRConn initializes and returns a new websocket connection with Azure Devops SignalR endpoint
-func NewSignalR(organization, accountID, projectID string) *SignalRClient {
+func NewSignalR(organization, accountID, projectID, authHeader string) *SignalRClient {
 	logger := logger.NewLogger("azdosignalr.log")
 
 	return &SignalRClient{
 		Organization: organization,
 		AccountID:    accountID,
 		ProjectID:    projectID,
+		AuthHeader:   authHeader,
 		logger:       logger,
 	}
-}
-
-// fetchAuthHeader fetches the authorization header
-func fetchAuthHeader() string {
-	pat := os.Getenv("AZDO_PERSONAL_ACCESS_TOKEN")
-	basicAuth := base64.StdEncoding.EncodeToString([]byte(":" + pat))
-	return "Basic " + basicAuth
 }
 
 // fetchConnectionToken fetches the connection token
@@ -156,7 +148,7 @@ func fetchConnectionToken(authHeader, organization, projectID string) (string, e
 
 func (s *SignalRClient) Connect() error {
 	s.logger.LogToFile("INFO", "connecting to signalr")
-	signalrURL, header, err := GetConnectionParameters(s.Organization, s.AccountID, s.ProjectID)
+	signalrURL, header, err := GetConnectionParameters(s.Organization, s.AccountID, s.ProjectID, s.AuthHeader)
 	if err != nil {
 		return fmt.Errorf("failed to get connection parameters for SignalR: %w", err)
 	}

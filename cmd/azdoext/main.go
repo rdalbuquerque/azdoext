@@ -21,15 +21,16 @@ import (
 )
 
 type model struct {
-	logger    *logger.Logger
-	initError string
-	ctx       context.Context
-	cancel    context.CancelFunc
-	pages     map[pages.PageName]pages.PageInterface
-	pageStack pages.Stack
-	height    int
-	width     int
-	spinner   spinner.Model
+	logger       *logger.Logger
+	initError    string
+	ctx          context.Context
+	cancel       context.CancelFunc
+	pages        map[pages.PageName]pages.PageInterface
+	pageStack    pages.Stack
+	height       int
+	width        int
+	spinner      spinner.Model
+	authProvider azdo.AuthProvider
 }
 
 var version string
@@ -41,7 +42,7 @@ var azdoextLogo = `
 \_/\_(____(____/\__(____(_/\_)(__) 
 `
 
-func initialModel() model {
+func initialModel(authProvider azdo.AuthProvider) model {
 	ctx, cancel := context.WithCancel(context.Background())
 	spnr := spinner.New()
 	spnr.Spinner = spinner.Line
@@ -54,30 +55,33 @@ func initialModel() model {
 	}
 	pageStack := pages.Stack{}
 	m := model{
-		logger:    logger,
-		ctx:       ctx,
-		cancel:    cancel,
-		pages:     pagesMap,
-		pageStack: pageStack,
-		spinner:   spnr,
+		logger:       logger,
+		ctx:          ctx,
+		cancel:       cancel,
+		pages:        pagesMap,
+		pageStack:    pageStack,
+		spinner:      spnr,
+		authProvider: authProvider,
 	}
 	return m
 }
 
-func getAzdoConfig() tea.Cmd {
+func getAzdoConfig(authProvider azdo.AuthProvider) tea.Cmd {
 	return func() tea.Msg {
 		gitconf, err := gitexec.Config()
 		if err != nil {
 			return teamsg.AzdoConfigErrorMsg(err)
 		}
-		azdoconfig := azdo.GetAzdoConfig(gitconf.Origin, gitconf.CurrentBranch)
+		azdoconfig, err := azdo.GetAzdoConfig(context.Background(), gitconf.Origin, gitconf.CurrentBranch, authProvider)
+		if err != nil {
+			return teamsg.AzdoConfigErrorMsg(err)
+		}
 		return teamsg.AzdoConfigMsg(azdoconfig)
-
 	}
 }
 
 func (m *model) Init() tea.Cmd {
-	return tea.Batch(getAzdoConfig(), m.spinner.Tick)
+	return tea.Batch(getAzdoConfig(m.authProvider), m.spinner.Tick)
 }
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -92,9 +96,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.initError = msg.Error()
 		return m, nil
 	case teamsg.AzdoConfigMsg:
-		buildclient := azdo.NewBuildClient(m.ctx, msg.OrgUrl, msg.ProjectId, msg.PAT)
+		buildclient := azdo.NewBuildClient(m.ctx, msg.OrgUrl, msg.ProjectId, msg.AuthHeader)
 
-		gitclient := azdo.NewGitClient(m.ctx, msg.OrgUrl, msg.ProjectId, msg.PAT)
+		gitclient := azdo.NewGitClient(m.ctx, msg.OrgUrl, msg.ProjectId, msg.AuthHeader)
 		gitpage := pages.NewGitPage(m.ctx, gitclient, azdo.Config(msg))
 		pipelistpage := pages.NewPipelineListPage(m.ctx, buildclient, azdo.Config(msg))
 		pipelinetaskpage := pages.NewPipelineRunPage(m.ctx, buildclient, azdo.Config(msg))
@@ -204,8 +208,29 @@ func (m *model) removeCurrentPage() {
 }
 
 func restart() (*model, tea.Cmd) {
-	model := initialModel()
+	authProvider := resolveAuth()
+	model := initialModel(authProvider)
 	return &model, model.Init()
+}
+
+// resolveAuth discovers the git remote and resolves authentication before the TUI starts.
+// This ensures interactive prompts (device code) are visible to the user.
+func resolveAuth() azdo.AuthProvider {
+	gitconf, err := gitexec.Config()
+	if err != nil {
+		// Return a provider that always errors; the TUI will show the error
+		return func(ctx context.Context) (string, error) {
+			return "", err
+		}
+	}
+	orgUrl := azdo.GetOrgUrl(gitconf.Origin)
+	authProvider, err := azdo.NewAuthProvider(orgUrl)
+	if err != nil {
+		return func(ctx context.Context) (string, error) {
+			return "", err
+		}
+	}
+	return authProvider
 }
 
 func main() {
@@ -216,8 +241,9 @@ func main() {
 		fmt.Println(version)
 		os.Exit(0)
 	}
-	initialModel := initialModel()
-	if _, err := tea.NewProgram(&initialModel).Run(); err != nil {
+	authProvider := resolveAuth()
+	m := initialModel(authProvider)
+	if _, err := tea.NewProgram(&m).Run(); err != nil {
 		fmt.Println("Error running program:", err)
 	}
 }

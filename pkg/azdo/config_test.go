@@ -21,9 +21,9 @@ func TestGetOrgUrl(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := getOrgUrl(tt.remoteUrl)
+			got := GetOrgUrl(tt.remoteUrl)
 			if got != tt.want {
-				t.Errorf("getOrgUrl(%q) = %q; want %q", tt.remoteUrl, got, tt.want)
+				t.Errorf("GetOrgUrl(%q) = %q; want %q", tt.remoteUrl, got, tt.want)
 			}
 		})
 	}
@@ -68,6 +68,11 @@ func TestGetProjectName(t *testing.T) {
 			want:      "MyProject",
 		},
 		{
+			name:      "HTTPS short URL (project == repo)",
+			remoteUrl: "https://dev.azure.com/MyOrg/_git/MyRepo",
+			want:      "MyRepo",
+		},
+		{
 			name:      "SSH URL",
 			remoteUrl: "git@ssh.dev.azure.com:v3/MyOrg/MyProject/MyRepo",
 			want:      "MyProject",
@@ -92,6 +97,11 @@ func TestGetRepositoryName(t *testing.T) {
 		{
 			name:      "HTTPS URL",
 			remoteUrl: "https://dev.azure.com/MyOrg/MyProject/_git/MyRepo",
+			want:      "MyRepo",
+		},
+		{
+			name:      "HTTPS short URL (project == repo)",
+			remoteUrl: "https://dev.azure.com/MyOrg/_git/MyRepo",
 			want:      "MyRepo",
 		},
 		{

@@ -3,13 +3,11 @@ package azdo
 import (
 	"azdoext/pkg/utils"
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 
 	"github.com/google/uuid"
@@ -24,32 +22,35 @@ type Config struct {
 	AccoundId      string
 	ProjectName    string
 	ProjectId      string
-	PAT            string
+	AuthHeader     string
 	RepositoryName string
 	RepositoryId   uuid.UUID
 	CurrentBranch  string
 	DefaultBranch  string
 }
 
-func GetAzdoConfig(remoteUrl string, currentBranch string) Config {
-	orgurl := getOrgUrl(remoteUrl)
+func GetAzdoConfig(ctx context.Context, remoteUrl string, currentBranch string, authProvider AuthProvider) (Config, error) {
+	authHeader, err := authProvider(ctx)
+	if err != nil {
+		return Config{}, fmt.Errorf("authentication failed: %w", err)
+	}
+	orgurl := GetOrgUrl(remoteUrl)
 	orgname := getOrgName(remoteUrl)
-	conn := azuredevops.NewPatConnection(orgurl, os.Getenv("AZDO_PERSONAL_ACCESS_TOKEN"))
-	azdopat := os.Getenv("AZDO_PERSONAL_ACCESS_TOKEN")
+	conn := NewConnection(orgurl, authHeader)
 	projectname := getProjectName(remoteUrl)
 	reponame := getRepositoryName(remoteUrl)
 	return Config{
-		AccoundId:      getAccountId(orgname, azdopat),
+		AccoundId:      getAccountId(orgname, authHeader),
 		OrgUrl:         orgurl,
 		OrgName:        orgname,
 		ProjectName:    projectname,
 		RepositoryName: reponame,
 		ProjectId:      getProjectId(conn, projectname),
 		RepositoryId:   getRepositoryId(conn, projectname, reponame),
-		PAT:            azdopat,
+		AuthHeader:     authHeader,
 		CurrentBranch:  currentBranch,
 		DefaultBranch:  getDefaultBranch(conn, projectname, reponame),
-	}
+	}, nil
 }
 
 func getDefaultBranch(conn *azuredevops.Connection, projectname, reponame string) string {
@@ -110,8 +111,7 @@ type account struct {
 	AccountName string `json:"accountName"`
 }
 
-func getAccountId(orgName, pat string) string {
-	authHeader := fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString([]byte(":"+pat)))
+func getAccountId(orgName, authHeader string) string {
 	userid := getUserId(authHeader)
 	if userid == "" {
 		panic("user id not found")
@@ -171,7 +171,7 @@ func getOrgName(remoteUrl string) string {
 	}
 }
 
-func getOrgUrl(remoteUrl string) string {
+func GetOrgUrl(remoteUrl string) string {
 	orgname := getOrgName(remoteUrl)
 	// Always return HTTPS format for org URL
 	return fmt.Sprintf("https://dev.azure.com/%s", orgname)
@@ -191,16 +191,26 @@ func getProjectName(remoteUrl string) string {
 		}
 		return projectname
 	} else {
-		// HTTPS format: https://dev.azure.com/org/project/_git/repo
-		// After split: [https:, , dev.azure.com, org, project, _git, repo]
-		if len(remoteurl_parts) < 5 {
-			panic(fmt.Errorf("invalid HTTPS URL format: %s", remoteUrl))
+		// Long format:  https://dev.azure.com/org/project/_git/repo
+		// After split:  [https:, , dev.azure.com, org, project, _git, repo] (7 parts)
+		// Short format: https://dev.azure.com/org/_git/repo (project == repo)
+		// After split:  [https:, , dev.azure.com, org, _git, repo] (6 parts)
+		if len(remoteurl_parts) >= 7 {
+			projectname, err := url.QueryUnescape(remoteurl_parts[4])
+			if err != nil {
+				panic(fmt.Errorf("failed to unescape project name: %v", err))
+			}
+			return projectname
 		}
-		projectname, err := url.QueryUnescape(remoteurl_parts[4])
-		if err != nil {
-			panic(fmt.Errorf("failed to unescape project name: %v", err))
+		if len(remoteurl_parts) >= 6 && remoteurl_parts[4] == "_git" {
+			// Short format: project name == repo name
+			projectname, err := url.QueryUnescape(remoteurl_parts[5])
+			if err != nil {
+				panic(fmt.Errorf("failed to unescape project name: %v", err))
+			}
+			return projectname
 		}
-		return projectname
+		panic(fmt.Errorf("invalid HTTPS URL format: %s", remoteUrl))
 	}
 }
 
@@ -218,16 +228,23 @@ func getRepositoryName(remoteUrl string) string {
 		}
 		return reponame
 	} else {
-		// HTTPS format: https://dev.azure.com/org/project/_git/repo
-		// After split: [https:, , dev.azure.com, org, project, _git, repo]
-		if len(remoteurl_parts) < 7 {
-			panic(fmt.Errorf("invalid HTTPS URL format: %s", remoteUrl))
+		// Long format:  https://dev.azure.com/org/project/_git/repo → index 6
+		// Short format: https://dev.azure.com/org/_git/repo → index 5
+		if len(remoteurl_parts) >= 7 {
+			reponame, err := url.QueryUnescape(remoteurl_parts[6])
+			if err != nil {
+				panic(fmt.Errorf("failed to unescape repository name: %v", err))
+			}
+			return reponame
 		}
-		reponame, err := url.QueryUnescape(remoteurl_parts[6])
-		if err != nil {
-			panic(fmt.Errorf("failed to unescape repository name: %v", err))
+		if len(remoteurl_parts) >= 6 && remoteurl_parts[4] == "_git" {
+			reponame, err := url.QueryUnescape(remoteurl_parts[5])
+			if err != nil {
+				panic(fmt.Errorf("failed to unescape repository name: %v", err))
+			}
+			return reponame
 		}
-		return reponame
+		panic(fmt.Errorf("invalid HTTPS URL format: %s", remoteUrl))
 	}
 }
 

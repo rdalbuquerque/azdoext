@@ -7,7 +7,6 @@ import (
 	"io"
 	"slices"
 
-	"github.com/microsoft/azure-devops-go-api/azuredevops/v7"
 	"github.com/microsoft/azure-devops-go-api/azuredevops/v7/build"
 )
 
@@ -31,8 +30,8 @@ type BuildClient struct {
 	projectid string
 }
 
-func NewBuildClient(ctx context.Context, orgurl, projectid, pat string) BuildClientInterface {
-	azdoconn := azuredevops.NewPatConnection(orgurl, pat)
+func NewBuildClient(ctx context.Context, orgurl, projectid, authHeader string) BuildClientInterface {
+	azdoconn := NewConnection(orgurl, authHeader)
 	client, err := build.NewClient(ctx, azdoconn)
 	if err != nil {
 		panic(fmt.Sprintf("failed to create build client: %v", err))

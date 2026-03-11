@@ -6,8 +6,10 @@ to help streamline the process of commiting, pushing, creating PRs and following
 
 ## Prerequisites
 
-- environment variable `AZDO_PERSONAL_ACCESS_TOKEN` with full access to **all accessible organizations**
-	- this is necessarry because the app fetches the account id during initialization. [ref](https://medium.com/@shivapatel1102001/get-list-of-organization-from-azure-devops-microsoft-account-861ea29dae93)
+- **Authentication** (one of the following):
+  - **Azure CLI** (recommended) – run `az login`; the app will automatically use your Azure CLI tokens via OAuth
+  - **PAT** – set the `AZDO_PERSONAL_ACCESS_TOKEN` environment variable with full access to **all accessible organizations**
+  - The app tries the PAT first (if set); if it's missing or expired it falls back to Azure CLI credentials
 - git installed - there is a [go package to handle git operations](https://pkg.go.dev/github.com/go-git/go-git/v5) but it still has a few bugs, so it just run git commands.
 - repository with a Azure DevOps remote origin
 

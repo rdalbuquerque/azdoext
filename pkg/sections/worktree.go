@@ -28,7 +28,7 @@ type WorktreeSection struct {
 }
 
 func (ws *WorktreeSection) push() tea.Msg {
-	gitexec.Push("origin", ws.branch, ws.azdoconfig.PAT)
+	gitexec.Push("origin", ws.branch, ws.azdoconfig.AuthHeader)
 	return teamsg.GitPushedMsg(true)
 }
 
