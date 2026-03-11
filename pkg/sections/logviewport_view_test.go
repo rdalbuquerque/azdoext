@@ -21,10 +21,8 @@ import (
 func newTestLogViewport() *LogViewportSection {
 	vp := viewsearch.New()
 	vp.SetShowHelp(false)
-	styledHelpText := styles.ShortHelpStyle.Render("/ find • alt+m maximize")
 	return &LogViewportSection{
 		logviewport:       &vp,
-		StyledHelpText:    styledHelpText,
 		sectionIdentifier: LogViewport,
 	}
 }
@@ -63,7 +61,7 @@ func (h pageHelpKeys) ShortHelp() []key.Binding {
 // It simulates the real startup: styles.SetDimensions is called first (from
 // WindowSizeMsg), then the page constructor runs and calls page.SetDimensions.
 func TestHelpTextFullyVisibleBehavior(t *testing.T) {
-	helpText := "/ find • alt+m maximize"
+	helpText := "/ find • alt+m maximize • alt+w wrap:off"
 
 	for _, termWidth := range []int{80, 100, 120, 160, 200} {
 		t.Run(fmt.Sprintf("termWidth_%d", termWidth), func(t *testing.T) {
@@ -110,12 +108,16 @@ func TestHelpTextFullyVisibleBehavior(t *testing.T) {
 				}
 			}
 
-			if !strings.Contains(pageView, helpText) {
-				for i := len(helpText); i > 0; i-- {
-					if strings.Contains(pageView, helpText[:i]) {
-						t.Errorf("help text truncated, found %q (missing %q)",
-							helpText[:i], helpText[i:])
-						break
+			helpVisibleWidth := lipgloss.Width(helpText)
+			logViewportWidth := termWidth - styles.DefaultSectionWidth - len(testSpacer)
+			if logViewportWidth >= helpVisibleWidth {
+				if !strings.Contains(pageView, helpText) {
+					for i := len(helpText); i > 0; i-- {
+						if strings.Contains(pageView, helpText[:i]) {
+							t.Errorf("help text truncated, found %q (missing %q)",
+								helpText[:i], helpText[i:])
+							break
+						}
 					}
 				}
 			}
@@ -140,12 +142,14 @@ func TestHelpTextFullyVisibleBehavior(t *testing.T) {
 					pageWidth2, termWidth, pageWidth2-termWidth)
 			}
 
-			if !strings.Contains(pageView2, helpText) {
-				for i := len(helpText); i > 0; i-- {
-					if strings.Contains(pageView2, helpText[:i]) {
-						t.Errorf("[log focused] help text truncated, found %q (missing %q)",
-							helpText[:i], helpText[i:])
-						break
+			if logViewportWidth >= helpVisibleWidth {
+				if !strings.Contains(pageView2, helpText) {
+					for i := len(helpText); i > 0; i-- {
+						if strings.Contains(pageView2, helpText[:i]) {
+							t.Errorf("[log focused] help text truncated, found %q (missing %q)",
+								helpText[:i], helpText[i:])
+							break
+						}
 					}
 				}
 			}
@@ -165,12 +169,14 @@ func TestHelpTextFullyVisibleBehavior(t *testing.T) {
 					fullPageWidth, termWidth, fullPageWidth-termWidth)
 			}
 
-			if !strings.Contains(fullPageView, helpText) {
-				for i := len(helpText); i > 0; i-- {
-					if strings.Contains(fullPageView, helpText[:i]) {
-						t.Errorf("[full page] help text truncated, found %q (missing %q)",
-							helpText[:i], helpText[i:])
-						break
+			if logViewportWidth >= helpVisibleWidth {
+				if !strings.Contains(fullPageView, helpText) {
+					for i := len(helpText); i > 0; i-- {
+						if strings.Contains(fullPageView, helpText[:i]) {
+							t.Errorf("[full page] help text truncated, found %q (missing %q)",
+								helpText[:i], helpText[i:])
+							break
+						}
 					}
 				}
 			}

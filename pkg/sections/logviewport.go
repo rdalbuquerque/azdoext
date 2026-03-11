@@ -28,7 +28,6 @@ type LogViewportSection struct {
 	hidden            bool
 	focused           bool
 	ctx               context.Context
-	StyledHelpText    string
 	followRun         bool
 	currentStep       uuid.UUID
 	currentRunId      int
@@ -62,8 +61,6 @@ func NewLogViewport(ctx context.Context, secid SectionName, azdoconfig azdo.Conf
 	vp := viewsearch.New()
 	vp.SetShowHelp(false)
 
-	styledHelpText := styles.ShortHelpStyle.Render("/ find • alt+m maximize")
-
 	signalrClient := azdosignalr.NewSignalR(azdoconfig.OrgName, azdoconfig.AccoundId, azdoconfig.ProjectId, azdoconfig.AuthHeader)
 
 	connClosedChan := make(chan bool)
@@ -79,7 +76,6 @@ func NewLogViewport(ctx context.Context, secid SectionName, azdoconfig azdo.Conf
 		sectionIdentifier: secid,
 		azdoConfig:        azdoconfig,
 		signalrClient:     signalrClient,
-		StyledHelpText:    styledHelpText,
 		buildclient:       buildclient,
 	}
 }
@@ -113,9 +109,21 @@ func (p *LogViewportSection) Blur() {
 	p.focused = false
 }
 
+func (p *LogViewportSection) helpText() string {
+	wrapIndicator := "off"
+	if p.logviewport.Viewport.SoftWrap {
+		wrapIndicator = "on"
+	}
+	return styles.ShortHelpStyle.Render("/ find • alt+m maximize • alt+w wrap:" + wrapIndicator)
+}
+
 func (p *LogViewportSection) View() string {
-	helpPlacement := lipgloss.NewStyle().PaddingLeft(p.logviewport.Viewport.Width() - lipgloss.Width(p.StyledHelpText))
-	logsAndHelp := lipgloss.JoinVertical(lipgloss.Top, p.logviewport.View(), helpPlacement.Render(p.StyledHelpText))
+	helpText := p.helpText()
+	vpWidth := p.logviewport.Viewport.Width()
+	helpWidth := lipgloss.Width(helpText)
+	padding := max(0, vpWidth-helpWidth)
+	renderedHelp := lipgloss.NewStyle().PaddingLeft(padding).MaxWidth(vpWidth).Render(helpText)
+	logsAndHelp := lipgloss.JoinVertical(lipgloss.Top, p.logviewport.View(), renderedHelp)
 	if p.focused {
 		return styles.ActiveStyle.Render(logsAndHelp)
 	}
@@ -174,6 +182,10 @@ func (p *LogViewportSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 		p.currentStep = msg.RecordId
 		return p, nil
 	case tea.KeyPressMsg:
+		if msg.String() == "alt+w" {
+			p.logviewport.Viewport.SoftWrap = !p.logviewport.Viewport.SoftWrap
+			return p, nil
+		}
 		if msg.String() == "f" && !p.logviewport.SearchActive() {
 			p.followRun = !p.followRun
 			return p, nil
