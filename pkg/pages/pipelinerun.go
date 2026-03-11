@@ -8,9 +8,9 @@ import (
 	"azdoext/pkg/teamsg"
 	"context"
 
-	bubbleshelp "github.com/charmbracelet/bubbles/help"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	bubbleshelp "charm.land/bubbles/v2/help"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 )
 
 type PipelineRunPage struct {
@@ -109,7 +109,7 @@ func (p *PipelineRunPage) updateSections(msg tea.Msg) (map[sections.SectionName]
 func (p *PipelineRunPage) Update(msg tea.Msg) (PageInterface, tea.Cmd) {
 	var cmds []tea.Cmd
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "alt+m":
 			if p.sectionMaximized == nil {

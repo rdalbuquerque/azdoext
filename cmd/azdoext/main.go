@@ -15,9 +15,9 @@ import (
 	"azdoext/pkg/styles"
 	"azdoext/pkg/teamsg"
 
-	"github.com/charmbracelet/bubbles/spinner"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/spinner"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 )
 
 type model struct {
@@ -107,7 +107,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.pages[pages.PipelineRun] = pipelinetaskpage
 		m.addPage(pages.Git)
 		return m, nil
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "enter":
 			if m.initError != "" {
@@ -167,18 +167,18 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-func (m *model) View() string {
+func (m *model) View() tea.View {
 	if m.initError != "" {
-		return lipgloss.NewStyle().Foreground(styles.Red).Bold(true).Render(m.initError) + "\n\nPress 'enter' or 'ctrl+c' to exit"
+		return tea.NewView(lipgloss.NewStyle().Foreground(styles.Red).Bold(true).Render(m.initError) + "\n\nPress 'enter' or 'ctrl+c' to exit")
 	}
 	loadingStr := lipgloss.NewStyle().Bold(true).Render("Loading...")
 
 	spnerWithLoading := lipgloss.NewStyle().Bold(true).Padding(1).Render(lipgloss.JoinHorizontal(lipgloss.Left, m.spinner.View(), " ", loadingStr))
 
 	if len(m.pageStack) == 0 {
-		return lipgloss.JoinVertical(lipgloss.Top, styles.LogoStyle.Render(azdoextLogo), spnerWithLoading)
+		return tea.NewView(lipgloss.JoinVertical(lipgloss.Top, styles.LogoStyle.Render(azdoextLogo), spnerWithLoading))
 	}
-	return m.pageStack.Peek().View()
+	return tea.NewView(m.pageStack.Peek().View())
 }
 
 func (m *model) addPage(pageName pages.PageName) {

@@ -3,7 +3,7 @@ package pages
 import (
 	"azdoext/pkg/sections"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 )
 
 type PageInterface interface {

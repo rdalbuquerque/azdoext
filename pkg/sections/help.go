@@ -5,10 +5,10 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/charmbracelet/bubbles/help"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/glamour"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/help"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/glamour/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/rdalbuquerque/viewsearch"
 )
 
@@ -41,9 +41,7 @@ func NewHelpSection(secid SectionName) Section {
 	helpstr := help.New().ShortHelpView(vs.HelpBindings)
 	vs.SetShowHelp(false)
 
-	renderer, err := glamour.NewTermRenderer(
-		glamour.WithAutoStyle(),
-	)
+	renderer, err := glamour.NewTermRenderer()
 	if err != nil {
 		panic(err)
 	}

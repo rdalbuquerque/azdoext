@@ -9,11 +9,11 @@ import (
 	"azdoext/pkg/teamsg"
 	"context"
 
-	bubbleshelp "github.com/charmbracelet/bubbles/help"
-	"github.com/charmbracelet/bubbles/list"
+	bubbleshelp "charm.land/bubbles/v2/help"
+	"charm.land/bubbles/v2/list"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 )
 
 type GitPage struct {
@@ -90,7 +90,7 @@ func (p *GitPage) Update(msg tea.Msg) (PageInterface, tea.Cmd) {
 	if p.current {
 		var cmds []tea.Cmd
 		switch msg := msg.(type) {
-		case tea.KeyMsg:
+		case tea.KeyPressMsg:
 			switch msg.String() {
 			case "q":
 				sec, cmd := p.sections[sections.Commit].Update(msg)

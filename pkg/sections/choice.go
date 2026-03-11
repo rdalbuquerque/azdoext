@@ -7,9 +7,9 @@ import (
 	"azdoext/pkg/teamsg"
 	"fmt"
 
-	"github.com/charmbracelet/bubbles/list"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/list"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 )
 
 type Choice struct {
@@ -54,7 +54,7 @@ func (c *Choice) IsFocused() bool {
 func (c *Choice) Update(msg tea.Msg) (Section, tea.Cmd) {
 	if c.focused {
 		switch msg := msg.(type) {
-		case tea.KeyMsg:
+		case tea.KeyPressMsg:
 			switch msg.String() {
 			case "q":
 				return c, nil

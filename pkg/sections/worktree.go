@@ -9,11 +9,11 @@ import (
 	"azdoext/pkg/teamsg"
 	"errors"
 
-	bubbleshelp "github.com/charmbracelet/bubbles/help"
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/list"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	bubbleshelp "charm.land/bubbles/v2/help"
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/list"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 )
 
 type WorktreeSection struct {
@@ -83,7 +83,7 @@ func (ws *WorktreeSection) IsFocused() bool {
 
 func (ws *WorktreeSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		if ws.focused {
 			switch msg.String() {
 			case "ctrl+a":

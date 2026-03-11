@@ -18,10 +18,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/list"
-	"github.com/charmbracelet/bubbles/spinner"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/list"
+	"charm.land/bubbles/v2/spinner"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/google/uuid"
 	"github.com/microsoft/azure-devops-go-api/azuredevops/v7/build"
 )
@@ -96,9 +96,9 @@ func (p *PipelineTasksSection) Blur() {
 }
 
 func (p *PipelineTasksSection) followView() string {
-	on := lipgloss.NewStyle().Foreground(lipgloss.Color(styles.Green)).SetString("on") // Green
-	off := lipgloss.NewStyle().Foreground(lipgloss.Color(styles.Red)).SetString("off") // Red
-	follow := lipgloss.NewStyle().Foreground(lipgloss.Color(styles.White)).SetString("follow: ")
+	on := lipgloss.NewStyle().Foreground(styles.Green).SetString("on") // Green
+	off := lipgloss.NewStyle().Foreground(styles.Red).SetString("off") // Red
+	follow := lipgloss.NewStyle().Foreground(styles.White).SetString("follow: ")
 	followText := follow.String()
 	if p.followRun {
 		followText += on.String()
@@ -164,7 +164,7 @@ func (p *PipelineTasksSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 		p.spinner = spinner
 		*p.spinnerView = spinner.View()
 		return p, cmd
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "q":
 			return p, nil

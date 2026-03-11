@@ -16,8 +16,8 @@ import (
 
 	"github.com/rdalbuquerque/viewsearch"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/google/uuid"
 	"github.com/microsoft/azure-devops-go-api/azuredevops/v7/build"
 	"github.com/muesli/reflow/wordwrap"
@@ -115,7 +115,7 @@ func (p *LogViewportSection) Blur() {
 }
 
 func (p *LogViewportSection) View() string {
-	helpPlacement := lipgloss.NewStyle().PaddingLeft(p.logviewport.Viewport.Width - len(p.StyledHelpText) + 18)
+	helpPlacement := lipgloss.NewStyle().PaddingLeft(p.logviewport.Viewport.Width() - len(p.StyledHelpText) + 18)
 	logsAndHelp := lipgloss.JoinVertical(lipgloss.Top, p.logviewport.View(), helpPlacement.Render(p.StyledHelpText))
 	if p.focused {
 		return styles.ActiveStyle.Render(logsAndHelp)
@@ -126,7 +126,7 @@ func (p *LogViewportSection) View() string {
 func (p *LogViewportSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 	switch msg := msg.(type) {
 	case teamsg.ToggleMaximizeMsg:
-		wrappedContent := wordwrap.String(p.buildLogs[p.currentStep], p.logviewport.Viewport.Width)
+		wrappedContent := wordwrap.String(p.buildLogs[p.currentStep], p.logviewport.Viewport.Width())
 		p.logviewport.SetContent(wrappedContent)
 		return p, nil
 	case teamsg.PipelineRunIdMsg:
@@ -162,21 +162,21 @@ func (p *LogViewportSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 		currentLog += formatLine(msg.NewContent, lineNum)
 		p.buildLogs[msg.StepRecordId] = currentLog
 		if p.currentStep == msg.StepRecordId {
-			p.logviewport.SetContent(wordwrap.String(currentLog, p.logviewport.Viewport.Width))
+			p.logviewport.SetContent(wordwrap.String(currentLog, p.logviewport.Viewport.Width()))
 		}
 		if p.followRun {
 			p.currentStep = msg.StepRecordId
-			p.logviewport.SetContent(wordwrap.String(currentLog, p.logviewport.Viewport.Width))
+			p.logviewport.SetContent(wordwrap.String(currentLog, p.logviewport.Viewport.Width()))
 			p.logviewport.GotoBottom()
 		}
 		return p, waitForLogs(p.logsChan)
 	case teamsg.RecordSelectedMsg:
-		wrappedContent := wordwrap.String(p.buildLogs[msg.RecordId], p.logviewport.Viewport.Width)
+		wrappedContent := wordwrap.String(p.buildLogs[msg.RecordId], p.logviewport.Viewport.Width())
 		p.logviewport.SetContent(wrappedContent)
 		p.logviewport.GotoBottom()
 		p.currentStep = msg.RecordId
 		return p, nil
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		if msg.String() == "f" {
 			p.followRun = !p.followRun
 			return p, nil

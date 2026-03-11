@@ -4,9 +4,9 @@ import (
 	"azdoext/pkg/styles"
 	"azdoext/pkg/teamsg"
 
-	"github.com/charmbracelet/bubbles/textarea"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/textarea"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 )
 
 type CommitSection struct {
@@ -58,20 +58,24 @@ func (cs *CommitSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 	}
 	if cs.focused {
 		switch msg := msg.(type) {
-		case tea.KeyMsg:
+		case tea.KeyPressMsg:
 			cs.textarea.Placeholder = ""
 			switch msg.String() {
 			case "ctrl+s":
 				if cs.textarea.Value() == "" {
-					cs.textarea.FocusedStyle.Placeholder = lipgloss.NewStyle().Foreground(lipgloss.Color(styles.Yellow))
-					cs.textarea.BlurredStyle.Placeholder = lipgloss.NewStyle().Foreground(lipgloss.Color(styles.Yellow))
+					s := cs.textarea.Styles()
+					s.Focused.Placeholder = lipgloss.NewStyle().Foreground(styles.Yellow)
+					s.Blurred.Placeholder = lipgloss.NewStyle().Foreground(styles.Yellow)
+					cs.textarea.SetStyles(s)
 					cs.textarea.Placeholder = "Commit message is empty"
 					return cs, nil
 				}
 				if cs.pushed || cs.pushInProgress {
 					cs.textarea.InsertString("\n")
-					cs.textarea.FocusedStyle.CursorLine = lipgloss.NewStyle().Foreground(lipgloss.Color(styles.Yellow))
-					cs.textarea.BlurredStyle.CursorLine = lipgloss.NewStyle().Foreground(lipgloss.Color(styles.Yellow))
+					s := cs.textarea.Styles()
+					s.Focused.CursorLine = lipgloss.NewStyle().Foreground(styles.Yellow)
+					s.Blurred.CursorLine = lipgloss.NewStyle().Foreground(styles.Yellow)
+					cs.textarea.SetStyles(s)
 					cs.textarea.InsertString("Already pushing or pushed...")
 					return cs, nil
 				}

@@ -13,10 +13,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/charmbracelet/bubbles/list"
-	"github.com/charmbracelet/bubbles/spinner"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/list"
+	"charm.land/bubbles/v2/spinner"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/google/uuid"
 	"github.com/microsoft/azure-devops-go-api/azuredevops/v7/build"
 )
@@ -118,7 +118,7 @@ func (p *PipelineListSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 		return p, func() tea.Msg {
 			return teamsg.PipelineRunIdMsg{RunId: runId, PipelineName: selectedPipeline.Name, Status: selectedPipeline.Status}
 		}
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		if !p.focused {
 			return p, nil
 		}

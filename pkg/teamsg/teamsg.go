@@ -5,7 +5,7 @@ import (
 	"azdoext/pkg/listitems"
 	"azdoext/pkg/utils"
 
-	"github.com/charmbracelet/bubbles/list"
+	"charm.land/bubbles/v2/list"
 	"github.com/google/uuid"
 )
 

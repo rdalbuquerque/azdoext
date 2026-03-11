@@ -10,9 +10,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textarea"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/textarea"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/google/uuid"
 	"github.com/microsoft/azure-devops-go-api/azuredevops/v7/git"
 )
@@ -45,11 +45,11 @@ func NewPRSection(secid SectionName, gitclient azdo.GitClientInterface, azdoconf
 	logger := logger.NewLogger("pr.log")
 	title := "Open PR:"
 	styledHelpText := styles.ShortHelpStyle.Render("ctrl+s save and open PR")
-	textarea := textarea.New()
-	textarea.SetHeight(styles.ActiveStyle.GetHeight() - 2)
-	textarea.Placeholder = "Title and description"
-	textarea.SetPromptFunc(6, func(i int) string {
-		if i == 0 {
+	ta := textarea.New()
+	ta.SetHeight(styles.ActiveStyle.GetHeight() - 2)
+	ta.Placeholder = "Title and description"
+	ta.SetPromptFunc(6, func(info textarea.PromptInfo) string {
+		if info.LineNumber == 0 {
 			return "Title:"
 		} else {
 			return " Desc:"
@@ -58,7 +58,7 @@ func NewPRSection(secid SectionName, gitclient azdo.GitClientInterface, azdoconf
 	return &PRSection{
 		logger:            logger,
 		title:             title,
-		textarea:          textarea,
+		textarea:          ta,
 		sectionIdentifier: secid,
 		project:           azdoconfig.ProjectId,
 		repositoryId:      azdoconfig.RepositoryId,
@@ -88,7 +88,7 @@ func (pr *PRSection) SetDimensions(width, height int) {
 
 func (pr *PRSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		if pr.focused {
 			switch msg.String() {
 			case "ctrl+s":
@@ -116,8 +116,10 @@ func (pr *PRSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 		pr.logger.LogToFile("info", fmt.Sprintf("submitting PR with title: %s and description: %s, from %s to %s", title, description, pr.currentBranch, pr.defaultBranch))
 		return pr, func() tea.Msg { return pr.openPR(pr.currentBranch, pr.defaultBranch, title, description) }
 	case teamsg.PRErrorMsg:
-		pr.textarea.FocusedStyle.Text = lipgloss.NewStyle().Foreground(lipgloss.Color(styles.Red))
-		pr.textarea.BlurredStyle.Text = lipgloss.NewStyle().Foreground(lipgloss.Color(styles.Red))
+		s := pr.textarea.Styles()
+		s.Focused.Text = lipgloss.NewStyle().Foreground(styles.Red)
+		s.Blurred.Text = lipgloss.NewStyle().Foreground(styles.Red)
+		pr.textarea.SetStyles(s)
 		pr.textarea.Focus()
 		pr.errorDisplayed = true
 		pr.textarea.SetValue(string(msg) + "\nPress 'enter' to dismiss")
