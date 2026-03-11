@@ -77,6 +77,8 @@ func NewPipelineRunPage(ctx context.Context, buildclient azdo.BuildClientInterfa
 	pipelineRunPage.AddSection(logvpsec)
 	pipelineRunPage.sections[sections.LogViewport].Blur()
 	pipelineRunPage.sections[sections.PipelineTasks].Focus()
+	// Set dimensions using page-level logic which accounts for spacer width
+	pipelineRunPage.SetDimensions(0, styles.Height)
 	return pipelineRunPage
 }
 
@@ -87,7 +89,7 @@ func (p *PipelineRunPage) GetPageName() PageName {
 func (p *PipelineRunPage) SetDimensions(width, height int) {
 	if width == 0 {
 		p.sections[sections.PipelineTasks].SetDimensions(styles.DefaultSectionWidth, height)
-		p.sections[sections.LogViewport].SetDimensions(styles.Width-styles.DefaultSectionWidth, height)
+		p.sections[sections.LogViewport].SetDimensions(styles.Width-styles.DefaultSectionWidth-len(SectionSpacer), height)
 		return
 	}
 	for _, section := range p.orderedSections {
@@ -157,7 +159,7 @@ func (p *PipelineRunPage) restoreSectionDimensions() {
 		p.sections[sections.PipelineTasks].SetDimensions(styles.DefaultSectionWidth, styles.Height)
 		p.sections[sections.LogViewport].Show()
 	} else {
-		p.sections[sections.LogViewport].SetDimensions(styles.Width-styles.DefaultSectionWidth, styles.Height)
+		p.sections[sections.LogViewport].SetDimensions(styles.Width-styles.DefaultSectionWidth-len(SectionSpacer), styles.Height)
 		p.sections[sections.PipelineTasks].Show()
 	}
 }
@@ -169,7 +171,8 @@ func (p *PipelineRunPage) View() string {
 			view = attachView(view, p.sections[section].View())
 		}
 	}
-	viewWithHelp := lipgloss.JoinVertical(lipgloss.Top, view, p.shorthelp)
+	clampedHelp := lipgloss.NewStyle().MaxWidth(styles.Width).Render(p.shorthelp)
+	viewWithHelp := lipgloss.JoinVertical(lipgloss.Top, view, clampedHelp)
 	return viewWithHelp
 }
 

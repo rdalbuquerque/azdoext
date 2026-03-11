@@ -37,8 +37,13 @@ func (s *Stack) Peek() PageInterface {
 	return (*s)[len(*s)-1]
 }
 
+const SectionSpacer = "  "
+
 func attachView(view string, sectionView string) string {
-	return lipgloss.JoinHorizontal(lipgloss.Left, view, "  ", sectionView)
+	if view == "" {
+		return sectionView
+	}
+	return lipgloss.JoinHorizontal(lipgloss.Left, view, SectionSpacer, sectionView)
 }
 
 type helpKeys struct{}

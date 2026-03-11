@@ -20,7 +20,6 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/google/uuid"
 	"github.com/microsoft/azure-devops-go-api/azuredevops/v7/build"
-	"github.com/muesli/reflow/wordwrap"
 )
 
 type LogViewportSection struct {
@@ -29,7 +28,6 @@ type LogViewportSection struct {
 	hidden            bool
 	focused           bool
 	ctx               context.Context
-	StyledHelpText    string
 	followRun         bool
 	currentStep       uuid.UUID
 	currentRunId      int
@@ -63,8 +61,6 @@ func NewLogViewport(ctx context.Context, secid SectionName, azdoconfig azdo.Conf
 	vp := viewsearch.New()
 	vp.SetShowHelp(false)
 
-	styledHelpText := styles.ShortHelpStyle.Render("/ find • alt+m maximize")
-
 	signalrClient := azdosignalr.NewSignalR(azdoconfig.OrgName, azdoconfig.AccoundId, azdoconfig.ProjectId, azdoconfig.AuthHeader)
 
 	connClosedChan := make(chan bool)
@@ -80,7 +76,6 @@ func NewLogViewport(ctx context.Context, secid SectionName, azdoconfig azdo.Conf
 		sectionIdentifier: secid,
 		azdoConfig:        azdoconfig,
 		signalrClient:     signalrClient,
-		StyledHelpText:    styledHelpText,
 		buildclient:       buildclient,
 	}
 }
@@ -114,9 +109,21 @@ func (p *LogViewportSection) Blur() {
 	p.focused = false
 }
 
+func (p *LogViewportSection) helpText() string {
+	wrapIndicator := "off"
+	if p.logviewport.Viewport.SoftWrap {
+		wrapIndicator = "on"
+	}
+	return styles.ShortHelpStyle.Render("/ find • alt+m maximize • alt+w wrap:" + wrapIndicator)
+}
+
 func (p *LogViewportSection) View() string {
-	helpPlacement := lipgloss.NewStyle().PaddingLeft(p.logviewport.Viewport.Width() - len(p.StyledHelpText) + 18)
-	logsAndHelp := lipgloss.JoinVertical(lipgloss.Top, p.logviewport.View(), helpPlacement.Render(p.StyledHelpText))
+	helpText := p.helpText()
+	vpWidth := p.logviewport.Viewport.Width()
+	helpWidth := lipgloss.Width(helpText)
+	padding := max(0, vpWidth-helpWidth)
+	renderedHelp := lipgloss.NewStyle().PaddingLeft(padding).MaxWidth(vpWidth).Render(helpText)
+	logsAndHelp := lipgloss.JoinVertical(lipgloss.Top, p.logviewport.View(), renderedHelp)
 	if p.focused {
 		return styles.ActiveStyle.Render(logsAndHelp)
 	}
@@ -126,8 +133,7 @@ func (p *LogViewportSection) View() string {
 func (p *LogViewportSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 	switch msg := msg.(type) {
 	case teamsg.ToggleMaximizeMsg:
-		wrappedContent := wordwrap.String(p.buildLogs[p.currentStep], p.logviewport.Viewport.Width())
-		p.logviewport.SetContent(wrappedContent)
+		p.logviewport.SetContent(p.buildLogs[p.currentStep])
 		return p, nil
 	case teamsg.PipelineRunIdMsg:
 		if p.currentRunId == msg.RunId {
@@ -162,22 +168,25 @@ func (p *LogViewportSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 		currentLog += formatLine(msg.NewContent, lineNum)
 		p.buildLogs[msg.StepRecordId] = currentLog
 		if p.currentStep == msg.StepRecordId {
-			p.logviewport.SetContent(wordwrap.String(currentLog, p.logviewport.Viewport.Width()))
+			p.logviewport.SetContent(currentLog)
 		}
 		if p.followRun {
 			p.currentStep = msg.StepRecordId
-			p.logviewport.SetContent(wordwrap.String(currentLog, p.logviewport.Viewport.Width()))
+			p.logviewport.SetContent(currentLog)
 			p.logviewport.GotoBottom()
 		}
 		return p, waitForLogs(p.logsChan)
 	case teamsg.RecordSelectedMsg:
-		wrappedContent := wordwrap.String(p.buildLogs[msg.RecordId], p.logviewport.Viewport.Width())
-		p.logviewport.SetContent(wrappedContent)
+		p.logviewport.SetContent(p.buildLogs[msg.RecordId])
 		p.logviewport.GotoBottom()
 		p.currentStep = msg.RecordId
 		return p, nil
 	case tea.KeyPressMsg:
-		if msg.String() == "f" {
+		if msg.String() == "alt+w" {
+			p.logviewport.Viewport.SoftWrap = !p.logviewport.Viewport.SoftWrap
+			return p, nil
+		}
+		if msg.String() == "f" && !p.logviewport.SearchActive() {
 			p.followRun = !p.followRun
 			return p, nil
 		}
