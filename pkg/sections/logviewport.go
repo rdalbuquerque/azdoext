@@ -20,7 +20,6 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/google/uuid"
 	"github.com/microsoft/azure-devops-go-api/azuredevops/v7/build"
-	"github.com/muesli/reflow/wordwrap"
 )
 
 type LogViewportSection struct {
@@ -115,7 +114,7 @@ func (p *LogViewportSection) Blur() {
 }
 
 func (p *LogViewportSection) View() string {
-	helpPlacement := lipgloss.NewStyle().PaddingLeft(p.logviewport.Viewport.Width() - len(p.StyledHelpText) + 18)
+	helpPlacement := lipgloss.NewStyle().PaddingLeft(p.logviewport.Viewport.Width() - lipgloss.Width(p.StyledHelpText))
 	logsAndHelp := lipgloss.JoinVertical(lipgloss.Top, p.logviewport.View(), helpPlacement.Render(p.StyledHelpText))
 	if p.focused {
 		return styles.ActiveStyle.Render(logsAndHelp)
@@ -126,8 +125,7 @@ func (p *LogViewportSection) View() string {
 func (p *LogViewportSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 	switch msg := msg.(type) {
 	case teamsg.ToggleMaximizeMsg:
-		wrappedContent := wordwrap.String(p.buildLogs[p.currentStep], p.logviewport.Viewport.Width())
-		p.logviewport.SetContent(wrappedContent)
+		p.logviewport.SetContent(p.buildLogs[p.currentStep])
 		return p, nil
 	case teamsg.PipelineRunIdMsg:
 		if p.currentRunId == msg.RunId {
@@ -162,22 +160,21 @@ func (p *LogViewportSection) Update(msg tea.Msg) (Section, tea.Cmd) {
 		currentLog += formatLine(msg.NewContent, lineNum)
 		p.buildLogs[msg.StepRecordId] = currentLog
 		if p.currentStep == msg.StepRecordId {
-			p.logviewport.SetContent(wordwrap.String(currentLog, p.logviewport.Viewport.Width()))
+			p.logviewport.SetContent(currentLog)
 		}
 		if p.followRun {
 			p.currentStep = msg.StepRecordId
-			p.logviewport.SetContent(wordwrap.String(currentLog, p.logviewport.Viewport.Width()))
+			p.logviewport.SetContent(currentLog)
 			p.logviewport.GotoBottom()
 		}
 		return p, waitForLogs(p.logsChan)
 	case teamsg.RecordSelectedMsg:
-		wrappedContent := wordwrap.String(p.buildLogs[msg.RecordId], p.logviewport.Viewport.Width())
-		p.logviewport.SetContent(wrappedContent)
+		p.logviewport.SetContent(p.buildLogs[msg.RecordId])
 		p.logviewport.GotoBottom()
 		p.currentStep = msg.RecordId
 		return p, nil
 	case tea.KeyPressMsg:
-		if msg.String() == "f" {
+		if msg.String() == "f" && !p.logviewport.SearchActive() {
 			p.followRun = !p.followRun
 			return p, nil
 		}

@@ -12,9 +12,10 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/microsoft/azure-devops-go-api/azuredevops/v7 v7.1.0
-	github.com/muesli/reflow v0.3.0
 	github.com/rdalbuquerque/viewsearch v0.1.0
 )
+
+replace github.com/rdalbuquerque/viewsearch => ../viewsearch
 
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/internal v1.11.2 // indirect
